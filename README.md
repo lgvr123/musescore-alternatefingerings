@@ -14,3 +14,5 @@ If using MuseScore version 3 then download the plugin and unzip it.
 Install using the instructions in the MuseScore 3.x Handbook, which typically involves copying the QML file to the local MuseScore Plugin directory.
 Open MuseScore and navigate to 'Plugins' -> 'Plugin Manager' to enable the plugin. Tick the box against 'fingeringdiagram' and apply with 'OK'.
 
+## Idea
+The idea of this plugin followed my discovery of the [Fingering Diagram plugin for MuseScore 3.x](https://github.com/eduardomourar/fingering-diagram#fingering-diagram-plugin-for-musescore-3x) and whish to broaden it my usage.
