@@ -1,7 +1,7 @@
 # musescore-alternatefingerings
 Alternate Fingerings plugin for MuseScore 3.x is a tool to add and edit manually a keys combination for non-standard play positions.
 
-## features
+## Features
 * Support limited the flute family of instruments is supported (wind.flutes.flute). 
 * Support for open and closed holes. Half-closed holes will be supported in a next release.
 * The fingering is stored at the *note* level as a *Fingering* text.
