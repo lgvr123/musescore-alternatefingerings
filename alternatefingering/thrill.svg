@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<!-- Creator: CorelDRAW X6 -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="4.2332mm" height="4.2332mm" version="1.0" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 423 423"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .str0 {stroke:white;stroke-width:52.92;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:0.580392}
+    .fil4 {fill:none}
+    .fil2 {fill:none;fill-rule:nonzero}
+    .fil0 {fill:#999999}
+    .fil1 {fill:white}
+    .fil3 {fill:black;fill-rule:nonzero}
+   ]]>
+  </style>
+   <clipPath id="id0">
+    <path d="M0 0l423 0 0 423 -423 0 0 -423z"/>
+   </clipPath>
+ </defs>
+ <g id="Plan_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <g id="_111875168">
+   <circle class="fil0" cx="212" cy="212" r="212"/>
+   <circle class="fil1" cx="212" cy="212" r="173"/>
+  </g>
+  <g>
+  </g>
+  <g style="clip-path:url(#id0)">
+   <g>
+    <g>
+     <path class="fil2 str0" d="M-19 405l424 -424 37 38 -423 423 -38 -37z"/>
+     <path id="1" class="fil3" d="M-19 405l424 -424 37 38 -423 423 -38 -37z"/>
+    </g>
+   </g>
+  </g>
+  <path class="fil4" d="M0 0l423 0 0 423 -423 0 0 -423z"/>
+ </g>
+</svg>

@@ -8,29 +8,45 @@ import QtQuick.Layouts 1.1
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
-	version : "1.0"
+	version : "1.1.0"
 	pluginType : "dialog"
 	requiresScore : true
 
-	width : 300
+	width : 400
 	height : 300
 
 	/** category of instrument :"flute","clarinet", ... */
 	property string __category : ""
-	/** alias to the various keys schemas for a the current category. */
+	/** alias to the different keys schemas for a the current category. */
 	property var __instruments : categories[__category]["instruments"];
+	/** alias to the different config options in the current category. */
+	property var __config : categories[__category]["config"];
+	/** alias to the different notes in the activated configs in the current category. */
+	property var __confignotes : []
+
+	// hack
+	property var refreshed : true;
+	property var ready : false;
+
 	/** the notes to which the fingering must be made. */
 	property var __notes : [];
 
 	// config
-	readonly property int debugLevel : level_DEBUG;
+	readonly property int debugLevel : level_TRACE;
 	readonly property bool atFingeringLevel : true;
 
 	// constants
-	readonly property string mode_OPEN : "open";
-	readonly property string mode_CLOSED : "closed";
-	readonly property string mode_HALF_LEFT : "halfleft";
-	readonly property string mode_HALF_RIGHT : "halfright";
+	/* All the supported states. */
+	readonly property var basestates : ["open", "closed"];
+	readonly property var halfstates : ["right", "left"];
+	readonly property var quarterstates : ["halfright", "halfleft"];
+	readonly property var thrillstates : ["thrill"];
+	readonly property var ringstates : ["ring"];
+
+	/* All the playing techniques (aka "states") used by default. */
+	// *User instructions*: Modify the default states by concatenating any of states arrays found above
+	//property var usedstates : basestates;
+	property var usedstates : basestates.concat(thrillstates);
 
 	readonly property int level_NONE : 0;
 	readonly property int level_INFO : 10;
@@ -47,6 +63,16 @@ MuseScore {
 			fontMissingDialog.open();
 			return;
 		}
+
+		// preliminary check of the usedstates
+		chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
+		chkTechnicQuarter.checked = doesIntersect(usedstates, quarterstates);
+		chkTechnicRing.checked = doesIntersect(usedstates, ringstates);
+		chkTechnicThrill.checked = doesIntersect(usedstates, thrillstates);
+		if (usedstates.indexOf("open") == -1)
+			usedstates.push("open");
+		if (usedstates.indexOf("closed") == -1)
+			usedstates.push("closed");
 
 		var instrument;
 		var category;
@@ -67,67 +93,87 @@ MuseScore {
 					debug(level_DEBUG, "NOTES FOUND FROM SELECTION");
 				} else {
 					debug(level_DEBUG, "NO NOTES FOUND");
-					invalidSelectionDialog.open();
-					return;
+					var fingerings = getFingeringsFromSelection();
+					if (fingerings && (fingerings.length > 0)) {
+						debug(level_DEBUG, "FINGERINGS FOUND FROM SELECTION");
+						notes = [];
+						for (var i = 0; i < fingerings.length; i++) {
+							var f = fingerings[i];
+							var n = f.parent;
+							if (notes.indexOf(n) == -1)
+								notes.push(n);
+						}
+						fingering = fingerings[0];
+					} else {
+						debug(level_DEBUG, "NO NOTES FOUND");
+						invalidSelectionDialog.open();
+						return;
+					}
 				}
 			}
 
-			var prevNote;
-			var prevInstru;
-			for (var i = 0; i < notes.length; i++) {
-				var note = notes[i];
-				var isValidNote = true;
-				// Read the instrument and its category
-				var instru = getInstrument(note);
-				if (!instru || !instru.category) {
-					// error : non valid instrument
-					isValidNote = false;
-					// log only if not already logged
-					if ((prevInstru && instru && prevInstru != instru.instrument) ||
-						!prevInstru) {
-						errors[errors.length] = "Unsupported instrument (" + instru.instrument + ")";
-					} else if (prevInstru && (prevInstru == "unknown") && !instru) {
-						errors[errors.length] = "Unsupported instrument (unknow)";
-					}
-				} else if (instrument && instrument !== instru.instrument) {
-					// warning : different instrument
-					// log only if not already logged
-					if (!warnMultipleInstruments) {
-						warnings[warnings.length] = "All instruments should be the same";
-						warnMultipleInstruments = true;
-					}
-				} else {
-					instrument = instru.instrument;
-					category = instru.category;
-				}
+			if (notes) {
 
-				prevInstru = (instru) ? instru.instrument : "unknown";
-				// Read the first fingering
-				if (isValidNote) {
-					var fingerings = getFingerings(note);
-					if (fingerings && fingerings.length > 0) {
-						fingerings = fingerings.filter(function (f) {
-								return (f.fontFace === 'Fiati');
-							});
+				var prevNote;
+				var prevInstru;
+				for (var i = 0; i < notes.length; i++) {
+					var note = notes[i];
+					var isValidNote = true;
+					// Read the instrument and its category
+					var instru = getInstrument(note);
+					if (!instru || !instru.category) {
+						// error : non valid instrument
+						isValidNote = false;
+						// log only if not already logged
+						if ((prevInstru && instru && prevInstru != instru.instrument) ||
+							!prevInstru) {
+							errors[errors.length] = "Unsupported instrument (" + instru.instrument + ")";
+						} else if (prevInstru && (prevInstru == "unknown") && !instru) {
+							errors[errors.length] = "Unsupported instrument (unknow)";
+						}
+					} else if (instrument && instrument !== instru.instrument) {
+						// warning : different instrument
+						// log only if not already logged
+						if (!warnMultipleInstruments) {
+							warnings[warnings.length] = "All instruments should be the same";
+							warnMultipleInstruments = true;
+						}
+					} else {
+						instrument = instru.instrument;
+						category = instru.category;
 					}
-					if (fingerings && fingerings.length > 0) {
-						if ((fingering && fingering !== fingerings[0]) || (fingerings.length > 1)) {
-							if (!warnMultipleFingerings) {
-								warnings[warnings.length] = "The selection contains different fingerings. Only taking one.";
-								warnMultipleFingerings = true;
+
+					prevInstru = (instru) ? instru.instrument : "unknown";
+					// Read the first fingering
+					if (isValidNote) {
+						var fingerings = getFingerings(note);
+						if (fingerings && fingerings.length > 0) {
+							fingerings = fingerings.filter(function (f) {
+									return (f.fontFace === 'Fiati');
+								});
+						}
+						if (fingerings && fingerings.length > 0) {
+							if ((fingering && fingering !== fingerings[0]) || (fingerings.length > 1)) {
+								if (!warnMultipleFingerings) {
+									warnings[warnings.length] = "The selection contains different fingerings. Only taking one.";
+									warnMultipleFingerings = true;
+								}
+							}
+							if (!fingering) {
+								fingering = fingerings[0];
 							}
 						}
-						if (!fingering) {
-							fingering = fingerings[0];
-						}
 					}
+
+					prevNote = note;
 				}
 
-				prevNote = note;
 			}
 
 		}
 
+		// On peut arriver ici avec un ensemble de notes dont on dÈduit des fingerings
+		// Ou juste un fingering
 		debugV(level_INFO, ">>", "notes", notes);
 		debugV(level_INFO, ">>", "instrument", instrument);
 		debugV(level_INFO, ">>", "category", category);
@@ -144,13 +190,15 @@ MuseScore {
 		// CORRECT INSTRUMENT
 		__notes = notes;
 		__category = category;
-		// On fabrique le mod√®le pour le ComboBox
-		var model = Object.keys(__instruments);
+
+		// On fabrique le modËle pour le ComboBox
+		var model = Object.keys(categories[category]["instruments"]);
 		for (var i = 0; i < model.length; i++) {
 			debugV(level_TRACE, "model", "-->", model[i]);
 		}
 		lstInstru.model = model;
-		// Bas√© sur la s√©lection, on r√©cup√®re le doigt√© d√©j√† saisi
+
+		// BasÈ sur la sÈlection, on rÈcupËre le doigtÈ dÈj‡ saisi
 		var sFingering;
 		var instrument_type;
 		if (fingering) {
@@ -162,7 +210,17 @@ MuseScore {
 		} else {
 			// We have no fingering in the selection or we wre not able to identifiy it
 			sFingering = "";
-			instrument_type = categories[category]["default"];
+			if ((categories[category]["default"]) && (model.indexOf(categories[category]["default"]) > -1)) {
+				// we have a default and valid instrument, we take it
+				instrument_type = categories[category]["default"];
+			} else if (model.length > 0) {
+				// we haven't a default instrument, we take the first one
+				instrument_type = model[0];
+			} else {
+				// this category has no instruments. It should not occur. Anyway. We take an empty instrument.
+				instrument_type = "";
+			}
+
 			if (fingering) {
 				warnings[warnings.length] = "Impossible to recognize instrument type based from the selected fingering. Using default one.";
 			}
@@ -170,26 +228,51 @@ MuseScore {
 		debugV(level_INFO, "analyse", 'type', instrument_type);
 		debugV(level_INFO, "analyse", 'fingering', sFingering);
 
-		var kk = __instruments[instrument_type]["keys"];
-
-		// TODO: V√©rifier si n√©cessaire
-		for (var i = 0; i < kk.length; i++) {
-			//console.log("K-->"+ kk[i].name);
-			kk[i].visible = true;
+		// SÈlection parmi les clÈs standards
+		var keys = __instruments[instrument_type]["keys"];
+		for (var i = 0; i < keys.length; i++) {
+			var note = keys[i];
+			var states = Object.keys(note.modes);
+			for (var j = 0; j < states.length; j++) {
+				var state = states[j];
+				var rep = note.modes[state];
+				if (sFingering.search(rep) >  - 1) {
+					note.currentMode = state;
+					break;
+				}
+			}
+			debugP(level_TRACE, "note " + note.name, note, "currentMode");
 		}
 
-		// La s√©lection dans l'accord en cours
-		for (var i = 0; i < kk.length; i++) {
-			var modes = kk[i].modes;
-			var m;
-			for (m in modes) {
-				if (sFingering.search(modes[m]) >  - 1) {
-					kk[i].currentMode = m;
+		// SÈlection parmi les configuration de l'instrument
+		for (var i = 0; i < __config.length; i++) {
+			var config = __config[i];
+
+			// a) la note
+			for (var k = 0; k < config.notes.length; k++) {
+
+				var note = config.notes[k];
+				note.currentMode = "open"; // re-init
+				var states = Object.keys(note.modes);
+				for (var j = 0; j < states.length; j++) {
+					var state = states[j];
+					var rep = note.modes[state];
+					if (sFingering.search(rep) >  - 1) {
+						note.currentMode = state;
+						break;
+					}
 				}
+			}
+
+			// b) la config (only if we start from an existing fingering. Otherwise we keep
+			// the default values
+			if (sFingering) {
+				var rep = config.representation;
+				config.activated = (sFingering.search(rep) >  - 1);
 			}
 		}
 
-		// On s√©lectionne le bon instrument
+		// On sÈlectionne le bon instrument
 		if (instrument_type !== null) {
 			lstInstru.currentIndex = model.indexOf(instrument_type);
 			//console.log("selecting" + instrument_type + "(" + lstInstru.currentIndex + ")");
@@ -199,7 +282,11 @@ MuseScore {
 		}
 		// On force un refresh
 		lstInstru.currentIndexChanged();
+		// On consruit la liste des notes dÈpendants des configurations actuellement sÈlectionnÈes.
+		// Je voudrais faire Áa par binding mais le javascript de QML ne supporte pas flatMap() => je dois le faire manuellement
+		buildConfigNotes();
 
+		ready = true;
 	}
 	// -----------------------------------------------------------------------
 	// --- Write the score ----------------------------------------------------
@@ -208,16 +295,34 @@ MuseScore {
 		var instru = lstInstru.currentText;
 		var sFingering = __instruments[instru].base.join('');
 		var kk = __instruments[instru].keys;
+
+		var mm = __config;
+
 		debugV(level_DEBUG, "**Writing", "Instrument", instru);
 		debugV(level_DEBUG, "**Writing", "Notes count", __notes.length);
 
 		for (var i = 0; i < kk.length; i++) {
 			var k = kk[i];
-			if (k.isSelected()) {
-				sFingering += k.getCurrentRepresentation();
+			if (k.selected) {
+				sFingering += k.currentRepresentation;
 			}
-			debugV(level_TRACE, k.name, "selected", k.isSelected());
+			debugV(level_TRACE, k.name, "selected", k.selected);
 		}
+
+		for (var i = 0; i < mm.length; i++) {
+			var config = mm[i];
+			if (config.activated) {
+				sFingering += config.representation;
+				for (var k = 0; k < config.notes.length; k++) {
+					var note = config.notes[k];
+					if (note.selected) {
+						sFingering += note.currentRepresentation;
+					}
+				}
+			}
+
+		}
+
 		debugV(level_INFO, "Fingering", "as string", sFingering);
 		curScore.startCmd();
 		if (atFingeringLevel) {
@@ -341,6 +446,23 @@ MuseScore {
 			prevChord = seg;
 		}
 		return segments;
+	}
+
+	/**
+	 * Reourne les fingerings sÈlectionnÈs
+	 */
+	function getFingeringsFromSelection() {
+		var selection = curScore.selection;
+		var el = selection.elements;
+		var fingerings = [];
+		var n = 0;
+		for (var i = 0; i < el.length; i++) {
+			var element = el[i];
+			if (element.type == Element.FINGERING) {
+				fingerings[n++] = element;
+			}
+		}
+		return fingerings;
 	}
 
 	/**
@@ -496,8 +618,14 @@ MuseScore {
 				}
 			}
 
-			if (instru.startsWith('wind.flutes')) {
-				cat = "flute";
+			for (var c in categories) {
+				for (var i = 0; i < categories[c].support.length; i++) {
+					var support = categories[c].support[i];
+					if (instru.startsWith(support)) {
+						cat = c;
+						break;
+					}
+				}
 			}
 
 			return {
@@ -514,7 +642,7 @@ MuseScore {
 	function extractInstrument(sKeys) {
 		var splt = sKeys.split('');
 		var found;
-		// on trie pour avoir les plus grand cl√©s en 1er
+		// on trie pour avoir les plus grand clÈs en 1er
 		var sorted = Object.keys(__instruments);
 		sorted = sorted.sort(function (a, b) {
 				var res = __instruments[b]['base'].length - __instruments[a]['base'].length;
@@ -533,6 +661,9 @@ MuseScore {
 		return found;
 	}
 
+	/**
+	 * Verify if "what" is enterily contained in "within"
+	 */
 	function find(what, within) {
 		var t,
 		t2;
@@ -542,102 +673,238 @@ MuseScore {
 		t = what.filter(function (e) {
 				return within.indexOf(e) >  - 1;
 			});
-		// Je supprime de la cha√Æne √† retrouver ce qu'il ya dans l'interection
-		// Il ne devrait rien manquer, donc le r√©sultat devrait √™tre vide.
+		// Je supprime de la chaÓne ‡ retrouver ce qu'il ya dans l'interection
+		// Il ne devrait rien manquer, donc le rÈsultat devrait Ítre vide.
 		t2 = what.filter(function (e) {
 				return t.indexOf(e) ===  - 1;
 			});
 		return (t2.length === 0);
 	}
 
+	function doesIntersect(array1, array2) {
+		var intersect = array1.filter(function (n) {
+				return array2.indexOf(n) !== -1;
+			});
+		return intersect.length > 0;
+	}
+
 	// -----------------------------------------------------------------------
 	// --- Screen design -----------------------------------------------------
 	// -----------------------------------------------------------------------
-	GridLayout {
+	ColumnLayout {
 		anchors.fill : parent
+		spacing : 5
 		anchors.margins : 10
-		columns : 1
-		rowSpacing : 20
 
-		RowLayout {
-			Layout.alignment : Qt.AlignTop
-
-			Label {
-				text : "Instrument :"
-			}
-			ComboBox {
-				id : lstInstru
-				Layout.fillWidth : true
-				// Pas de model. Il est construit sur la liste des __instruments g√©r√©s
-				model : [""]// init
-				clip : true
-				focus : true
-				width : parent.width
-				height : 20
-				//color :"lightgrey"
-				anchors {
-					top : parent.top
+		Item {
+			id : panInstrument
+			Layout.preferredHeight : lpc.implicitHeight + 4 // 4 pour les marges
+			//Layout.fillHeight : false
+			Layout.fillWidth : true
+			RowLayout {
+				id : lpc
+				anchors.fill : parent
+				anchors.margins : 2
+				spacing : 2
+				Label {
+					text : "Instrument :"
 				}
-				onCurrentIndexChanged : {
-					debug(level_DEBUG, "Now current index is :" + model[currentIndex])
-					debug(level_DEBUG, __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"])
+				ComboBox {
+					id : lstInstru
+					Layout.fillWidth : true
+					// Pas de model. Il est construit sur la liste des __instruments gÈrÈs
+					model : [""]// init
+					currentIndex : 0 //init
+					clip : true
+					focus : true
+					width : parent.width
+					height : 20
+					//color :"lightgrey"
+					anchors {
+						top : parent.top
+					}
+					onCurrentIndexChanged : {
+						debug(level_DEBUG, "Now current index is :" + model[currentIndex])
+						//debug(level_DEBUG, __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"])
+					}
+
 				}
 
+				Loader {
+					id : configOpenBtn
+					Binding {
+						target : configOpenBtn.item
+						property : "panel"
+						value : panConfig // should be a valid it
+					}
+					Binding {
+						target : configOpenBtn.item
+						property : "visible"
+						value : (__config && __config.length > 0)
+					}
+					sourceComponent : openPanelComponent
+				}
 			}
 		}
 		Item {
-			id : panKeys
-			Layout.fillWidth : true
-			Layout.fillHeight : true
-			Layout.alignment : Qt.AlignHCenter | Qt.AlignVCenter
-			implicitHeight : spanKeys.implicitHeight
-			implicitWidth : spanKeys.implicitWidth
-			Layout.margins : 0
+			id : panConfig
+			visible : false
+			//color : "yellow"
+			//border.color: "grey"
+			//border.width: 2
+			Layout.preferredWidth : parent.width
+			Layout.preferredHeight : layConfig.implicitHeight + 10
+			anchors.margins : 20
+			Grid {
+				id : layConfig
 
-			Repeater {
-				id : spanKeys
-				model : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"].length
-				delegate : CheckBox {
-					readonly property var __key : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index];
-					//text : __key.name
-					checked : __key.isSelected()
+				columns : 2
+				columnSpacing : 5
+				rowSpacing : 5
+				//horizontalItemAlignment : Grid.AlignLeft
+				//verticalItemAlignment  : Grid.AlignTop
 
-					x : __key.column * 20;
-					y : __key.row * 20;
-					onClicked : {
-						debug(level_DEBUG, __key.name + "clicked to" + checked);
-						__key.setSelected(checked);
-					}
-
-					// Tooltip requires QtQuick.Controls 2.15 which is not available in MuseScore 3
-					/**hoverEnabled : true
-					ToolTip.delay : 1000
-					ToolTip.timeout : 5000
-					ToolTip.visible : hovered
-					ToolTip.text : __key.name
-					 */
-					style : CheckBoxStyle {
-						indicator : Rectangle {
-							implicitWidth : 16 * __key.size
-							implicitHeight : 16 * __key.size
-							radius : 5
-							border.color : control.activeFocus ? "darkblue" : "gray"
-							border.width : 1
-							Rectangle {
-								visible : control.checked
-								color : "#555"
-								border.color : "#333"
-								radius : 3
-								anchors.margins : 4
-								anchors.fill : parent
-							}
+				Repeater {
+					model : ready ? __config : []
+					delegate : CheckBox {
+						id : chkConfig
+						property var __mode : __config[model.index]
+						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+						text : __mode.name
+						checked : __mode.activated // init only
+						onClicked : {
+							debug(level_TRACE, "onClik " + __mode.name);
+							var before = __mode.activated;
+							__mode.activated = !__mode.activated;
+							buildConfigNotes();
+							refreshed = false; // awful trick to force the refresh
+							refreshed = true;
 						}
 					}
 
 				}
-
 			}
 		}
+
+		Item {
+
+			Layout.alignment : Qt.AlignHCenter | Qt.AlignmentTop
+
+			Layout.preferredWidth : 240 //repNotes.implicitHeight // 12 columns
+			Layout.preferredHeight : 100 // repNotes.implicitWidth // 4 rows
+			//Layout.fillHeight : true
+			//Layout.fillWidth : true
+
+			//color : "#ffaaaa"
+
+			// Repeater pour les notes de base
+			Repeater {
+				id : repNotes
+				model : (__instruments[lstInstru.model[lstInstru.currentIndex]]) ? __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"] : []
+				//delegate : holeComponent - via Loader, pour passer la note ‡ gÈrer
+				Loader {
+					id : loaderNotes
+					Binding {
+						target : loaderNotes.item
+						property : "note"
+						value : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index]
+					}
+					sourceComponent : holeComponent
+				}
+			}
+
+			// Repeater pour les notes des __config
+			Repeater {
+				id : repModes
+				model : ready ? getConfigNotes(refreshed) : []; //awful hack. Just return the raw __config array
+				//delegate : holeComponent - via Loader, pour passer la note ‡ gÈrer depuis le mode
+				Loader {
+					id : loaderModes
+					Binding {
+						target : loaderModes.item
+						property : "note"
+						value : __confignotes[model.index]// should be a note
+					}
+					sourceComponent : holeComponent
+				}
+			}
+
+		}
+		Item {
+			id : panOptionsOpen
+			Layout.preferredHeight : lpoo.implicitHeight + 4 // 4 pour les marges
+			//Layout.fillHeight : false
+			Layout.fillWidth : true
+			RowLayout {
+				id : lpoo
+				anchors.fill : parent
+				anchors.margins : 2
+				spacing : 2
+				Text {
+					text : "Options"
+					Layout.fillWidth : true
+				}
+				Loader {
+					id : optionsOpenBtn
+					Binding {
+						target : optionsOpenBtn.item
+						property : "panel"
+						value : panOptions // should be a valid it
+					}
+					sourceComponent : openPanelComponent
+				}
+			}
+		}
+		Item {
+			id : panOptions
+			//color : "yellow"
+			visible : false
+			//border.color: "grey"
+			//border.width: 2
+			Layout.preferredWidth : parent.width
+			Layout.preferredHeight : layOptions.implicitHeight + 10
+			anchors.margins : 20
+			Grid {
+				id : layOptions
+
+				columns : 2
+				columnSpacing : 5
+				rowSpacing : 5
+				//horizontalItemAlignment : Grid.AlignLeft
+				//verticalItemAlignment  : Grid.AlignTop
+
+
+				CheckBox {
+					id : chkTechnicHalf
+					Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+					text : "Include playing half holes"
+					onClicked : onTechnicOptionClicked()
+					checked : false;
+				}
+				CheckBox {
+					id : chkTechnicQuarter
+					Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+					text : "Include playing quarter holes"
+					onClicked : onTechnicOptionClicked()
+					checked : false;
+				}
+				CheckBox {
+					id : chkTechnicRing
+					Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+					text : "Include playing ring"
+					onClicked : onTechnicOptionClicked()
+					checked : false;
+				}
+				CheckBox {
+					id : chkTechnicThrill
+					Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+					text : "Include thrill keys"
+					onClicked : onTechnicOptionClicked()
+					checked : true;
+				}
+			}
+		}
+
 		RowLayout {
 			Layout.alignment : Qt.AlignRight
 
@@ -656,6 +923,159 @@ MuseScore {
 			}
 		}
 
+	}
+
+	// ----------------------------------------------------------------------
+	// --- Screen support ---------------------------------------------------
+	// ----------------------------------------------------------------------
+
+	Component {
+		id : openPanelComponent
+
+		Image {
+			id : btn
+			property var panel
+			source : "./alternatefingering/openpanel.svg"
+			states : [
+				State {
+					when : panel.visible;
+					PropertyChanges {
+						target : btn;
+						source : "./alternatefingering/closepanel.svg"
+					}
+				},
+				State {
+					when : !panel.visible;
+					PropertyChanges {
+						target : btn;
+						source : "./alternatefingering/openpanel.svg"
+					}
+				}
+			]
+
+			MouseArea {
+				anchors.fill : parent
+				onClicked : {
+					panel.visible = !panel.visible
+				}
+			}
+		}
+
+	}
+
+	Component {
+		id : holeComponent
+
+		Image {
+			id : img
+
+			property var note
+
+			x : note ? note.column * 20 : 0;
+			y : note ? note.row * 20 : 0;
+			scale : note ? note.size : 1;
+
+			source : "./alternatefingering/open.svg"
+
+			// Tooltip requires QtQuick.Controls 2.15 which is not available in MuseScore 3
+			/**hoverEnabled : true
+			ToolTip.delay : 1000
+			ToolTip.timeout : 5000
+			ToolTip.visible : hovered
+			ToolTip.text : __key.name
+			 */
+
+			states : [
+				State {
+					name : "open"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/open.svg"
+					}
+				},
+				State {
+					name : "closed"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/closed.svg"
+					}
+				},
+				State {
+					name : "left"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/left.svg"
+					}
+				},
+				State {
+					name : "right"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/right.svg"
+					}
+				},
+				State {
+					name : "halfleft"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/quarterleft.svg"
+					}
+				},
+				State {
+					name : "halfright"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/quarterright.svg"
+					}
+				},
+				State {
+					name : "ring"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/ring.svg"
+					}
+				},
+				State {
+					name : "thrill"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/thrill.svg"
+					}
+				},
+				State {
+					name : "deactivated"
+					PropertyChanges {
+						target : img;
+						source : "./alternatefingering/deactivated.svg"
+					}
+				}
+			]
+
+			state : note ? (note.deactivated ? "deactivated" : note.currentMode) : "deactivated" // initial state
+
+			MouseArea {
+				anchors.fill : parent
+				onClicked : {
+					if (note.deactivated) { // temp. On devrait rÈsoudre Áa via mode.activated seulement
+						parent.state = "deactivated"; // temp en attendant de rÈsoudre le problËme de binding
+						return;
+					}
+					var keystates = Object.keys(note.modes);
+					// Object.keys ne prÈserve pas l'ordre, donc je repars de la array des Ètats.
+					var states = usedstates.filter(function (e) {
+							return keystates.indexOf(e) >  - 1;
+						});
+
+					var nextIndex = (states.indexOf(parent.state) + 1) % states.length;
+					note.currentMode = states[nextIndex];
+					// l'instruction au-dessus devrait suffire, mais le binding ne va s'en doute pas aussi loin
+					parent.state = states[nextIndex];
+					debugV(level_TRACE, "note", "current state", note.currentMode);
+					debugV(level_TRACE, "note", "current state", parent.state);
+
+				}
+			}
+		}
 	}
 
 	MessageDialog {
@@ -696,109 +1116,339 @@ MuseScore {
 		}
 	}
 
+	// ----------------------------------------------------------------------
+	// --- Screen support ---------------------------------------------------
+	// ----------------------------------------------------------------------
+
+	function onTechnicOptionClicked() {
+		usedstates = [].concat(
+			basestates,
+			chkTechnicHalf.checked ? halfstates : [],
+			chkTechnicQuarter.checked ? quarterstates : [
+			],
+			chkTechnicRing.checked ? ringstates : [],
+			chkTechnicThrill.checked ? thrillstates : []);
+	}
+
+	/**
+	 * @return the raw __confignotes array *without* any treatment. This way, in the repeater, we can
+	 * acces the right mode by just writing __confignotes[model.index].
+	 */
+	function getConfigNotes(refresh) {
+		for (var k = 0; k < __confignotes.length; k++) {
+			var n = __confignotes[k];
+			debug(level_TRACE, "getConfigNotes: " + n.name + " " + n.currentMode);
+		}
+		debug(level_TRACE, "getConfigNotes: " + __confignotes.length);
+		return __confignotes;
+	}
+
+	function buildConfigNotes() {
+		var notes = [];
+		for (var i = 0; i < __config.length; i++) {
+			var config = __config[i];
+			if (config.activated) {
+				for (var k = 0; k < config.notes.length; k++) {
+					var note = config.notes[k];
+					notes[notes.length++] = note;
+					debug(level_TRACE, "buildConfigNotes: " + note.name + " " + note.currentMode);
+				}
+			}
+		}
+		debug(level_TRACE, "buildConfigNotes: " + notes.length);
+		__confignotes = notes;
+	}
+
 	// -----------------------------------------------------------------------
 	// --- Instruments -------------------------------------------------------
 	// -----------------------------------------------------------------------
 
-	property var flbflat : new noteClass("L Bb", '\uE006', 3, 1.5);
-	property var flb : new noteClass("L B", '\uE007', 3, 2.5);
-	property var fl1 : new noteClass("L1", '\uE008', 2, 1);
-	property var fl2 : new noteClass("L2", '\uE009', 2, 2);
-	property var fl3 : new noteClass("L3", '\uE00A', 2, 3);
-	property var fgsharp : new noteClass("G #", '\uE00B', 1, 3.5);
-	property var fcsharptrill : new noteClass("C # trill", '\uE00C', 1, 4.5);
-	property var frbflat : new noteClass2("Bb trill", '\uE00D', 3, 4.5, 0.8);
-	property var fr1 : new noteClass("R1", '\uE00E', 2, 5);
-	property var fdtrill : new noteClass2("D trill", '\uE00F', 3, 5.5, 0.8);
-	property var fr2 : new noteClass("D2", '\uE010', 2, 6);
-	property var fdsharptrill : new noteClass2("D # trill", '\uE011', 3, 6.5, 0.8);
-	property var fr3 : new noteClass("R3", '\uE012', 2, 7);
-	property var fe : new noteClass("Low E", '\uE013', 3, 8);
-	property var fcsharp : new noteClass("Low C #", '\uE014', 3, 9);
-	property var fc : new noteClass("Low C", '\uE015', 2, 9);
-	property var fbflat : new noteClass("Low Bb", '\uE016', 1, 9);
-	property var fgizmo : new noteClass2("Gizmo", '\uE017', 1, 10, 0.8);
+	property var flbflat : new noteClass4("L Bb", {
+		'closed' : '\uE006',
+		'thrill' : '\uE03C'
+	}, 3, 1.5);
+	property var flb : new noteClass4("L B", {
+		'closed' : '\uE007',
+		'thrill' : '\uE03D'
+	}, 3, 2.5);
+	property var fl1 : new noteClass4("L1", {
+		'closed' : '\uE008',
+		'left' : '\uE024',
+		'right' : '\uE02A',
+		'halfleft' : '\uE030',
+		'halfright' : '\uE036',
+		'thrill' : '\uE03E'
+	}, 2, 1);
+	property var fl2 : new noteClass4("L2", {
+		'closed' : '\uE009',
+		'ring' : '\uE01F',
+		'left' : '\uE025',
+		'right' : '\uE02B',
+		'halfleft' : '\uE031',
+		'halfright' : '\uE037',
+		'thrill' : '\uE03F'
+	}, 2, 2, 1);
+	property var fl3 : new noteClass4("L3", {
+		'closed' : '\uE00A',
+		'ring' : '\uE020',
+		'left' : '\uE026',
+		'right' : '\uE02C',
+		'halfleft' : '\uE032',
+		'halfright' : '\uE038',
+		'thrill' : '\uE040'
+	}, 2, 3);
+	property var fgsharp : new noteClass4("G #", {
+		'closed' : '\uE00B',
+		'thrill' : '\uE041'
+	}, 1, 3.5);
+	property var fcsharptrill : new noteClass4("C # trill", {
+		'closed' : '\uE00C',
+		'thrill' : '\uE042'
+	}, 2, 4.2, 0.8);
+	property var frbflat : new noteClass4("Bb trill", {
+		'closed' : '\uE00D',
+		'thrill' : '\uE043'
+	}, 2.8, 4.5, 0.8);
+	property var fr1 : new noteClass4("R1", {
+		'closed' : '\uE00E',
+		'ring' : '\uE021',
+		'left' : '\uE027',
+		'right' : '\uE02D',
+		'halfleft' : '\uE033',
+		'halfright' : '\uE039',
+		'thrill' : '\uE044'
+	}, 2, 5);
+	property var fdtrill : new noteClass4("D trill", {
+		'closed' : '\uE00F',
+		'thrill' : '\uE045'
+	}, 2.8, 5.5, 0.8);
+	property var fr2 : new noteClass4("R2", {
+		'closed' : '\uE010',
+		'ring' : '\uE022',
+		'left' : '\uE028',
+		'right' : '\uE02E',
+		'halfleft' : '\uE034',
+		'halfright' : '\uE03A',
+		'thrill' : '\uE046'
+	}, 2, 6);
+	property var fdsharptrill : new noteClass4("D # trill", {
+		'closed' : '\uE011',
+		'thrill' : '\uE047'
+	}, 2.8, 6.5, 0.8);
+	property var fr3 : new noteClass4("R3", {
+		'closed' : '\uE012',
+		'ring' : '\uE023',
+		'left' : '\uE029',
+		'right' : '\uE02F',
+		'halfleft' : '\uE035',
+		'halfright' : '\uE03B',
+		'thrill' : '\uE048'
+	}, 2, 7);
+	property var fe : new noteClass4("Low E", {
+		'closed' : '\uE013',
+		'thrill' : '\uE049'
+	}, 3, 8);
+	property var fcsharp : new noteClass4("Low C #", {
+		'closed' : '\uE014',
+		'thrill' : '\uE04A'
+	}, 3, 9);
+	property var fc : new noteClass4("Low C", {
+		'closed' : '\uE015',
+		'thrill' : '\uE04B'
+	}, 2, 9);
+	property var fbflat : new noteClass4("Low Bb", {
+		'closed' : '\uE016',
+		'thrill' : '\uE04C'
+	}, 1, 9);
+	property var fgizmo : new noteClass4("Gizmo", {
+		"closed" : "\uE017",
+		"thrill" : "\uE04D"
+	}, 1, 10, 0.8);
+
+	property var fKCUpLever : new noteClass4("fKCUpLever", {
+		'closed' : '\uE018',
+		'thrill' : '\uE04E'
+	}, 1.2, 1.5, 0.8);
+	property var fKAuxCSharpTrill : new noteClass4("fKAuxCSharpTrill", {
+		'closed' : '\uE019',
+		'thrill' : '\uE04F'
+	}, 1.2, 2.5, 0.8);
+	property var fKBbUpLever : new noteClass4("fKBbUpLever", {
+		'closed' : '\uE01A',
+		'thrill' : '\uE050'
+	}, 3.8, 1, 0.8);
+	property var fKBUpLever : new noteClass4("fKBUpLever", {
+		'closed' : '\uE01B',
+		'thrill' : '\uE051'
+	}, 3.8, 2, 0.8);
+	property var fKGUpLever : new noteClass4("fKGUpLever", {
+		'closed' : '\uE01C',
+		'thrill' : '\uE052'
+	}, 0.5, 4.5, 0.8);
+	property var fKFSharpBar : new noteClass4("fKFSharpBar", {
+		'closed' : '\uE01D',
+		'thrill' : '\uE053'
+	}, 4, 5, 0.8);
+	property var fKDUpLever : new noteClass4("fKDUpLever", {
+		'closed' : '\uE01E',
+		'thrill' : '\uE054'
+	}, 3, 10, 0.8);
+
 	property var categories : {
-		"" : {
-			"default" : "",
-			"instruments" : {
-				"" : {
-					"base" : [],
-					"keys" : []
-				}
-			}
-		},
 		"flute" : {
-			"default" : "Flute in C",
+			// *User instructions*: Modify the default instrument here. Use any of the instruments listed below.
+			"default" : "flute",
+			"config" : [
+				// *User instructions*: Modify the last false/true parameter in the
+				// instrumentConfig class to control the default activation of this configuration
+				new instrumentConfigClass("C# thrill", '\uE003', fcsharptrill, false),
+				new instrumentConfigClass("OpenHole", '\uE004', [], false) // no associated notes with the OpenHole config
+				//,new instrumentConfigClass("Kingma System", '\uE005', [fKCUpLever,fKAuxCSharpTrill,fKBbUpLever,fKBUpLever,fKGUpLever,fKFSharpBar,fKDUpLever],false),  // errors at the glypths level
+
+			],
+			"support" : [
+				'wind.flutes'
+			],
 			"instruments" : {
-				"flute with B tail and C # thrill" : {
-					"base" : ['\uE000', '\uE001', '\uE002', '\uE003'], // B + C thrill,
-					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
-				},
 				"flute with B tail" : {
 					"base" : ['\uE000', '\uE001', '\uE002'], // B
-					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
+					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat, fgizmo]
 				},
-				"Flute with C # thrill" : {
-					"base" : ['\uE000', '\uE001', '\uE003'], // C + C thrill
-					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc]
-				}, // C + C thrill
 				"Flute" : {
 					"base" : ['\uE000', '\uE001'], // C
-					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc]
+					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
 				}
 			}
 		},
+		// unused - in progress
 		"clarinet" : {
 			"default" : "clarinet",
+			"config" : [],
+			"support" : [],
 			"instruments" : {
 				"clarinet" : {
 					"base" : ['\uE000', '\uE001', '\uE002', '\uE003'], // B + C thrill,
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
 				}
 			}
+		},
+		// default and empty category
+		"" : {
+			"default" : "",
+			"config" : [],
+			"support" : [],
+			"instruments" : {
+				"" : {
+					"base" : [],
+					"keys" : []
+				}
+			}
 		}
 
 	};
+
+	/**
+	 * A class representating an instrument key, that can be open/closed.
+	 * With default size (=1).
+	 * @param name The name of the key (e.g. for the tooltip)
+	 * @param representation The glypth used in the Fiati font to display this key as closed
+	 * @ param row, colum where to put that key in the diagram
+	 * @return a note/key object
+	 */
 	function noteClass(name, representation, row, column) {
 		noteClass2.call(this, name, representation, row, column, 1);
 	}
 
+	/**
+	 * A class representating an instrument key, that can be open/closed.
+	 * @param name The name of the key (e.g. for the tooltip)
+	 * @param representation The glypth used in the Fiati font to display this key as closed
+	 * @param row, colum Where to put that key in the diagram
+	 * @param size The size of the key on the diagram
+	 * @return a note/key object
+	 */
 	function noteClass2(name, representation, row, column, size) {
 		noteClass4.call(this, name, {
-			mode_CLOSED : representation
+			"closed" : representation
 		}, row, column, size);
 		this.representation = representation;
 	}
 
-	function noteClass4(name, modes, row, column, size) {
+	/**
+	 * A class representating an instrument key, that can be open/closed/hal-fclosed/...
+	 * @param name The name of the key (e.g. for the tooltip)
+	 * @param modes An array of all the availble closure modes for that key with they corresponding glypth in the Fiati font.
+	 * E.g. {"closed" : '\uE012', "thrill": '\uE013'}
+	 * If not present, the "open" mode will be added with an empty representation
+	 * @param row, colum Where to put that key in the diagram
+	 * @param size The size of the key on the diagram
+	 * @return a note/key object
+	 */
+	function noteClass4(name, xmodes, row, column, size) {
 		this.name = name;
-		this.modes = modes;
-		this.currentMode = mode_OPEN;
-		this.visible = false;
+		this.modes = xmodes;
+		if (!this.modes.open) {
+			// ajoute un mode "open" s'il n'y en a pas
+			this.modes.open = '';
+		}
+
+		this.currentMode = "open";
+		this.deactivated = false; // temp
 		this.row = row;
 		this.column = column;
-		this.size = size;
+		this.size = ((typeof size !== 'undefined')) ? size : 1;
 
-		this.getCurrentRepresentation = function () {
-			var r = this.modes[this.currentMode];
-			// bug que je ne comprends pas => je prends le 1er mode
-			if (!r) {
-				var kys = Object.keys(this.modes);
-				r = this.modes[kys[0]];
-			}
+		Object.defineProperty(this, "currentRepresentation", {
+			get : function () {
+				var r = this.modes[this.currentMode];
+				// bug que je ne comprends pas => je prends le 1er mode
+				if (!r) {
+					var kys = Object.keys(this.modes);
+					r = this.modes[kys[0]];
+				}
 
-			//console.log(this.name + " getting representation for : "+this.currentMode+" => "+r);
-			return (this.currentMode != mode_OPEN) ? r : "";
-		}
+				return (this.currentMode !== "open") ? r : "";
+			},
+			enumerable : true
+		});
 
-		// compatibility only
-		this.setSelected = function (sel) {
-			this.currentMode = (sel) ? mode_CLOSED : mode_OPEN;
-		};
-		this.isSelected = function () {
-			return (this.currentMode !== mode_OPEN);
-		}
+		Object.defineProperty(this, "selected", {
+			get : function () {
+				return (this.currentMode !== "open");
+			},
+			set : function (sel) {
+				this.currentMode = (sel) ? "closed" : "open";
+			},
+			enumerable : true
+		});
+
+	}
+
+	/**
+	 * An object for representation an instrument config option. Such as optional extra key found on some instruments (E.g. "C# thrill" key found on sme flute.)
+	 * @param name The name of the key (e.g. for the tooltip)
+	 * @param representation The glypth used in the Fiati font to display this key as *open*
+	 * @param note A valid note object representing the usage of that key of an array of Notes
+	 */
+	function instrumentConfigClass(name, representation, notes, defaultActive) {
+		var active = (defaultActive !== undefined) ? defaultActive : false;
+		this.name = name;
+		this.representation = representation;
+		this.notes = (Array.isArray(notes) ? notes : [notes]);
+
+		Object.defineProperty(this, "activated", {
+			get : function () {
+				return active;
+			},
+			set : function (newActive) {
+				active = newActive;
+				for (var i = 0; i < this.notes.length; i++) {
+					if (!active)
+						this.notes[i].currentMode = "open";
+				}
+			},
+			enumerable : true
+		});
 
 	}
 
