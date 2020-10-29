@@ -1,4 +1,4 @@
-# musescore-alternatefingerings
+# Alternate Fingerings plugin for MuseScore 3.x
 Alternate Fingerings plugin for MuseScore 3.x is a tool to add and edit manually a keys combination for non-standard play positions.
 
 ## Features
