@@ -26,7 +26,8 @@ The only way is to look in the code. The 3 behaviours that can be configured are
 * What is the default instrument-variant for an instruement . E.g. For the flute, is it a regular flute or a flute with a B tail.
 * What are the default options for the instrument. E.g. For the flute: open holes, extra C# trill key, ...
 * What are the default key behaviours : open/closed, open/closed/half-closed/quarter-closed/ring only/...
-Those options can be found in the code by searching on _"User instructions"_.
+
+Those options can be found in the code by searching on _"*User instructions*"_.
 
 ## Idea
 The idea of this plugin followed my discovery of the [Fingering Diagram plugin for MuseScore 3.x](https://github.com/eduardomourar/fingering-diagram#fingering-diagram-plugin-for-musescore-3x) and whish to broaden it my usage.
