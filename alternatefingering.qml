@@ -8,7 +8,7 @@ import QtQuick.Layouts 1.1
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
-	version : "1.1.0"
+	version : "1.2.0"
 	pluginType : "dialog"
 	requiresScore : true
 
@@ -54,6 +54,8 @@ MuseScore {
 	readonly property int level_TRACE : 30;
 	readonly property int level_ALL : 999;
 
+        property var lastoptions;
+
 	// -----------------------------------------------------------------------
 	// --- Read the score ----------------------------------------------------
 	// -----------------------------------------------------------------------
@@ -64,15 +66,11 @@ MuseScore {
 			return;
 		}
 
+                // lecture des options
+                readOptions();
+                
 		// preliminary check of the usedstates
-		chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
-		chkTechnicQuarter.checked = doesIntersect(usedstates, quarterstates);
-		chkTechnicRing.checked = doesIntersect(usedstates, ringstates);
-		chkTechnicThrill.checked = doesIntersect(usedstates, thrillstates);
-		if (usedstates.indexOf("open") == -1)
-			usedstates.push("open");
-		if (usedstates.indexOf("closed") == -1)
-			usedstates.push("closed");
+                displayUsedStates();
 
 		var instrument;
 		var category;
@@ -909,6 +907,20 @@ MuseScore {
 			Layout.alignment : Qt.AlignRight
 
 			Button {
+				text : "Save"
+				onClicked : {
+					saveOptions()
+				}
+			}
+
+			Button {
+				text : "Read"
+				onClicked : {
+					readOptions()
+				}
+			}
+
+			Button {
 				text : "Ok"
 				onClicked : {
 					writeFingering()
@@ -1159,6 +1171,68 @@ MuseScore {
 		__confignotes = notes;
 	}
 
+	// -----------------------------------------------------------------------
+	// --- Property File -----------------------------------------------------
+	// -----------------------------------------------------------------------
+	function saveOptions() {
+
+		if (typeof lastoptions === 'undefined') {
+			lastoptions = {};
+		}
+
+		lastoptions['states'] = usedstates;
+
+		if (typeof lastoptions['categories'] === 'undefined') {
+			lastoptions['categories'] = {};
+		}
+
+		lastoptions['categories'][__category] = {
+			'default' : lstInstru.currentText
+		};
+
+		var cfgs = []
+		for (var i = 0; i < __config.length; i++) {
+			var config = __config[i];
+			cfgs[i] = {};
+			cfgs[i][config.name] = config.activated;
+		}
+		lastoptions['categories'][__category]['config'] = cfgs;
+
+		var t = JSON.stringify(lastoptions) + "\n";
+		console.log(t);
+
+		var obj = JSON.parse(t);
+	}
+
+	function readOptions() {
+		var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"C# thrill":false},{"OpenHole":true}]}}}';
+		lastoptions = JSON.parse(json);
+
+		usedstates = lastoptions['states'];
+		displayUsedStates();
+
+		var cats = Object.keys(lastoptions['categories']);
+		for (var j = 0; j < cats.length; j++) {
+			var cat = cats[j];
+			var desc = lastoptions['categories'][cat];
+			categories[cat].default = desc.default;
+			console.log(cat + " -- " + desc.default);
+			// TBC: gérer l'activation par défaut des configs
+		}
+
+	}
+
+	function displayUsedStates() {
+		chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
+		chkTechnicQuarter.checked = doesIntersect(usedstates, quarterstates);
+		chkTechnicRing.checked = doesIntersect(usedstates, ringstates);
+		chkTechnicThrill.checked = doesIntersect(usedstates, thrillstates);
+		if (usedstates.indexOf("open") == -1)
+			usedstates.push("open");
+		if (usedstates.indexOf("closed") == -1)
+			usedstates.push("closed");
+
+	}
 	// -----------------------------------------------------------------------
 	// --- Instruments -------------------------------------------------------
 	// -----------------------------------------------------------------------
