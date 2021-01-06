@@ -21,6 +21,8 @@ MuseScore {
 	property var __instruments : categories[__category]["instruments"];
 	/** alias to the different config options in the current category. */
 	property var __config : categories[__category]["config"];
+	/** alias to the different library  in the current category. */
+	property var __library : categories[__category]["library"];
 	/** alias to the different notes in the activated configs in the current category. */
 	property var __confignotes : []
 
@@ -34,6 +36,9 @@ MuseScore {
 	// config
 	readonly property int debugLevel : level_TRACE;
 	readonly property bool atFingeringLevel : true;
+
+	// work variables
+	property var lastoptions;
 
 	// constants
 	/* All the supported states. */
@@ -54,7 +59,6 @@ MuseScore {
 	readonly property int level_TRACE : 30;
 	readonly property int level_ALL : 999;
 
-        property var lastoptions;
 
 	// -----------------------------------------------------------------------
 	// --- Read the score ----------------------------------------------------
@@ -145,6 +149,17 @@ MuseScore {
 					// Read the first fingering
 					if (isValidNote) {
 						var fingerings = getFingerings(note);
+//
+var acc=getAccidental(note);
+var accname='--';
+if (acc) {
+      accname=acc.name;
+}
+console.log('-->Accidental: '+ note.accidentalType + ' ('+accname+')');
+//console.log('-->Note: '+ JSON.stringify(note));
+
+
+
 						if (fingerings && fingerings.length > 0) {
 							fingerings = fingerings.filter(function (f) {
 									return (f.fontFace === 'Fiati');
@@ -200,7 +215,7 @@ MuseScore {
 		var sFingering;
 		var instrument_type;
 		if (fingering) {
-			instrument_type = extractInstrument(fingering.text);
+			instrument_type = extractInstrument(__category, fingering.text);
 		}
 		if (instrument_type) {
 			// We got an identification based on the fingering found in the selection
@@ -290,37 +305,9 @@ MuseScore {
 	// --- Write the score ----------------------------------------------------
 	// -----------------------------------------------------------------------
 	function writeFingering() {
-		var instru = lstInstru.currentText;
-		var sFingering = __instruments[instru].base.join('');
-		var kk = __instruments[instru].keys;
 
-		var mm = __config;
-
-		debugV(level_DEBUG, "**Writing", "Instrument", instru);
-		debugV(level_DEBUG, "**Writing", "Notes count", __notes.length);
-
-		for (var i = 0; i < kk.length; i++) {
-			var k = kk[i];
-			if (k.selected) {
-				sFingering += k.currentRepresentation;
-			}
-			debugV(level_TRACE, k.name, "selected", k.selected);
-		}
-
-		for (var i = 0; i < mm.length; i++) {
-			var config = mm[i];
-			if (config.activated) {
-				sFingering += config.representation;
-				for (var k = 0; k < config.notes.length; k++) {
-					var note = config.notes[k];
-					if (note.selected) {
-						sFingering += note.currentRepresentation;
-					}
-				}
-			}
-
-		}
-
+		var sFingering = buildFingeringRepresentation();
+		
 		debugV(level_INFO, "Fingering", "as string", sFingering);
 		curScore.startCmd();
 		if (atFingeringLevel) {
@@ -382,6 +369,43 @@ MuseScore {
 		curScore.endCmd(false);
 		Qt.quit();
 	}
+
+	function buildFingeringRepresentation() {
+		var instru = lstInstru.currentText;
+		var sFingering = __instruments[instru].base.join('');
+		var kk = __instruments[instru].keys;
+
+		var mm = __config;
+
+		debugV(level_DEBUG, "**Writing", "Instrument", instru);
+		debugV(level_DEBUG, "**Writing", "Notes count", __notes.length);
+
+		for (var i = 0; i < kk.length; i++) {
+			var k = kk[i];
+			if (k.selected) {
+				sFingering += k.currentRepresentation;
+			}
+			debugV(level_TRACE, k.name, "selected", k.selected);
+		}
+
+		for (var i = 0; i < mm.length; i++) {
+			var config = mm[i];
+			if (config.activated) {
+				sFingering += config.representation;
+				for (var k = 0; k < config.notes.length; k++) {
+					var note = config.notes[k];
+					if (note.selected) {
+						sFingering += note.currentRepresentation;
+					}
+				}
+			}
+
+		}
+
+		return sFingering;
+
+	}
+
 	// -----------------------------------------------------------------------
 	// --- Selection helper --------------------------------------------------
 	// -----------------------------------------------------------------------
@@ -637,18 +661,19 @@ MuseScore {
 	// -----------------------------------------------------------------------
 	// --- String extractors -------------------------------------------------
 	// -----------------------------------------------------------------------
-	function extractInstrument(sKeys) {
+	function extractInstrument(category, sKeys) {
 		var splt = sKeys.split('');
 		var found;
+		var instruments=categories[category]["instruments"];
 		// on trie pour avoir les plus grand clés en 1er
-		var sorted = Object.keys(__instruments);
+		var sorted = Object.keys(instruments);
 		sorted = sorted.sort(function (a, b) {
-				var res = __instruments[b]['base'].length - __instruments[a]['base'].length;
+				var res = instruments[b]['base'].length - instruments[a]['base'].length;
 				return res;
 			});
 		for (var i = 0; i < sorted.length; i++) {
 			var instru = sorted[i];
-			var root = __instruments[instru]['base'];
+			var root = instruments[instru]['base'];
 			debug(level_DEBUG, instru + ":" + root);
 			if (find(root, splt)) {
 				debug(level_DEBUG, ">> found");
@@ -1190,13 +1215,25 @@ MuseScore {
 			'default' : lstInstru.currentText
 		};
 
-		var cfgs = []
+		var cfgs = [];
 		for (var i = 0; i < __config.length; i++) {
 			var config = __config[i];
-			cfgs[i] = {};
-			cfgs[i][config.name] = config.activated;
+			cfgs[i] = {
+				name : config.name,
+				activated : config.activated
+			};
 		}
 		lastoptions['categories'][__category]['config'] = cfgs;
+		
+		var presets = [];
+// debug
+__library.push(new presetClass(__category,"xyz","A","SHARP",buildFingeringRepresentation()));
+// debug
+		for (var i = 0; i < __library.length; i++) {
+			var preset = __library[i];
+			presets[i] = preset;
+		}
+		lastoptions['categories'][__category]['library'] = presets;
 
 		var t = JSON.stringify(lastoptions) + "\n";
 		console.log(t);
@@ -1205,7 +1242,8 @@ MuseScore {
 	}
 
 	function readOptions() {
-		var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"C# thrill":false},{"OpenHole":true}]}}}';
+		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"label":"Un bémol", "note":"A", "accidental": "FLAT", "representation": "\uE000\uE001\uE007"}],[{"label":"Un nawak", "note":"B", "accidental": "XYZE", "representation": "\uE000\uE001\uE008"}]}}}';
+		var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"category":"flute","label":"From Save","note":"B","accidental":"FLAT","representation":"?????????"}]}}}';
 		lastoptions = JSON.parse(json);
 
 		usedstates = lastoptions['states'];
@@ -1215,12 +1253,48 @@ MuseScore {
 		for (var j = 0; j < cats.length; j++) {
 			var cat = cats[j];
 			var desc = lastoptions['categories'][cat];
+			
+			// default instrument
 			categories[cat].default = desc.default;
-			console.log(cat + " -- " + desc.default);
-			// TBC: gérer l'activation par défaut des configs
-		}
+			console.log("readOptions: " + cat + " -- " + desc.default);
 
+			// config options
+			var cfgs = desc['config'];
+			for (var k = 0; k < cfgs.length; k++) {
+				var cfg = cfgs[k];
+				console.log("readOptions: " + cfg.name + " --> " + cfg.activated);
+
+				for (var l = 0; l < categories[cat]['config'].length; l++) {
+					var c = categories[cat]['config'][l];
+					if (c.name == cfg.name) {
+						c.activated = cfg.activated;
+						console.log("readOptions: setting " + c.name + " --> " + c.activated);
+					}
+				}
+			}
+			
+			// library
+			var prsts = desc['library'];
+			for (var k = 0; k < prsts.length; k++) {
+				var prst = prsts[k];
+				console.log("readOptions: " + prst.label + " --> " + prst.note + "/" + prst.accidental);
+
+				if (prst.category == cat) {
+					var preset = new presetClass(prst.category, prst.label, prst.note, prst.accidental, prst.representation);
+					var instrument_type = extractInstrument(cat, preset.representation);
+					if (instrument_type) {
+						// We got an representation matching our category, we keep it
+						console.log("readOptions:  matching preset: " + preset);
+						categories[cat]["library"].push(preset);
+					} else {
+						console.log("readOptions: Non matching preset: " + preset);
+					}
+				}
+			}
+		}
 	}
+	
+	
 
 	function displayUsedStates() {
 		chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
@@ -1392,7 +1466,8 @@ MuseScore {
 					"base" : ['\uE000', '\uE001'], // C
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
 				}
-			}
+			},
+			"library": []
 		},
 		// unused - in progress
 		"clarinet" : {
@@ -1404,7 +1479,8 @@ MuseScore {
 					"base" : ['\uE000', '\uE001', '\uE002', '\uE003'], // B + C thrill,
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
 				}
-			}
+			},
+			"library": []
 		},
 		// default and empty category
 		"" : {
@@ -1416,7 +1492,8 @@ MuseScore {
 					"base" : [],
 					"keys" : []
 				}
-			}
+			},
+			"library": []
 		}
 
 	};
@@ -1526,7 +1603,409 @@ MuseScore {
 
 	}
 
-	// -----------------------------------------------------------------------
+	  // -----------------------------------------------------------------------
+	  // --- Library -------------------------------------------------------
+	  // -----------------------------------------------------------------------
+	  /**
+	  * Class representing a preset.
+	  * @param category A category of instrument. Must match any of the categories defined in the categories arrays
+	  * @param label A label. Optional. If non proivded then replaced by an empty string
+	  * @param accidental The accidental of the note. A *string* corresponding to an element of  Musescore Accidental enumeration. Optional. If non proivded then replaced by "NONE".
+	  * @param representation The textual representation of the key combination. Is expected to be a valid unicode combination ,ut no verification is made. Optional. If non proivded then replaced by an empty string.
+	  */
+	  
+	  function presetClass(category, label, note, accidental,representation) {
+			this.category=category;
+			this.label = (label!==undefined)?String(label):"";
+			this.note= (note!==undefined)?String(note):"";
+			
+			this.accidental="NONE";
+			if (accidental!==undefined) {
+				var acc=String(accidental);
+				var accid=eval("Accidental." + acc);
+				console.log("## acc = "+acc +" --> "+accid);
+				if (accid===undefined || accid==0) acc="NONE";
+				this.accidental=acc;
+			}
+			
+			this.representation=(representation!==undefined)?String(representation):"";
+	  }
+	  
+	  
+	  // -----------------------------------------------------------------------
+	  // --- Accidentals -------------------------------------------------------
+	  // -----------------------------------------------------------------------
+
+	  function getAccidental(note) {
+      	var id = note.accidentalType;
+      	if (id != 0) {
+      		for (var i = 0; i < accidentals.length; i++) {
+      			var acc = accidentals[i];
+      			if (id == eval("Accidental."+acc.name)) {
+      				return acc;
+      			}
+      		}
+      	}
+      	return;
+
+      }
+
+      readonly property var accidentals : [{
+      		'id' : 0,
+      		'name' : 'NONE',
+      		'image' : ''
+      	}, {
+      		'id' : 1,
+      		'name' : 'FLAT',
+      		'image' : 'AT_FLAT.png'
+      	}, {
+      		'id' : 2,
+      		'name' : 'NATURAL',
+      		'image' : 'AT_NATURAL.png'
+      	}, {
+      		'id' : 3,
+      		'name' : 'SHARP',
+      		'image' : 'AT_SHARP.png'
+      	}, {
+      		'id' : 4,
+      		'name' : 'SHARP2',
+      		'image' : 'AT_SHARP2.png'
+      	}, {
+      		'id' : 5,
+      		'name' : 'FLAT2',
+      		'image' : 'AT_FLAT2.png'
+      	}, {
+      		'id' : 6,
+      		'name' : 'SHARP3',
+      		'image' : 'AT_SHARP3.png'
+      	}, {
+      		'id' : 7,
+      		'name' : 'FLAT3',
+      		'image' : 'AT_FLAT3.png'
+      	}, {
+      		'id' : 8,
+      		'name' : 'NATURAL_FLAT',
+      		'image' : 'AT_NATURAL_FLAT.png'
+      	}, {
+      		'id' : 9,
+      		'name' : 'NATURAL_SHARP',
+      		'image' : 'AT_NATURAL_SHARP.png'
+      	}, {
+      		'id' : 10,
+      		'name' : 'SHARP_SHARP',
+      		'image' : 'AT_SHARP_SHARP.png'
+      	}, {
+      		'id' : 11,
+      		'name' : 'FLAT_ARROW_UP',
+      		'image' : 'AT_FLAT_ARROW_UP.png'
+      	}, {
+      		'id' : 12,
+      		'name' : 'FLAT_ARROW_DOWN',
+      		'image' : 'AT_FLAT_ARROW_DOWN.png'
+      	}, {
+      		'id' : 13,
+      		'name' : 'NATURAL_ARROW_UP',
+      		'image' : 'AT_NATURAL_ARROW_UP.png'
+      	}, {
+      		'id' : 14,
+      		'name' : 'NATURAL_ARROW_DOWN',
+      		'image' : 'AT_NATURAL_ARROW_DOWN.png'
+      	}, {
+      		'id' : 15,
+      		'name' : 'SHARP_ARROW_UP',
+      		'image' : 'AT_SHARP_ARROW_UP.png'
+      	}, {
+      		'id' : 16,
+      		'name' : 'SHARP_ARROW_DOWN',
+      		'image' : 'AT_SHARP_ARROW_DOWN.png'
+      	}, {
+      		'id' : 17,
+      		'name' : 'SHARP2_ARROW_UP',
+      		'image' : 'AT_SHARP2_ARROW_UP.png'
+      	}, {
+      		'id' : 18,
+      		'name' : 'SHARP2_ARROW_DOWN',
+      		'image' : 'AT_SHARP2_ARROW_DOWN.png'
+      	}, {
+      		'id' : 19,
+      		'name' : 'FLAT2_ARROW_UP',
+      		'image' : 'AT_FLAT2_ARROW_UP.png'
+      	}, {
+      		'id' : 20,
+      		'name' : 'FLAT2_ARROW_DOWN',
+      		'image' : 'AT_FLAT2_ARROW_DOWN.png'
+      	}, {
+      		'id' : 21,
+      		'name' : 'ARROW_DOWN',
+      		'image' : 'AT_ARROW_DOWN.png'
+      	}, {
+      		'id' : 22,
+      		'name' : 'ARROW_UP',
+      		'image' : 'AT_ARROW_UP.png'
+      	}, {
+      		'id' : 23,
+      		'name' : 'MIRRORED_FLAT',
+      		'image' : 'AT_MIRRORED_FLAT.png'
+      	}, {
+      		'id' : 24,
+      		'name' : 'MIRRORED_FLAT2',
+      		'image' : 'AT_MIRRORED_FLAT2.png'
+      	}, {
+      		'id' : 25,
+      		'name' : 'SHARP_SLASH',
+      		'image' : 'AT_SHARP_SLASH.png'
+      	}, {
+      		'id' : 26,
+      		'name' : 'SHARP_SLASH4',
+      		'image' : 'AT_SHARP_SLASH4.png'
+      	}, {
+      		'id' : 27,
+      		'name' : 'FLAT_SLASH2',
+      		'image' : 'AT_FLAT_SLASH2.png'
+      	}, {
+      		'id' : 28,
+      		'name' : 'FLAT_SLASH',
+      		'image' : 'AT_FLAT_SLASH.png'
+      	}, {
+      		'id' : 29,
+      		'name' : 'SHARP_SLASH3',
+      		'image' : 'AT_SHARP_SLASH3.png'
+      	}, {
+      		'id' : 30,
+      		'name' : 'SHARP_SLASH2',
+      		'image' : 'AT_SHARP_SLASH2.png'
+      	}, {
+      		'id' : 31,
+      		'name' : 'DOUBLE_FLAT_ONE_ARROW_DOWN',
+      		'image' : 'AT_DOUBLE_FLAT_ONE_ARROW_DOWN.png'
+      	}, {
+      		'id' : 32,
+      		'name' : 'FLAT_ONE_ARROW_DOWN',
+      		'image' : 'AT_FLAT_ONE_ARROW_DOWN.png'
+      	}, {
+      		'id' : 33,
+      		'name' : 'NATURAL_ONE_ARROW_DOWN',
+      		'image' : 'AT_NATURAL_ONE_ARROW_DOWN.png'
+      	}, {
+      		'id' : 34,
+      		'name' : 'SHARP_ONE_ARROW_DOWN',
+      		'image' : 'AT_SHARP_ONE_ARROW_DOWN.png'
+      	}, {
+      		'id' : 35,
+      		'name' : 'DOUBLE_SHARP_ONE_ARROW_DOWN',
+      		'image' : 'AT_DOUBLE_SHARP_ONE_ARROW_DOWN.png'
+      	}, {
+      		'id' : 36,
+      		'name' : 'DOUBLE_FLAT_ONE_ARROW_UP',
+      		'image' : 'AT_DOUBLE_FLAT_ONE_ARROW_UP.png'
+      	}, {
+      		'id' : 37,
+      		'name' : 'FLAT_ONE_ARROW_UP',
+      		'image' : 'AT_FLAT_ONE_ARROW_UP.png'
+      	}, {
+      		'id' : 38,
+      		'name' : 'NATURAL_ONE_ARROW_UP',
+      		'image' : 'AT_NATURAL_ONE_ARROW_UP.png'
+      	}, {
+      		'id' : 39,
+      		'name' : 'SHARP_ONE_ARROW_UP',
+      		'image' : 'AT_SHARP_ONE_ARROW_UP.png'
+      	}, {
+      		'id' : 40,
+      		'name' : 'DOUBLE_SHARP_ONE_ARROW_UP',
+      		'image' : 'AT_DOUBLE_SHARP_ONE_ARROW_UP.png'
+      	}, {
+      		'id' : 41,
+      		'name' : 'DOUBLE_FLAT_TWO_ARROWS_DOWN',
+      		'image' : 'AT_DOUBLE_FLAT_TWO_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 42,
+      		'name' : 'FLAT_TWO_ARROWS_DOWN',
+      		'image' : 'AT_FLAT_TWO_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 43,
+      		'name' : 'NATURAL_TWO_ARROWS_DOWN',
+      		'image' : 'AT_NATURAL_TWO_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 44,
+      		'name' : 'SHARP_TWO_ARROWS_DOWN',
+      		'image' : 'AT_SHARP_TWO_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 45,
+      		'name' : 'DOUBLE_SHARP_TWO_ARROWS_DOWN',
+      		'image' : 'AT_DOUBLE_SHARP_TWO_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 46,
+      		'name' : 'DOUBLE_FLAT_TWO_ARROWS_UP',
+      		'image' : 'AT_DOUBLE_FLAT_TWO_ARROWS_UP.png'
+      	}, {
+      		'id' : 47,
+      		'name' : 'FLAT_TWO_ARROWS_UP',
+      		'image' : 'AT_FLAT_TWO_ARROWS_UP.png'
+      	}, {
+      		'id' : 48,
+      		'name' : 'NATURAL_TWO_ARROWS_UP',
+      		'image' : 'AT_NATURAL_TWO_ARROWS_UP.png'
+      	}, {
+      		'id' : 49,
+      		'name' : 'SHARP_TWO_ARROWS_UP',
+      		'image' : 'AT_SHARP_TWO_ARROWS_UP.png'
+      	}, {
+      		'id' : 50,
+      		'name' : 'DOUBLE_SHARP_TWO_ARROWS_UP',
+      		'image' : 'AT_DOUBLE_SHARP_TWO_ARROWS_UP.png'
+      	}, {
+      		'id' : 51,
+      		'name' : 'DOUBLE_FLAT_THREE_ARROWS_DOWN',
+      		'image' : 'AT_DOUBLE_FLAT_THREE_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 52,
+      		'name' : 'FLAT_THREE_ARROWS_DOWN',
+      		'image' : 'AT_FLAT_THREE_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 53,
+      		'name' : 'NATURAL_THREE_ARROWS_DOWN',
+      		'image' : 'AT_NATURAL_THREE_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 54,
+      		'name' : 'SHARP_THREE_ARROWS_DOWN',
+      		'image' : 'AT_SHARP_THREE_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 55,
+      		'name' : 'DOUBLE_SHARP_THREE_ARROWS_DOWN',
+      		'image' : 'AT_DOUBLE_SHARP_THREE_ARROWS_DOWN.png'
+      	}, {
+      		'id' : 56,
+      		'name' : 'DOUBLE_FLAT_THREE_ARROWS_UP',
+      		'image' : 'AT_DOUBLE_FLAT_THREE_ARROWS_UP.png'
+      	}, {
+      		'id' : 57,
+      		'name' : 'FLAT_THREE_ARROWS_UP',
+      		'image' : 'AT_FLAT_THREE_ARROWS_UP.png'
+      	}, {
+      		'id' : 58,
+      		'name' : 'NATURAL_THREE_ARROWS_UP',
+      		'image' : 'AT_NATURAL_THREE_ARROWS_UP.png'
+      	}, {
+      		'id' : 59,
+      		'name' : 'SHARP_THREE_ARROWS_UP',
+      		'image' : 'AT_SHARP_THREE_ARROWS_UP.png'
+      	}, {
+      		'id' : 60,
+      		'name' : 'DOUBLE_SHARP_THREE_ARROWS_UP',
+      		'image' : 'AT_DOUBLE_SHARP_THREE_ARROWS_UP.png'
+      	}, {
+      		'id' : 61,
+      		'name' : 'LOWER_ONE_SEPTIMAL_COMMA',
+      		'image' : 'AT_LOWER_ONE_SEPTIMAL_COMMA.png'
+      	}, {
+      		'id' : 62,
+      		'name' : 'RAISE_ONE_SEPTIMAL_COMMA',
+      		'image' : 'AT_RAISE_ONE_SEPTIMAL_COMMA.png'
+      	}, {
+      		'id' : 63,
+      		'name' : 'LOWER_TWO_SEPTIMAL_COMMAS',
+      		'image' : 'AT_LOWER_TWO_SEPTIMAL_COMMAS.png'
+      	}, {
+      		'id' : 64,
+      		'name' : 'RAISE_TWO_SEPTIMAL_COMMAS',
+      		'image' : 'AT_RAISE_TWO_SEPTIMAL_COMMAS.png'
+      	}, {
+      		'id' : 65,
+      		'name' : 'LOWER_ONE_UNDECIMAL_QUARTERTONE',
+      		'image' : 'AT_LOWER_ONE_UNDECIMAL_QUARTERTONE.png'
+      	}, {
+      		'id' : 66,
+      		'name' : 'RAISE_ONE_UNDECIMAL_QUARTERTONE',
+      		'image' : 'AT_RAISE_ONE_UNDECIMAL_QUARTERTONE.png'
+      	}, {
+      		'id' : 67,
+      		'name' : 'LOWER_ONE_TRIDECIMAL_QUARTERTONE',
+      		'image' : 'AT_LOWER_ONE_TRIDECIMAL_QUARTERTONE.png'
+      	}, {
+      		'id' : 68,
+      		'name' : 'RAISE_ONE_TRIDECIMAL_QUARTERTONE',
+      		'image' : 'AT_RAISE_ONE_TRIDECIMAL_QUARTERTONE.png'
+      	}, {
+      		'id' : 69,
+      		'name' : 'DOUBLE_FLAT_EQUAL_TEMPERED',
+      		'image' : 'AT_DOUBLE_FLAT_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 70,
+      		'name' : 'FLAT_EQUAL_TEMPERED',
+      		'image' : 'AT_FLAT_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 71,
+      		'name' : 'NATURAL_EQUAL_TEMPERED',
+      		'image' : 'AT_NATURAL_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 72,
+      		'name' : 'SHARP_EQUAL_TEMPERED',
+      		'image' : 'AT_SHARP_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 73,
+      		'name' : 'DOUBLE_SHARP_EQUAL_TEMPERED',
+      		'image' : 'AT_DOUBLE_SHARP_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 74,
+      		'name' : 'QUARTER_FLAT_EQUAL_TEMPERED',
+      		'image' : 'AT_QUARTER_FLAT_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 75,
+      		'name' : 'QUARTER_SHARP_EQUAL_TEMPERED',
+      		'image' : 'AT_QUARTER_SHARP_EQUAL_TEMPERED.png'
+      	}, {
+      		'id' : 76,
+      		'name' : 'FLAT_17',
+      		'image' : 'AT_FLAT_17.png'
+      	}, {
+      		'id' : 77,
+      		'name' : 'SHARP_17',
+      		'image' : 'AT_SHARP_17.png'
+      	}, {
+      		'id' : 78,
+      		'name' : 'FLAT_19',
+      		'image' : 'AT_FLAT_19.png'
+      	}, {
+      		'id' : 79,
+      		'name' : 'SHARP_19',
+      		'image' : 'AT_SHARP_19.png'
+      	}, {
+      		'id' : 80,
+      		'name' : 'FLAT_23',
+      		'image' : 'AT_FLAT_23.png'
+      	}, {
+      		'id' : 81,
+      		'name' : 'SHARP_23',
+      		'image' : 'AT_SHARP_23.png'
+      	}, {
+      		'id' : 82,
+      		'name' : 'FLAT_31',
+      		'image' : 'AT_FLAT_31.png'
+      	}, {
+      		'id' : 83,
+      		'name' : 'SHARP_31',
+      		'image' : 'AT_SHARP_31.png'
+      	}, {
+      		'id' : 84,
+      		'name' : 'FLAT_53',
+      		'image' : 'AT_FLAT_53.png'
+      	}, {
+      		'id' : 85,
+      		'name' : 'SHARP_53',
+      		'image' : 'AT_SHARP_53.png'
+      	}, {
+      		'id' : 86,
+      		'name' : 'SORI',
+      		'image' : 'AT_SORI.png'
+      	}, {
+      		'id' : 87,
+      		'name' : 'KORON',
+      		'image' : 'AT_KORON.png'
+      	}
+      ];
+
+	  // -----------------------------------------------------------------------
 	// --- Debug -------------------------------------------------------
 	// -----------------------------------------------------------------------
 	function debug(level, label) {
