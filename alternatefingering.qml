@@ -1,9 +1,10 @@
-import QtQuick 2.0
+import QtQuick 2.9
 import QtQuick.Controls 1.4
 import MuseScore 3.0
-import QtQuick.Dialogs 1.1
+import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Styles 1.4
 import QtQuick.Layouts 1.1
+import FileIO 3.0
 
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
@@ -11,10 +12,9 @@ MuseScore {
 	version : "1.2.0"
 	pluginType : "dialog"
 	requiresScore : true
-
-	width : 400
-	height : 300
-
+        width: 500
+        height: 500
+        
 	/** category of instrument :"flute","clarinet", ... */
 	property string __category : ""
 	/** alias to the different keys schemas for a the current category. */
@@ -710,24 +710,40 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	// -----------------------------------------------------------------------
 	// --- Screen design -----------------------------------------------------
 	// -----------------------------------------------------------------------
-	ColumnLayout {
-		anchors.fill : parent
-		spacing : 5
-		anchors.margins : 10
+	GridLayout {
+		id: panMain
+		rows: 7
+		columns: 2
 
+		anchors.fill : parent
+		columnSpacing  : 5
+                rowSpacing : 5
+		anchors.topMargin : 10
+		anchors.rightMargin : 10
+		anchors.leftMargin : 10
+		anchors.bottomMargin : 0
+
+		
 		Item {
+            Layout.row: 1
+            Layout.column: 1			
+            Layout.columnSpan: 2
+            Layout.rowSpan: 1
+
 			id : panInstrument
+			
 			Layout.preferredHeight : lpc.implicitHeight + 4 // 4 pour les marges
-			//Layout.fillHeight : false
 			Layout.fillWidth : true
 			RowLayout {
 				id : lpc
 				anchors.fill : parent
 				anchors.margins : 2
 				spacing : 2
-				Label {
-					text : "Instrument :"
-				}
+
+                  		Label {
+		                	text : "Instrument :"
+		                }
+
 				ComboBox {
 					id : lstInstru
 					Layout.fillWidth : true
@@ -764,14 +780,29 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					sourceComponent : openPanelComponent
 				}
 			}
-		}
-		Item {
+		} //panInstrument
+		
+
+ColumnLayout { // hack because the GridLayout doesn't manage well the invisible elements
+            Layout.row: 2
+            Layout.column: 2			
+            Layout.columnSpan: 1
+            Layout.rowSpan: 4
+	    Layout.fillHeight: true
+            Layout.fillWidth: true
+ 
+		Item { 
+            //Layout.row: 2
+            //Layout.column: 2			
+            //Layout.columnSpan: 1
+            //Layout.rowSpan: 1
+
 			id : panConfig
 			visible : false
-			//color : "yellow"
+			//color : "red"
 			//border.color: "grey"
 			//border.width: 2
-			Layout.preferredWidth : parent.width
+			Layout.preferredWidth : layConfig.implicitWidth + 10
 			Layout.preferredHeight : layConfig.implicitHeight + 10
 			anchors.margins : 20
 			Grid {
@@ -803,18 +834,28 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 
 				}
 			}
-		}
+		}  //panConfig
 
-		Item {
 
-			Layout.alignment : Qt.AlignHCenter | Qt.AlignmentTop
+		Rectangle { // debug was Item
+            //Layout.row: 3
+            //Layout.column: 2			
+            //Layout.columnSpan: 1
+            //Layout.rowSpan: 1
+	    Layout.fillHeight: true 
+            Layout.fillWidth: true 	
 
-			Layout.preferredWidth : 240 //repNotes.implicitHeight // 12 columns
-			Layout.preferredHeight : 100 // repNotes.implicitWidth // 4 rows
-			//Layout.fillHeight : true
-			//Layout.fillWidth : true
+                        color: "blue"
+			id: panKeys
 
-			//color : "#ffaaaa"
+
+Item { // un small element within the fullWidth/fullHeight where we paint the repeater
+			anchors.horizontalCenter : parent.horizontalCenter 
+			anchors.verticalCenter : parent.verticalCenter 
+			width : 240 //repNotes.implicitHeight // 12 columns
+			height : 100 // repNotes.implicitWidth // 4 rows
+//color: "white"
+
 
 			// Repeater pour les notes de base
 			Repeater {
@@ -847,9 +888,16 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					sourceComponent : holeComponent
 				}
 			}
+}
+		}  //panKeys
+		
 
-		}
 		Item {
+            //Layout.row: 4
+            //Layout.column: 2			
+            //Layout.columnSpan: 1
+            //Layout.rowSpan: 1
+
 			id : panOptionsOpen
 			Layout.preferredHeight : lpoo.implicitHeight + 4 // 4 pour les marges
 			//Layout.fillHeight : false
@@ -873,14 +921,19 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					sourceComponent : openPanelComponent
 				}
 			}
-		}
-		Item {
+		} //panOptionsOpen
+	Item { 
+            //Layout.row: 5
+            //Layout.column: 2			
+            //Layout.columnSpan: 1
+            //Layout.rowSpan: 1
+
 			id : panOptions
-			//color : "yellow"
 			visible : false
+			//color : "red"
 			//border.color: "grey"
 			//border.width: 2
-			Layout.preferredWidth : parent.width
+			Layout.preferredWidth : layOptions.implicitWidth+10
 			Layout.preferredHeight : layOptions.implicitHeight + 10
 			anchors.margins : 20
 			Grid {
@@ -922,9 +975,20 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					checked : true;
 				}
 			}
-		}
+		} //panOptions
+}
 
-		RowLayout {
+		Item {
+            Layout.row: 6
+            Layout.column: 2			
+            Layout.columnSpan: 1
+            Layout.rowSpan: 1
+            Layout.fillWidth: true
+            Layout.preferredHeight: panButtons.implicitHeight
+		
+            RowLayout {
+            			id: panButtons
+		
 			Layout.alignment : Qt.AlignRight
 
 			Button {
@@ -954,8 +1018,53 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					Qt.quit()
 				}
 			}
-		}
+                  }
+		} // panButtons
 
+		
+		Item {
+            Layout.row: 7
+            Layout.column: 1	
+            Layout.columnSpan: 2
+            Layout.rowSpan: 1
+            Layout.fillWidth: true 
+            //color: "#aaaaaa"
+            //border.color: "black"
+            Layout.preferredHeight: 15 //txtStatus.implicitHeight
+            
+			id: panStatusBar
+			
+			
+			Text {
+				id: txtStatus
+				text: ""
+				wrapMode: Text.WrapAnywhere
+				width: parent.width
+				//padding: 3
+			}
+			
+		} // panStatusBar
+		
+		ListView {
+            Layout.row: 2
+            Layout.column: 1	
+            Layout.columnSpan: 1
+            Layout.rowSpan: 5
+
+            Layout.fillHeight: true 
+			
+	     //color: "blue"
+
+                        
+
+			Layout.preferredWidth : 100
+			id: lstPresets
+
+                        model: __library
+                        delegate: presetComponent
+                        clip: true
+                        
+		} // panPresets
 	}
 
 	// ----------------------------------------------------------------------
@@ -1111,6 +1220,72 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		}
 	}
 
+        Component {
+            id: presetComponent
+            
+            Rectangle {
+                  color: "white"
+                  property var __preset: __library[model.index]
+                  width: 80
+                  height: 100 //prsRep.implictHeight+prsLab.implictHeight+prsNote.implictHeight
+                  
+                  Text {
+                        id: prsRep
+                        text: __preset.representation
+                        font.family: "fiati"
+                        font.pixelSize: 80
+                        //font.preferShaping: true // from Qt5.10. MuseScore 3.5 supports to 5.9 => for MuseScore 4.x
+                        renderType: Text.NativeRendering
+                        font.hintingPreference: Font.PreferVerticalHinting
+                        width:20//parent.width
+                        height: 50
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter 
+                        horizontalAlignment : Text.AlignHCenter
+                        y: -20//verticalAlignment: Text.AlignBottom
+                        }
+
+                  Text {
+                        id: prsLab
+                        text: (__preset.label=="")?"--":__preset.label
+                        width:parent.width
+                        height: 20
+                        anchors.top: prsRep.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter 
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        }
+
+                  Text {
+                        id: prsNote
+                        text: __preset.note
+                        width:parent.width/2
+                        height: 20
+                        anchors.top: prsLab.bottom
+                        anchors.right: parent.horizontalCenter 
+                        horizontalAlignment: Text.AlignRight
+                        verticalAlignment: Text.AlignVCenter
+                        }
+                   
+
+                   //Image {
+                   Text {
+                        id: prsAcc
+                        text: "#" //__preset.accidental
+                        width:parent.width/2
+                        height: 20
+                        anchors.top: prsLab.bottom
+                        anchors.left: parent.horizontalCenter 
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment : Text.AlignVCenter
+                        }
+                   
+            
+            }
+        
+        }
+      
+
 	MessageDialog {
 		id : unkownInstrumentDialog
 		icon : StandardIcon.Warning
@@ -1195,6 +1370,15 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	// -----------------------------------------------------------------------
 	// --- Property File -----------------------------------------------------
 	// -----------------------------------------------------------------------
+    FileIO {
+        id: settingsFile
+        source: homePath() + "/alternatefingering.properties"
+            
+        onError: {
+			//statusBar.text=msg;
+        }
+    }
+      
 	function saveOptions() {
 
 		if (typeof lastoptions === 'undefined') {
@@ -1234,14 +1418,60 @@ __library.push(new presetClass(__category,"xyz","A","SHARP",buildFingeringRepres
 		var t = JSON.stringify(lastoptions) + "\n";
 		console.log(t);
 
-		var obj = JSON.parse(t);
+		if (settingsFile.write(t)){
+			console.log("File written to " + settingsFile.source);
+		
+		}
+		else {
+			console.log("Could not save settings");
+		}
+				
+		
 	}
 
 	function readOptions() {
 		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"label":"Un bémol", "note":"A", "accidental": "FLAT", "representation": "\uE000\uE001\uE007"}],[{"label":"Un nawak", "note":"B", "accidental": "XYZE", "representation": "\uE000\uE001\uE008"}]}}}';
-		var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"category":"flute","label":"From Save","note":"B","accidental":"FLAT","representation":"?????????"}]}}}';
-		lastoptions = JSON.parse(json);
+		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"category":"flute","label":"From Save","note":"B","accidental":"FLAT","representation":"?????????"}]}}}';
+	
+		try {
+                        console.log("Current "+currentPath());
+                        } catch (e) {
+                        console.log("Current "+e.message);
+                        }
+		try {
+		console.log("Root "+rootPath());
+                        } catch (e) {
+                        console.log("Root "+e.message);
+                        }
+		try {
+		console.log("Home "+homePath());
+                        } catch (e) {
+                        console.log("Home "+e.message);
+                        }
+		try {
+		console.log("Temp "+tempPath());
+                        } catch (e) {
+                        console.log("Temp "+e.message);
+                        }
 
+                try {
+		console.log("Settings "+settingsFile.source);
+                        } catch (e) {
+                        console.log("Settings "+e.message);
+                        }
+	
+		if (!settingsFile.exists()) return;
+		
+		var json = settingsFile.read();
+
+		
+		try {
+			lastoptions = JSON.parse(json);
+		} catch (e) {
+				console.error('while reading the option file', e.message);		
+		}
+		
+		
 		usedstates = lastoptions['states'];
 		displayUsedStates();
 
@@ -1942,3 +2172,4 @@ readonly property var accidentals : [
 	}
 
 }
+
