@@ -150,13 +150,9 @@ MuseScore {
 					if (isValidNote) {
 						var fingerings = getFingerings(note);
 //
-var acc=getAccidental(note);
-var accname='--';
-if (acc) {
-      accname=acc.name;
-}
-console.log('-->Accidental: '+ note.accidentalType + ' ('+accname+')');
-//console.log('-->Note: '+ JSON.stringify(note));
+enrichNote(note);
+console.log('-->Accidental: '+ note.accidentalType + ' ('+note.accidentalName+')');
+console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.fullname);
 
 
 
@@ -1636,374 +1632,280 @@ __library.push(new presetClass(__category,"xyz","A","SHARP",buildFingeringRepres
 	  // --- Accidentals -------------------------------------------------------
 	  // -----------------------------------------------------------------------
 
-	  function getAccidental(note) {
-      	var id = note.accidentalType;
-      	if (id != 0) {
-      		for (var i = 0; i < accidentals.length; i++) {
-      			var acc = accidentals[i];
-      			if (id == eval("Accidental."+acc.name)) {
-      				return acc;
-      			}
-      		}
-      	}
-      	return;
+function enrichNote(note) {
+	// accidental
+	var id = note.accidentalType;
+	note.accidentalName = "NONE";
+	if (id != 0) {
+		for (var i = 0; i < accidentals.length; i++) {
+			var acc = accidentals[i];
+			if (id == eval("Accidental." + acc.name)) {
+				note.accidentalName = acc.name;
+				break;
+			}
+		}
+	}
+	
+	// note name and octave
+	var tpc={'tpc' : 0, 'name' : '?', 'raw' : '?'};
+	var pitch=note.pitch;
+	var pitchnote=pitchnotes[pitch % 12];
+	var noteOctave=Math.floor(pitch/12)-1;
 
-      }
+	for (var i = 0; i < tpcs.length; i++) {
+		var t = tpcs[i];
+		if (note.tpc==t.tpc) {
+			tpc=t;
+			break;
+		}
+	}			
 
-      readonly property var accidentals : [{
-      		'id' : 0,
-      		'name' : 'NONE',
-      		'image' : ''
-      	}, {
-      		'id' : 1,
-      		'name' : 'FLAT',
-      		'image' : 'AT_FLAT.png'
-      	}, {
-      		'id' : 2,
-      		'name' : 'NATURAL',
-      		'image' : 'AT_NATURAL.png'
-      	}, {
-      		'id' : 3,
-      		'name' : 'SHARP',
-      		'image' : 'AT_SHARP.png'
-      	}, {
-      		'id' : 4,
-      		'name' : 'SHARP2',
-      		'image' : 'AT_SHARP2.png'
-      	}, {
-      		'id' : 5,
-      		'name' : 'FLAT2',
-      		'image' : 'AT_FLAT2.png'
-      	}, {
-      		'id' : 6,
-      		'name' : 'SHARP3',
-      		'image' : 'AT_SHARP3.png'
-      	}, {
-      		'id' : 7,
-      		'name' : 'FLAT3',
-      		'image' : 'AT_FLAT3.png'
-      	}, {
-      		'id' : 8,
-      		'name' : 'NATURAL_FLAT',
-      		'image' : 'AT_NATURAL_FLAT.png'
-      	}, {
-      		'id' : 9,
-      		'name' : 'NATURAL_SHARP',
-      		'image' : 'AT_NATURAL_SHARP.png'
-      	}, {
-      		'id' : 10,
-      		'name' : 'SHARP_SHARP',
-      		'image' : 'AT_SHARP_SHARP.png'
-      	}, {
-      		'id' : 11,
-      		'name' : 'FLAT_ARROW_UP',
-      		'image' : 'AT_FLAT_ARROW_UP.png'
-      	}, {
-      		'id' : 12,
-      		'name' : 'FLAT_ARROW_DOWN',
-      		'image' : 'AT_FLAT_ARROW_DOWN.png'
-      	}, {
-      		'id' : 13,
-      		'name' : 'NATURAL_ARROW_UP',
-      		'image' : 'AT_NATURAL_ARROW_UP.png'
-      	}, {
-      		'id' : 14,
-      		'name' : 'NATURAL_ARROW_DOWN',
-      		'image' : 'AT_NATURAL_ARROW_DOWN.png'
-      	}, {
-      		'id' : 15,
-      		'name' : 'SHARP_ARROW_UP',
-      		'image' : 'AT_SHARP_ARROW_UP.png'
-      	}, {
-      		'id' : 16,
-      		'name' : 'SHARP_ARROW_DOWN',
-      		'image' : 'AT_SHARP_ARROW_DOWN.png'
-      	}, {
-      		'id' : 17,
-      		'name' : 'SHARP2_ARROW_UP',
-      		'image' : 'AT_SHARP2_ARROW_UP.png'
-      	}, {
-      		'id' : 18,
-      		'name' : 'SHARP2_ARROW_DOWN',
-      		'image' : 'AT_SHARP2_ARROW_DOWN.png'
-      	}, {
-      		'id' : 19,
-      		'name' : 'FLAT2_ARROW_UP',
-      		'image' : 'AT_FLAT2_ARROW_UP.png'
-      	}, {
-      		'id' : 20,
-      		'name' : 'FLAT2_ARROW_DOWN',
-      		'image' : 'AT_FLAT2_ARROW_DOWN.png'
-      	}, {
-      		'id' : 21,
-      		'name' : 'ARROW_DOWN',
-      		'image' : 'AT_ARROW_DOWN.png'
-      	}, {
-      		'id' : 22,
-      		'name' : 'ARROW_UP',
-      		'image' : 'AT_ARROW_UP.png'
-      	}, {
-      		'id' : 23,
-      		'name' : 'MIRRORED_FLAT',
-      		'image' : 'AT_MIRRORED_FLAT.png'
-      	}, {
-      		'id' : 24,
-      		'name' : 'MIRRORED_FLAT2',
-      		'image' : 'AT_MIRRORED_FLAT2.png'
-      	}, {
-      		'id' : 25,
-      		'name' : 'SHARP_SLASH',
-      		'image' : 'AT_SHARP_SLASH.png'
-      	}, {
-      		'id' : 26,
-      		'name' : 'SHARP_SLASH4',
-      		'image' : 'AT_SHARP_SLASH4.png'
-      	}, {
-      		'id' : 27,
-      		'name' : 'FLAT_SLASH2',
-      		'image' : 'AT_FLAT_SLASH2.png'
-      	}, {
-      		'id' : 28,
-      		'name' : 'FLAT_SLASH',
-      		'image' : 'AT_FLAT_SLASH.png'
-      	}, {
-      		'id' : 29,
-      		'name' : 'SHARP_SLASH3',
-      		'image' : 'AT_SHARP_SLASH3.png'
-      	}, {
-      		'id' : 30,
-      		'name' : 'SHARP_SLASH2',
-      		'image' : 'AT_SHARP_SLASH2.png'
-      	}, {
-      		'id' : 31,
-      		'name' : 'DOUBLE_FLAT_ONE_ARROW_DOWN',
-      		'image' : 'AT_DOUBLE_FLAT_ONE_ARROW_DOWN.png'
-      	}, {
-      		'id' : 32,
-      		'name' : 'FLAT_ONE_ARROW_DOWN',
-      		'image' : 'AT_FLAT_ONE_ARROW_DOWN.png'
-      	}, {
-      		'id' : 33,
-      		'name' : 'NATURAL_ONE_ARROW_DOWN',
-      		'image' : 'AT_NATURAL_ONE_ARROW_DOWN.png'
-      	}, {
-      		'id' : 34,
-      		'name' : 'SHARP_ONE_ARROW_DOWN',
-      		'image' : 'AT_SHARP_ONE_ARROW_DOWN.png'
-      	}, {
-      		'id' : 35,
-      		'name' : 'DOUBLE_SHARP_ONE_ARROW_DOWN',
-      		'image' : 'AT_DOUBLE_SHARP_ONE_ARROW_DOWN.png'
-      	}, {
-      		'id' : 36,
-      		'name' : 'DOUBLE_FLAT_ONE_ARROW_UP',
-      		'image' : 'AT_DOUBLE_FLAT_ONE_ARROW_UP.png'
-      	}, {
-      		'id' : 37,
-      		'name' : 'FLAT_ONE_ARROW_UP',
-      		'image' : 'AT_FLAT_ONE_ARROW_UP.png'
-      	}, {
-      		'id' : 38,
-      		'name' : 'NATURAL_ONE_ARROW_UP',
-      		'image' : 'AT_NATURAL_ONE_ARROW_UP.png'
-      	}, {
-      		'id' : 39,
-      		'name' : 'SHARP_ONE_ARROW_UP',
-      		'image' : 'AT_SHARP_ONE_ARROW_UP.png'
-      	}, {
-      		'id' : 40,
-      		'name' : 'DOUBLE_SHARP_ONE_ARROW_UP',
-      		'image' : 'AT_DOUBLE_SHARP_ONE_ARROW_UP.png'
-      	}, {
-      		'id' : 41,
-      		'name' : 'DOUBLE_FLAT_TWO_ARROWS_DOWN',
-      		'image' : 'AT_DOUBLE_FLAT_TWO_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 42,
-      		'name' : 'FLAT_TWO_ARROWS_DOWN',
-      		'image' : 'AT_FLAT_TWO_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 43,
-      		'name' : 'NATURAL_TWO_ARROWS_DOWN',
-      		'image' : 'AT_NATURAL_TWO_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 44,
-      		'name' : 'SHARP_TWO_ARROWS_DOWN',
-      		'image' : 'AT_SHARP_TWO_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 45,
-      		'name' : 'DOUBLE_SHARP_TWO_ARROWS_DOWN',
-      		'image' : 'AT_DOUBLE_SHARP_TWO_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 46,
-      		'name' : 'DOUBLE_FLAT_TWO_ARROWS_UP',
-      		'image' : 'AT_DOUBLE_FLAT_TWO_ARROWS_UP.png'
-      	}, {
-      		'id' : 47,
-      		'name' : 'FLAT_TWO_ARROWS_UP',
-      		'image' : 'AT_FLAT_TWO_ARROWS_UP.png'
-      	}, {
-      		'id' : 48,
-      		'name' : 'NATURAL_TWO_ARROWS_UP',
-      		'image' : 'AT_NATURAL_TWO_ARROWS_UP.png'
-      	}, {
-      		'id' : 49,
-      		'name' : 'SHARP_TWO_ARROWS_UP',
-      		'image' : 'AT_SHARP_TWO_ARROWS_UP.png'
-      	}, {
-      		'id' : 50,
-      		'name' : 'DOUBLE_SHARP_TWO_ARROWS_UP',
-      		'image' : 'AT_DOUBLE_SHARP_TWO_ARROWS_UP.png'
-      	}, {
-      		'id' : 51,
-      		'name' : 'DOUBLE_FLAT_THREE_ARROWS_DOWN',
-      		'image' : 'AT_DOUBLE_FLAT_THREE_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 52,
-      		'name' : 'FLAT_THREE_ARROWS_DOWN',
-      		'image' : 'AT_FLAT_THREE_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 53,
-      		'name' : 'NATURAL_THREE_ARROWS_DOWN',
-      		'image' : 'AT_NATURAL_THREE_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 54,
-      		'name' : 'SHARP_THREE_ARROWS_DOWN',
-      		'image' : 'AT_SHARP_THREE_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 55,
-      		'name' : 'DOUBLE_SHARP_THREE_ARROWS_DOWN',
-      		'image' : 'AT_DOUBLE_SHARP_THREE_ARROWS_DOWN.png'
-      	}, {
-      		'id' : 56,
-      		'name' : 'DOUBLE_FLAT_THREE_ARROWS_UP',
-      		'image' : 'AT_DOUBLE_FLAT_THREE_ARROWS_UP.png'
-      	}, {
-      		'id' : 57,
-      		'name' : 'FLAT_THREE_ARROWS_UP',
-      		'image' : 'AT_FLAT_THREE_ARROWS_UP.png'
-      	}, {
-      		'id' : 58,
-      		'name' : 'NATURAL_THREE_ARROWS_UP',
-      		'image' : 'AT_NATURAL_THREE_ARROWS_UP.png'
-      	}, {
-      		'id' : 59,
-      		'name' : 'SHARP_THREE_ARROWS_UP',
-      		'image' : 'AT_SHARP_THREE_ARROWS_UP.png'
-      	}, {
-      		'id' : 60,
-      		'name' : 'DOUBLE_SHARP_THREE_ARROWS_UP',
-      		'image' : 'AT_DOUBLE_SHARP_THREE_ARROWS_UP.png'
-      	}, {
-      		'id' : 61,
-      		'name' : 'LOWER_ONE_SEPTIMAL_COMMA',
-      		'image' : 'AT_LOWER_ONE_SEPTIMAL_COMMA.png'
-      	}, {
-      		'id' : 62,
-      		'name' : 'RAISE_ONE_SEPTIMAL_COMMA',
-      		'image' : 'AT_RAISE_ONE_SEPTIMAL_COMMA.png'
-      	}, {
-      		'id' : 63,
-      		'name' : 'LOWER_TWO_SEPTIMAL_COMMAS',
-      		'image' : 'AT_LOWER_TWO_SEPTIMAL_COMMAS.png'
-      	}, {
-      		'id' : 64,
-      		'name' : 'RAISE_TWO_SEPTIMAL_COMMAS',
-      		'image' : 'AT_RAISE_TWO_SEPTIMAL_COMMAS.png'
-      	}, {
-      		'id' : 65,
-      		'name' : 'LOWER_ONE_UNDECIMAL_QUARTERTONE',
-      		'image' : 'AT_LOWER_ONE_UNDECIMAL_QUARTERTONE.png'
-      	}, {
-      		'id' : 66,
-      		'name' : 'RAISE_ONE_UNDECIMAL_QUARTERTONE',
-      		'image' : 'AT_RAISE_ONE_UNDECIMAL_QUARTERTONE.png'
-      	}, {
-      		'id' : 67,
-      		'name' : 'LOWER_ONE_TRIDECIMAL_QUARTERTONE',
-      		'image' : 'AT_LOWER_ONE_TRIDECIMAL_QUARTERTONE.png'
-      	}, {
-      		'id' : 68,
-      		'name' : 'RAISE_ONE_TRIDECIMAL_QUARTERTONE',
-      		'image' : 'AT_RAISE_ONE_TRIDECIMAL_QUARTERTONE.png'
-      	}, {
-      		'id' : 69,
-      		'name' : 'DOUBLE_FLAT_EQUAL_TEMPERED',
-      		'image' : 'AT_DOUBLE_FLAT_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 70,
-      		'name' : 'FLAT_EQUAL_TEMPERED',
-      		'image' : 'AT_FLAT_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 71,
-      		'name' : 'NATURAL_EQUAL_TEMPERED',
-      		'image' : 'AT_NATURAL_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 72,
-      		'name' : 'SHARP_EQUAL_TEMPERED',
-      		'image' : 'AT_SHARP_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 73,
-      		'name' : 'DOUBLE_SHARP_EQUAL_TEMPERED',
-      		'image' : 'AT_DOUBLE_SHARP_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 74,
-      		'name' : 'QUARTER_FLAT_EQUAL_TEMPERED',
-      		'image' : 'AT_QUARTER_FLAT_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 75,
-      		'name' : 'QUARTER_SHARP_EQUAL_TEMPERED',
-      		'image' : 'AT_QUARTER_SHARP_EQUAL_TEMPERED.png'
-      	}, {
-      		'id' : 76,
-      		'name' : 'FLAT_17',
-      		'image' : 'AT_FLAT_17.png'
-      	}, {
-      		'id' : 77,
-      		'name' : 'SHARP_17',
-      		'image' : 'AT_SHARP_17.png'
-      	}, {
-      		'id' : 78,
-      		'name' : 'FLAT_19',
-      		'image' : 'AT_FLAT_19.png'
-      	}, {
-      		'id' : 79,
-      		'name' : 'SHARP_19',
-      		'image' : 'AT_SHARP_19.png'
-      	}, {
-      		'id' : 80,
-      		'name' : 'FLAT_23',
-      		'image' : 'AT_FLAT_23.png'
-      	}, {
-      		'id' : 81,
-      		'name' : 'SHARP_23',
-      		'image' : 'AT_SHARP_23.png'
-      	}, {
-      		'id' : 82,
-      		'name' : 'FLAT_31',
-      		'image' : 'AT_FLAT_31.png'
-      	}, {
-      		'id' : 83,
-      		'name' : 'SHARP_31',
-      		'image' : 'AT_SHARP_31.png'
-      	}, {
-      		'id' : 84,
-      		'name' : 'FLAT_53',
-      		'image' : 'AT_FLAT_53.png'
-      	}, {
-      		'id' : 85,
-      		'name' : 'SHARP_53',
-      		'image' : 'AT_SHARP_53.png'
-      	}, {
-      		'id' : 86,
-      		'name' : 'SORI',
-      		'image' : 'AT_SORI.png'
-      	}, {
-      		'id' : 87,
-      		'name' : 'KORON',
-      		'image' : 'AT_KORON.png'
-      	}
-      ];
+	if (pitchnote == "B" && tpc.raw == "C") {
+		noteOctave++;
+	} else if (pitchnote == "C" && tpc.raw == "B") {
+		noteOctave--;
+	}
+	
+	note.extname={"fullname": tpc.name+noteOctave, "name": tpc.raw+noteOctave, "raw": tpc.raw, "octave": noteOctave};
+	return;
+
+}
+		
+readonly property var pitchnotes : [ 'C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
+
+readonly property var tpcs : [{
+		'tpc' : -1,
+		'name' : 'F??',
+		'raw' : 'F'
+	}, {
+		'tpc' : 0,
+		'name' : 'C??',
+		'raw' : 'C'
+	}, {
+		'tpc' : 1,
+		'name' : 'G??',
+		'raw' : 'G'
+	}, {
+		'tpc' : 2,
+		'name' : 'D??',
+		'raw' : 'D'
+	}, {
+		'tpc' : 3,
+		'name' : 'A??',
+		'raw' : 'A'
+	}, {
+		'tpc' : 4,
+		'name' : 'E??',
+		'raw' : 'E'
+	}, {
+		'tpc' : 5,
+		'name' : 'B??',
+		'raw' : 'B'
+	}, {
+		'tpc' : 6,
+		'name' : 'F?',
+		'raw' : 'F'
+	}, {
+		'tpc' : 7,
+		'name' : 'C?',
+		'raw' : 'C'
+	}, {
+		'tpc' : 8,
+		'name' : 'G?',
+		'raw' : 'G'
+	}, {
+		'tpc' : 9,
+		'name' : 'D?',
+		'raw' : 'D'
+	}, {
+		'tpc' : 10,
+		'name' : 'A?',
+		'raw' : 'A'
+	}, {
+		'tpc' : 11,
+		'name' : 'E?',
+		'raw' : 'E'
+	}, {
+		'tpc' : 12,
+		'name' : 'B?',
+		'raw' : 'B'
+	}, {
+		'tpc' : 13,
+		'name' : 'F',
+		'raw' : 'F'
+	}, {
+		'tpc' : 14,
+		'name' : 'C',
+		'raw' : 'C'
+	}, {
+		'tpc' : 15,
+		'name' : 'G',
+		'raw' : 'G'
+	}, {
+		'tpc' : 16,
+		'name' : 'D',
+		'raw' : 'D'
+	}, {
+		'tpc' : 17,
+		'name' : 'A',
+		'raw' : 'A'
+	}, {
+		'tpc' : 18,
+		'name' : 'E',
+		'raw' : 'E'
+	}, {
+		'tpc' : 19,
+		'name' : 'B',
+		'raw' : 'B'
+	}, {
+		'tpc' : 20,
+		'name' : 'F?',
+		'raw' : 'F'
+	}, {
+		'tpc' : 21,
+		'name' : 'C?',
+		'raw' : 'C'
+	}, {
+		'tpc' : 22,
+		'name' : 'G?',
+		'raw' : 'G'
+	}, {
+		'tpc' : 23,
+		'name' : 'D?',
+		'raw' : 'D'
+	}, {
+		'tpc' : 24,
+		'name' : 'A?',
+		'raw' : 'A'
+	}, {
+		'tpc' : 25,
+		'name' : 'E?',
+		'raw' : 'E'
+	}, {
+		'tpc' : 26,
+		'name' : 'B?',
+		'raw' : 'B'
+	}, {
+		'tpc' : 27,
+		'name' : 'F??',
+		'raw' : 'F'
+	}, {
+		'tpc' : 28,
+		'name' : 'C??',
+		'raw' : 'C'
+	}, {
+		'tpc' : 29,
+		'name' : 'G??',
+		'raw' : 'G'
+	}, {
+		'tpc' : 30,
+		'name' : 'D??',
+		'raw' : 'D'
+	}, {
+		'tpc' : 31,
+		'name' : 'A??',
+		'raw' : 'A'
+	}, {
+		'tpc' : 32,
+		'name' : 'E??',
+		'raw' : 'E'
+	}, {
+		'tpc' : 33,
+		'name' : 'B??',
+		'raw' : 'B'
+	}
+]
+
+readonly property var accidentals : [
+	{ 'name': 'NONE' },
+	{ 'name': 'FLAT' },
+	{ 'name': 'NATURAL' },
+	{ 'name': 'SHARP' },
+	{ 'name': 'SHARP2' },
+	{ 'name': 'FLAT2' },
+	{ 'name': 'SHARP3' },
+	{ 'name': 'FLAT3' },
+	{ 'name': 'NATURAL_FLAT' },
+	{ 'name': 'NATURAL_SHARP' },
+	{ 'name': 'SHARP_SHARP' },
+	{ 'name': 'FLAT_ARROW_UP' },
+	{ 'name': 'FLAT_ARROW_DOWN' },
+	{ 'name': 'NATURAL_ARROW_UP' },
+	{ 'name': 'NATURAL_ARROW_DOWN' },
+	{ 'name': 'SHARP_ARROW_UP' },
+	{ 'name': 'SHARP_ARROW_DOWN' },
+	{ 'name': 'SHARP2_ARROW_UP' },
+	{ 'name': 'SHARP2_ARROW_DOWN' },
+	{ 'name': 'FLAT2_ARROW_UP' },
+	{ 'name': 'FLAT2_ARROW_DOWN' },
+	{ 'name': 'ARROW_DOWN' },
+	{ 'name': 'ARROW_UP' },
+	{ 'name': 'MIRRORED_FLAT' },
+	{ 'name': 'MIRRORED_FLAT2' },
+	{ 'name': 'SHARP_SLASH' },
+	{ 'name': 'SHARP_SLASH4' },
+	{ 'name': 'FLAT_SLASH2' },
+	{ 'name': 'FLAT_SLASH' },
+	{ 'name': 'SHARP_SLASH3' },
+	{ 'name': 'SHARP_SLASH2' },
+	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN' },
+	{ 'name': 'FLAT_ONE_ARROW_DOWN' },
+	{ 'name': 'NATURAL_ONE_ARROW_DOWN' },
+	{ 'name': 'SHARP_ONE_ARROW_DOWN' },
+	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_DOWN' },
+	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_UP' },
+	{ 'name': 'FLAT_ONE_ARROW_UP' },
+	{ 'name': 'NATURAL_ONE_ARROW_UP' },
+	{ 'name': 'SHARP_ONE_ARROW_UP' },
+	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_UP' },
+	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_DOWN' },
+	{ 'name': 'FLAT_TWO_ARROWS_DOWN' },
+	{ 'name': 'NATURAL_TWO_ARROWS_DOWN' },
+	{ 'name': 'SHARP_TWO_ARROWS_DOWN' },
+	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_DOWN' },
+	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_UP' },
+	{ 'name': 'FLAT_TWO_ARROWS_UP' },
+	{ 'name': 'NATURAL_TWO_ARROWS_UP' },
+	{ 'name': 'SHARP_TWO_ARROWS_UP' },
+	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_UP' },
+	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_DOWN' },
+	{ 'name': 'FLAT_THREE_ARROWS_DOWN' },
+	{ 'name': 'NATURAL_THREE_ARROWS_DOWN' },
+	{ 'name': 'SHARP_THREE_ARROWS_DOWN' },
+	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_DOWN' },
+	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_UP' },
+	{ 'name': 'FLAT_THREE_ARROWS_UP' },
+	{ 'name': 'NATURAL_THREE_ARROWS_UP' },
+	{ 'name': 'SHARP_THREE_ARROWS_UP' },
+	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_UP' },
+	{ 'name': 'LOWER_ONE_SEPTIMAL_COMMA' },
+	{ 'name': 'RAISE_ONE_SEPTIMAL_COMMA' },
+	{ 'name': 'LOWER_TWO_SEPTIMAL_COMMAS' },
+	{ 'name': 'RAISE_TWO_SEPTIMAL_COMMAS' },
+	{ 'name': 'LOWER_ONE_UNDECIMAL_QUARTERTONE' },
+	{ 'name': 'RAISE_ONE_UNDECIMAL_QUARTERTONE' },
+	{ 'name': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE' },
+	{ 'name': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE' },
+	{ 'name': 'DOUBLE_FLAT_EQUAL_TEMPERED' },
+	{ 'name': 'FLAT_EQUAL_TEMPERED' },
+	{ 'name': 'NATURAL_EQUAL_TEMPERED' },
+	{ 'name': 'SHARP_EQUAL_TEMPERED' },
+	{ 'name': 'DOUBLE_SHARP_EQUAL_TEMPERED' },
+	{ 'name': 'QUARTER_FLAT_EQUAL_TEMPERED' },
+	{ 'name': 'QUARTER_SHARP_EQUAL_TEMPERED' },
+	{ 'name': 'FLAT_17' },
+	{ 'name': 'SHARP_17' },
+	{ 'name': 'FLAT_19' },
+	{ 'name': 'SHARP_19' },
+	{ 'name': 'FLAT_23' },
+	{ 'name': 'SHARP_23' },
+	{ 'name': 'FLAT_31' },
+	{ 'name': 'SHARP_31' },
+	{ 'name': 'FLAT_53' },
+	{ 'name': 'SHARP_53' },
+	{ 'name': 'SORI' },
+	{ 'name': 'KORON' }
+];
 
 	  // -----------------------------------------------------------------------
 	// --- Debug -------------------------------------------------------
