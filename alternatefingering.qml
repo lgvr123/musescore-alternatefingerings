@@ -1,6 +1,7 @@
 import QtQuick 2.9
 import QtQuick.Controls 1.4
 import MuseScore 3.0
+import QtQuick.Window 2.2
 import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Styles 1.4
 import QtQuick.Layouts 1.1
@@ -39,6 +40,7 @@ MuseScore {
 
 	// work variables
 	property var lastoptions;
+        property var __asAPreset : new presetClass()
 
 	// constants
 	/* All the supported states. */
@@ -207,21 +209,29 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		}
 		lstInstru.model = model;
 
+                pushFingering(fingering?fingering.text:undefined)
+                ready=true;
+                }
+                
+           
+      function pushFingering(ff) {                
+                ready=false;
+
 		// Basé sur la sélection, on récupère le doigté déjà saisi
 		var sFingering;
 		var instrument_type;
-		if (fingering) {
-			instrument_type = extractInstrument(__category, fingering.text);
+		if (ff) {
+			instrument_type = extractInstrument(__category, ff);
 		}
 		if (instrument_type) {
 			// We got an identification based on the fingering found in the selection
-			sFingering = fingering.text;
+			sFingering = ff;
 		} else {
 			// We have no fingering in the selection or we wre not able to identifiy it
 			sFingering = "";
-			if ((categories[category]["default"]) && (model.indexOf(categories[category]["default"]) > -1)) {
+			if ((categories[__category]["default"]) && (lstInstru.model.indexOf(categories[__category]["default"]) > -1)) {
 				// we have a default and valid instrument, we take it
-				instrument_type = categories[category]["default"];
+				instrument_type = categories[__category]["default"];
 			} else if (model.length > 0) {
 				// we haven't a default instrument, we take the first one
 				instrument_type = model[0];
@@ -230,7 +240,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 				instrument_type = "";
 			}
 
-			if (fingering) {
+			if (ff) {
 				warnings[warnings.length] = "Impossible to recognize instrument type based from the selected fingering. Using default one.";
 			}
 		}
@@ -283,7 +293,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 
 		// On sélectionne le bon instrument
 		if (instrument_type !== null) {
-			lstInstru.currentIndex = model.indexOf(instrument_type);
+			lstInstru.currentIndex = lstInstru.model.indexOf(instrument_type);
 			//console.log("selecting" + instrument_type + "(" + lstInstru.currentIndex + ")");
 		} else {
 			lstInstru.currentIndex = 0;
@@ -770,7 +780,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					Binding {
 						target : configOpenBtn.item
 						property : "panel"
-						value : panConfig // should be a valid it
+						value : panConfig // should be a valid id
 					}
 					Binding {
 						target : configOpenBtn.item
@@ -999,9 +1009,14 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 			}
 
 			Button {
-				text : "Read"
+				text : "Add"
 				onClicked : {
-					readOptions()
+                                    var note=__notes[0];
+                                    __asAPreset = new presetClass(__category,"",note.extname.name,note.accidentalName,buildFingeringRepresentation());
+                                    console.log(JSON.stringify(__asAPreset));
+                                    
+                                    addPresetWindow.show()
+                                    addPresetWindow.forceLayout
 				}
 			}
 
@@ -1280,7 +1295,19 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
                         verticalAlignment : Text.AlignVCenter
                         }
                    
-            
+                  MouseArea {
+    anchors.fill: parent;
+    acceptedButtons: Qt.LeftButton 
+
+    onDoubleClicked: {
+            console.log("Double Click");
+            pushFingering(__preset.representation);
+    }
+
+    onClicked: {
+            console.log("Single Click");
+    }
+}            
             }
         
         }
@@ -1324,6 +1351,167 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 		}
 	}
 
+      
+	Window {
+		id : addPresetWindow
+		title : "Add to library"
+		width : 300
+		height : 300
+		maximumHeight : 600
+		maximumWidth : 300
+		minimumHeight : 300
+		minimumWidth : 200
+		modality : Qt.WindowModal
+		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+
+		GridLayout {
+			columns: 2
+			rows : 5
+
+			anchors.fill : parent
+			columnSpacing : 5
+			rowSpacing : 5
+			anchors.margins : 10
+
+			Text {
+				Layout.row: 1
+				Layout.column: 1
+				Layout.columnSpan: 2
+				Layout.rowSpan: 1
+
+				id : labEpCat
+
+				Layout.preferredWidth : parent.width
+				Layout.preferredHeight : 20
+
+				text : "Add a new " + __asAPreset.category + " preset : "
+
+				font.weight : Font.DemiBold
+				verticalAlignment : Text.AlignVCenter
+				horizontalAlignment : Text.AlignHCenter
+
+			}
+
+			Text {
+				Layout.row: 2
+				Layout.column: 1
+				Layout.columnSpan: 2
+				Layout.rowSpan: 1
+
+				Layout.fillWidth : true
+				Layout.fillHeight : true
+
+				id : labEpRep
+
+				text : __asAPreset.representation
+
+				font.family : "fiati"
+				font.pixelSize : 80
+
+				renderType : Text.NativeRendering
+				font.hintingPreference : Font.PreferVerticalHinting
+				verticalAlignment : Text.AlignVCenter
+                                horizontalAlignment : Text.AlignHCenter
+
+			}
+
+
+				Text {
+					Layout.row: 3
+					Layout.column: 1
+					Layout.columnSpan: 1
+					Layout.rowSpan: 1
+
+					id : labEpLab
+
+					text : "Label:"
+
+					Layout.preferredHeight : 20
+
+				}
+
+				TextField {
+					Layout.row: 3
+					Layout.column: 2
+					Layout.columnSpan: 1
+					Layout.rowSpan: 1
+
+					id : labEpLabVal
+
+					text : __asAPreset.label
+
+					Layout.preferredHeight : 20
+                                        Layout.fillWidth: true  
+                                        placeholderText : "label text (optional)" 
+                                        maximumLength : 20 
+
+				}
+
+
+				Text {
+					Layout.row: 4
+					Layout.column: 1
+					Layout.columnSpan: 1
+					Layout.rowSpan: 1
+
+					id : labEpKey
+
+					text : "For key:"
+
+					Layout.preferredHeight : 20
+
+				}
+			RowLayout {
+					Layout.row : 4
+					Layout.column : 2
+					Layout.columnSpan : 1
+					Layout.rowSpan : 1
+
+				Layout.preferredHeight : 20
+                                        Layout.fillWidth: true  
+
+				TextField {
+
+					id : labEpNoteVal
+
+					text : __asAPreset.note
+
+                                        //inputMask: "A9"
+                                        validator : RegExpValidator { regExp: /^[A-G][0-9]$/ }
+                                        maximumLength : 2   
+                                        placeholderText : "e.g. \"C4\""  
+
+				}
+
+				/*TextField {
+
+					id : labEpAccVal
+
+					text : __asAPreset.accidental
+				}*/
+                                ComboBox {
+					id : lstEpAcc
+					//Layout.fillWidth : true
+					model : accidentals
+					currentIndex : 0 //init
+					clip : true
+					focus : true
+					width : parent.width
+					height : 20
+					//color :"lightgrey"
+					/*anchors {
+						top : parent.top
+					}
+					onCurrentIndexChanged : {
+						debug(level_DEBUG, "Now current index is :" + model[currentIndex])
+						//debug(level_DEBUG, __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"])
+					}*/
+
+				}
+
+			}
+		}
+	}
 	// ----------------------------------------------------------------------
 	// --- Screen support ---------------------------------------------------
 	// ----------------------------------------------------------------------
@@ -1373,6 +1561,9 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
     FileIO {
         id: settingsFile
         source: homePath() + "/alternatefingering.properties"
+        //source: rootPath() + "/alternatefingering.properties"
+        //source: Qt.resolvedUrl("alternatefingering.properties")
+        //source: "./alternatefingering.properties"
             
         onError: {
 			//statusBar.text=msg;
@@ -1406,12 +1597,9 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 		lastoptions['categories'][__category]['config'] = cfgs;
 		
 		var presets = [];
-// debug
-__library.push(new presetClass(__category,"xyz","A","SHARP",buildFingeringRepresentation()));
-// debug
+
 		for (var i = 0; i < __library.length; i++) {
-			var preset = __library[i];
-			presets[i] = preset;
+			presets.push(__library[i]);
 		}
 		lastoptions['categories'][__category]['library'] = presets;
 
@@ -1841,7 +2029,7 @@ __library.push(new presetClass(__category,"xyz","A","SHARP",buildFingeringRepres
 	  */
 	  
 	  function presetClass(category, label, note, accidental,representation) {
-			this.category=category;
+			this.category=(category!==undefined)?String(category):"??";
 			this.label = (label!==undefined)?String(label):"";
 			this.note= (note!==undefined)?String(note):"";
 			
@@ -2172,4 +2360,3 @@ readonly property var accidentals : [
 	}
 
 }
-
