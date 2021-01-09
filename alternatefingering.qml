@@ -721,27 +721,26 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	// --- Screen design -----------------------------------------------------
 	// -----------------------------------------------------------------------
 	GridLayout {
-		id: panMain
-		rows: 7
-		columns: 2
+		id : panMain
+		rows : 7
+		columns : 2
 
 		anchors.fill : parent
-		columnSpacing  : 5
-                rowSpacing : 5
+		columnSpacing : 5
+		rowSpacing : 5
 		anchors.topMargin : 10
 		anchors.rightMargin : 10
 		anchors.leftMargin : 10
 		anchors.bottomMargin : 0
 
-		
 		Item {
-            Layout.row: 1
-            Layout.column: 1			
-            Layout.columnSpan: 2
-            Layout.rowSpan: 1
+			Layout.row : 1
+			Layout.column : 1
+			Layout.columnSpan : 2
+			Layout.rowSpan : 1
 
 			id : panInstrument
-			
+
 			Layout.preferredHeight : lpc.implicitHeight + 4 // 4 pour les marges
 			Layout.fillWidth : true
 			RowLayout {
@@ -750,9 +749,9 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 				anchors.margins : 2
 				spacing : 2
 
-                  		Label {
-		                	text : "Instrument :"
-		                }
+				Label {
+					text : "Instrument :"
+				}
 
 				ComboBox {
 					id : lstInstru
@@ -791,116 +790,114 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 				}
 			}
 		} //panInstrument
-		
 
-ColumnLayout { // hack because the GridLayout doesn't manage well the invisible elements
-            Layout.row: 2
-            Layout.column: 2			
-            Layout.columnSpan: 1
-            Layout.rowSpan: 4
-	    Layout.fillHeight: true
-            Layout.fillWidth: true
- 
-		Item { 
-            //Layout.row: 2
-            //Layout.column: 2			
-            //Layout.columnSpan: 1
-            //Layout.rowSpan: 1
 
-			id : panConfig
-			visible : false
-			//color : "red"
-			//border.color: "grey"
-			//border.width: 2
-			Layout.preferredWidth : layConfig.implicitWidth + 10
-			Layout.preferredHeight : layConfig.implicitHeight + 10
-			anchors.margins : 20
-			Grid {
-				id : layConfig
+		ColumnLayout { // hack because the GridLayout doesn't manage well the invisible elements
+			Layout.row : 2
+			Layout.column : 2
+			Layout.columnSpan : 1
+			Layout.rowSpan : 4
+			Layout.fillHeight : true
+			Layout.fillWidth : true
 
-				columns : 2
-				columnSpacing : 5
-				rowSpacing : 5
-				//horizontalItemAlignment : Grid.AlignLeft
-				//verticalItemAlignment  : Grid.AlignTop
+			Item {
+				//Layout.row: 2
+				//Layout.column: 2
+				//Layout.columnSpan: 1
+				//Layout.rowSpan: 1
 
-				Repeater {
-					model : ready ? __config : []
-					delegate : CheckBox {
-						id : chkConfig
-						property var __mode : __config[model.index]
-						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
-						text : __mode.name
-						checked : __mode.activated // init only
-						onClicked : {
-							debug(level_TRACE, "onClik " + __mode.name);
-							var before = __mode.activated;
-							__mode.activated = !__mode.activated;
-							buildConfigNotes();
-							refreshed = false; // awful trick to force the refresh
-							refreshed = true;
+				id : panConfig
+				visible : false
+				//color : "red"
+				//border.color: "grey"
+				//border.width: 2
+				Layout.preferredWidth : layConfig.implicitWidth + 10
+				Layout.preferredHeight : layConfig.implicitHeight + 10
+				anchors.margins : 20
+				Grid {
+					id : layConfig
+
+					columns : 2
+					columnSpacing : 5
+					rowSpacing : 5
+					//horizontalItemAlignment : Grid.AlignLeft
+					//verticalItemAlignment  : Grid.AlignTop
+
+					Repeater {
+						model : ready ? __config : []
+						delegate : CheckBox {
+							id : chkConfig
+							property var __mode : __config[model.index]
+							Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+							text : __mode.name
+							checked : __mode.activated // init only
+							onClicked : {
+								debug(level_TRACE, "onClik " + __mode.name);
+								var before = __mode.activated;
+								__mode.activated = !__mode.activated;
+								buildConfigNotes();
+								refreshed = false; // awful trick to force the refresh
+								refreshed = true;
+							}
+						}
+
+					}
+				}
+			} //panConfig
+
+
+			Rectangle { // debug was Item
+				//Layout.row: 3
+				//Layout.column: 2
+				//Layout.columnSpan: 1
+				//Layout.rowSpan: 1
+				Layout.fillHeight : true
+				Layout.fillWidth : true
+
+				color : "blue"
+				id : panKeys
+
+				Item { // un small element within the fullWidth/fullHeight where we paint the repeater
+					anchors.horizontalCenter : parent.horizontalCenter
+					anchors.verticalCenter : parent.verticalCenter
+					width : 240 //repNotes.implicitHeight // 12 columns
+					height : 100 // repNotes.implicitWidth // 4 rows
+					//color: "white"
+
+
+					// Repeater pour les notes de base
+					Repeater {
+						id : repNotes
+						model : (__instruments[lstInstru.model[lstInstru.currentIndex]]) ? __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"] : []
+						//delegate : holeComponent - via Loader, pour passer la note à gérer
+						Loader {
+							id : loaderNotes
+							Binding {
+								target : loaderNotes.item
+								property : "note"
+								value : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index]
+							}
+							sourceComponent : holeComponent
 						}
 					}
 
-				}
-			}
-		}  //panConfig
-
-
-		Rectangle { // debug was Item
-            //Layout.row: 3
-            //Layout.column: 2			
-            //Layout.columnSpan: 1
-            //Layout.rowSpan: 1
-	    Layout.fillHeight: true 
-            Layout.fillWidth: true 	
-
-                        color: "blue"
-			id: panKeys
-
-
-Item { // un small element within the fullWidth/fullHeight where we paint the repeater
-			anchors.horizontalCenter : parent.horizontalCenter 
-			anchors.verticalCenter : parent.verticalCenter 
-			width : 240 //repNotes.implicitHeight // 12 columns
-			height : 100 // repNotes.implicitWidth // 4 rows
-//color: "white"
-
-
-			// Repeater pour les notes de base
-			Repeater {
-				id : repNotes
-				model : (__instruments[lstInstru.model[lstInstru.currentIndex]]) ? __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"] : []
-				//delegate : holeComponent - via Loader, pour passer la note à gérer
-				Loader {
-					id : loaderNotes
-					Binding {
-						target : loaderNotes.item
-						property : "note"
-						value : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index]
+					// Repeater pour les notes des __config
+					Repeater {
+						id : repModes
+						model : ready ? getConfigNotes(refreshed) : []; //awful hack. Just return the raw __config array
+						//delegate : holeComponent - via Loader, pour passer la note à gérer depuis le mode
+						Loader {
+							id : loaderModes
+							Binding {
+								target : loaderModes.item
+								property : "note"
+								value : __confignotes[model.index]// should be a note
+							}
+							sourceComponent : holeComponent
+						}
 					}
-					sourceComponent : holeComponent
 				}
-			}
-
-			// Repeater pour les notes des __config
-			Repeater {
-				id : repModes
-				model : ready ? getConfigNotes(refreshed) : []; //awful hack. Just return the raw __config array
-				//delegate : holeComponent - via Loader, pour passer la note à gérer depuis le mode
-				Loader {
-					id : loaderModes
-					Binding {
-						target : loaderModes.item
-						property : "note"
-						value : __confignotes[model.index]// should be a note
-					}
-					sourceComponent : holeComponent
-				}
-			}
-}
-		}  //panKeys
-		
+			} //panKeys
 
 		Item {
             //Layout.row: 4
@@ -932,7 +929,8 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 				}
 			}
 		} //panOptionsOpen
-	Item { 
+		
+		Item { 
             //Layout.row: 5
             //Layout.column: 2			
             //Layout.columnSpan: 1
@@ -997,43 +995,52 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
             Layout.preferredHeight: panButtons.implicitHeight
 		
             RowLayout {
-            			id: panButtons
+				id: panButtons
 		
-			Layout.alignment : Qt.AlignRight
+				Layout.alignment : Qt.AlignRight
 
-			Button {
-				text : "Save"
-				onClicked : {
-					saveOptions()
+				Button {
+					text : "Save"
+					onClicked : {
+						saveOptions()
+					}
+				}
+
+				Button {
+					text : "Add preset..."
+					onClicked : {
+						var note=__notes[0];
+						__asAPreset = new presetClass(__category,"",note.extname.name,note.accidentalName,buildFingeringRepresentation());
+						console.log(JSON.stringify(__asAPreset));
+						addPresetWindow.state="add"
+						addPresetWindow.show()
+					}
+				}
+
+				Button {
+					text : "Remove preset..."
+					onClicked : {
+						__asAPreset = lstPresets.model[lstPresets.currentIndex]
+						console.log(JSON.stringify(__asAPreset));
+						addPresetWindow.state="remove"
+						addPresetWindow.show()
+					}
+				}
+
+				Button {
+					text : "Ok"
+					onClicked : {
+						writeFingering()
+					}
+				}
+
+				Button {
+					text : "Cancel"
+					onClicked : {
+						Qt.quit()
+					}
 				}
 			}
-
-			Button {
-				text : "Add"
-				onClicked : {
-                                    var note=__notes[0];
-                                    __asAPreset = new presetClass(__category,"",note.extname.name,note.accidentalName,buildFingeringRepresentation());
-                                    console.log(JSON.stringify(__asAPreset));
-                                    
-                                    addPresetWindow.show()
-                                    addPresetWindow.forceLayout
-				}
-			}
-
-			Button {
-				text : "Ok"
-				onClicked : {
-					writeFingering()
-				}
-			}
-
-			Button {
-				text : "Cancel"
-				onClicked : {
-					Qt.quit()
-				}
-			}
-                  }
 		} // panButtons
 
 		
@@ -1064,22 +1071,35 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
             Layout.row: 2
             Layout.column: 1	
             Layout.columnSpan: 1
-            Layout.rowSpan: 5
+            Layout.rowSpan: 4
 
             Layout.fillHeight: true 
-			
-	     //color: "blue"
-
-                        
-
 			Layout.preferredWidth : 100
+
 			id: lstPresets
 
-                        model: __library
-                        delegate: presetComponent
-                        clip: true
+			model: __library
+			delegate: presetComponent
+			clip: true
+
+			// scrollbar
+			flickableDirection: Flickable.VerticalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            //ScrollBar.vertical: ScrollBar {}			// Scrollbar dispo à partir de QtQuick.Controls 2.15
                         
 		} // panPresets
+		
+		CheckBox {
+            Layout.row: 6
+            Layout.column: 1	
+            Layout.columnSpan: 1
+            Layout.rowSpan: 1
+
+			id: chkFilter
+			
+			text: "limit to current key"
+			
+		}
 	}
 
 	// ----------------------------------------------------------------------
@@ -1201,7 +1221,7 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 				},
 				State {
 					name : "deactivated"
-					PropertyChanges {
+					PropertyChanges { 
 						target : img;
 						source : "./alternatefingering/deactivated.svg"
 					}
@@ -1235,82 +1255,88 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 		}
 	}
 
-        Component {
-            id: presetComponent
-            
-            Rectangle {
-                  color: "white"
-                  property var __preset: __library[model.index]
-                  width: 80
-                  height: 100 //prsRep.implictHeight+prsLab.implictHeight+prsNote.implictHeight
-                  
-                  Text {
-                        id: prsRep
-                        text: __preset.representation
-                        font.family: "fiati"
-                        font.pixelSize: 80
-                        //font.preferShaping: true // from Qt5.10. MuseScore 3.5 supports to 5.9 => for MuseScore 4.x
-                        renderType: Text.NativeRendering
-                        font.hintingPreference: Font.PreferVerticalHinting
-                        width:20//parent.width
-                        height: 50
-                        anchors.top: parent.top
-                        anchors.horizontalCenter: parent.horizontalCenter 
-                        horizontalAlignment : Text.AlignHCenter
-                        y: -20//verticalAlignment: Text.AlignBottom
-                        }
+	Component {
+		id: presetComponent
+		
+		Rectangle {
+			color : "white"
+			property var __preset : __library[model.index]
+			width : parent.width
+			height : 120 //prsRep.implictHeight+prsLab.implictHeight+prsNote.implictHeight
+			clip : true
 
-                  Text {
-                        id: prsLab
-                        text: (__preset.label=="")?"--":__preset.label
-                        width:parent.width
-                        height: 20
-                        anchors.top: prsRep.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter 
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        }
+			Text {
+				id : prsRep
+				text : __preset.representation
 
-                  Text {
-                        id: prsNote
-                        text: __preset.note
-                        width:parent.width/2
-                        height: 20
-                        anchors.top: prsLab.bottom
-                        anchors.right: parent.horizontalCenter 
-                        horizontalAlignment: Text.AlignRight
-                        verticalAlignment: Text.AlignVCenter
-                        }
-                   
+				anchors {
+					top : parent.top
+					horizontalCenter : parent.horizontalCenter
+					horizontalCenterOffset : -3
+				}
 
-                   //Image {
-                   Text {
-                        id: prsAcc
-                        text: "#" //__preset.accidental
-                        width:parent.width/2
-                        height: 20
-                        anchors.top: prsLab.bottom
-                        anchors.left: parent.horizontalCenter 
-                        horizontalAlignment: Text.AlignLeft
-                        verticalAlignment : Text.AlignVCenter
-                        }
-                   
-                  MouseArea {
-    anchors.fill: parent;
-    acceptedButtons: Qt.LeftButton 
+				font.family : "fiati"
+				font.pixelSize : 60
+				renderType : Text.NativeRendering
+				font.hintingPreference : Font.PreferVerticalHinting
 
-    onDoubleClicked: {
-            console.log("Double Click");
-            pushFingering(__preset.representation);
-    }
+				onLineLaidOut : { // hack for correct display of Fiati font
+					line.y = line.y * 0.8
+					line.height = line.height * 0.8
+				}
 
-    onClicked: {
-            console.log("Single Click");
-    }
-}            
-            }
-        
-        }
+			}
+
+			Text {
+				id : prsLab
+				text : (__preset.label == "") ? "--" : __preset.label
+				//width:parent.width
+				height : 18
+				anchors {
+					bottom : prsNote.top
+					horizontalCenter : parent.horizontalCenter
+				}
+			}
+
+			Text {
+				id : prsNote
+				text : __preset.note
+				//width:parent.width/2
+				height : 18
+				anchors {
+					bottom : parent.bottom
+					right : parent.horizontalCenter
+				}
+			}
+
+			//Image {
+			Text {
+				id : prsAcc
+				text : "#" //__preset.accidental
+				//width:parent.width/2
+				height : 20
+				anchors {
+					bottom : parent.bottom
+					left : parent.horizontalCenter
+				}
+			}
+
+			MouseArea {
+				anchors.fill : parent;
+				acceptedButtons : Qt.LeftButton
+
+				onDoubleClicked : {
+					console.log("Double Click");
+					pushFingering(__preset.representation);
+				}
+
+				onClicked : {
+					console.log("Single Click");
+				}
+			}
+		}
+
+		}
       
 
 	MessageDialog {
@@ -1354,161 +1380,262 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
       
 	Window {
 		id : addPresetWindow
-		title : "Add to library"
+		title : "Manage Library..."
 		width : 300
 		height : 300
-		maximumHeight : 600
-		maximumWidth : 300
-		minimumHeight : 300
-		minimumWidth : 200
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+		
+		property string state: "remove"
 
-		GridLayout {
-			columns: 2
-			rows : 5
+		Item {
+			anchors.fill: parent
 
-			anchors.fill : parent
-			columnSpacing : 5
-			rowSpacing : 5
-			anchors.margins : 10
+                        state: addPresetWindow.state
+			
+			states : [
+				State {
+					name : "remove";
+					PropertyChanges { target : btnEpAdd; text : "Remove" }
+					PropertyChanges { target : labEpCat; text : "Delete the following " + __asAPreset.category + " preset ?" }
+					PropertyChanges { target : labEpLabVal; enabled : false }
+					PropertyChanges { target : labEpNoteVal; enabled : false }
+					PropertyChanges { target : lstEpAcc; enabled : false }
+					
+				},
+				State {
+					name : "add";
+					PropertyChanges { target : btnEpAdd; text : "Add" }
+					PropertyChanges { target : labEpCat; text : "Add a new " + __asAPreset.category + " preset : " }
+					PropertyChanges { target : labEpLabVal; enabled : false }
+					PropertyChanges { target : labEpNoteVal; enabled : false }
+					PropertyChanges { target : lstEpAcc; enabled : false }
+					
+				}
+			]
+			
+			GridLayout {
+				columns: 2
+				rows : 5
 
-			Text {
-				Layout.row: 1
-				Layout.column: 1
-				Layout.columnSpan: 2
-				Layout.rowSpan: 1
-
-				id : labEpCat
-
-				Layout.preferredWidth : parent.width
-				Layout.preferredHeight : 20
-
-				text : "Add a new " + __asAPreset.category + " preset : "
-
-				font.weight : Font.DemiBold
-				verticalAlignment : Text.AlignVCenter
-				horizontalAlignment : Text.AlignHCenter
-
-			}
-
-			Text {
-				Layout.row: 2
-				Layout.column: 1
-				Layout.columnSpan: 2
-				Layout.rowSpan: 1
-
-				Layout.fillWidth : true
-				Layout.fillHeight : true
-
-				id : labEpRep
-
-				text : __asAPreset.representation
-
-				font.family : "fiati"
-				font.pixelSize : 80
-
-				renderType : Text.NativeRendering
-				font.hintingPreference : Font.PreferVerticalHinting
-				verticalAlignment : Text.AlignVCenter
-                                horizontalAlignment : Text.AlignHCenter
-
-			}
-
+				anchors.fill : parent
+				columnSpacing : 5
+				rowSpacing : 5
+				anchors.margins : 10
 
 				Text {
-					Layout.row: 3
+					Layout.row: 1
 					Layout.column: 1
-					Layout.columnSpan: 1
+					Layout.columnSpan: 2
 					Layout.rowSpan: 1
 
-					id : labEpLab
+					id : labEpCat
 
-					text : "Label:"
-
+					Layout.preferredWidth : parent.width
 					Layout.preferredHeight : 20
+
+					text : "--"
+
+					font.weight : Font.DemiBold
+					verticalAlignment : Text.AlignVCenter
+					horizontalAlignment : Text.AlignHCenter
 
 				}
 
-				TextField {
-					Layout.row: 3
-					Layout.column: 2
-					Layout.columnSpan: 1
-					Layout.rowSpan: 1
-
-					id : labEpLabVal
-
-					text : __asAPreset.label
-
-					Layout.preferredHeight : 20
-                                        Layout.fillWidth: true  
-                                        placeholderText : "label text (optional)" 
-                                        maximumLength : 20 
-
-				}
-
-
-				Text {
-					Layout.row: 4
+				Rectangle { // se passer du rectangle ???
+					Layout.row: 2
 					Layout.column: 1
-					Layout.columnSpan: 1
+					Layout.columnSpan: 2
 					Layout.rowSpan: 1
 
-					id : labEpKey
+					Layout.fillWidth : true
+					Layout.fillHeight : true
 
-					text : "For key:"
+					Text {
+						anchors.fill: parent            
+						id : labEpRep
 
-					Layout.preferredHeight : 20
+						text : __asAPreset.representation
 
-				}
-			RowLayout {
-					Layout.row : 4
-					Layout.column : 2
-					Layout.columnSpan : 1
-					Layout.rowSpan : 1
+						font.family : "fiati"
+											font.pixelSize : 100
 
-				Layout.preferredHeight : 20
-                                        Layout.fillWidth: true  
+						renderType : Text.NativeRendering
+						font.hintingPreference : Font.PreferVerticalHinting
+						verticalAlignment : Text.AlignTop
+						horizontalAlignment : Text.AlignHCenter
 
-				TextField {
-
-					id : labEpNoteVal
-
-					text : __asAPreset.note
-
-                                        //inputMask: "A9"
-                                        validator : RegExpValidator { regExp: /^[A-G][0-9]$/ }
-                                        maximumLength : 2   
-                                        placeholderText : "e.g. \"C4\""  
-
-				}
-
-				/*TextField {
-
-					id : labEpAccVal
-
-					text : __asAPreset.accidental
-				}*/
-                                ComboBox {
-					id : lstEpAcc
-					//Layout.fillWidth : true
-					model : accidentals
-					currentIndex : 0 //init
-					clip : true
-					focus : true
-					width : parent.width
-					height : 20
-					//color :"lightgrey"
-					/*anchors {
-						top : parent.top
+						onLineLaidOut: { // hack for correct display of Fiati font
+								line.y = line.y * 0.8
+								line.height = line.height * 0.8
+								line.x = line.x - 7
+								line.width = line.width - 7
+							  }
+						}
 					}
-					onCurrentIndexChanged : {
-						debug(level_DEBUG, "Now current index is :" + model[currentIndex])
-						//debug(level_DEBUG, __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"])
-					}*/
 
-				}
 
+					Text {
+						Layout.row: 3
+						Layout.column: 1
+						Layout.columnSpan: 1
+						Layout.rowSpan: 1
+
+						id : labEpLab
+
+						text : "Label:"
+
+						Layout.preferredHeight : 20
+
+					}
+
+					TextField {
+						Layout.row: 3
+						Layout.column: 2
+						Layout.columnSpan: 1
+						Layout.rowSpan: 1
+
+						id : labEpLabVal
+
+						text : __asAPreset.label
+
+						Layout.preferredHeight : 20
+											Layout.fillWidth: true  
+											placeholderText : "label text (optional)" 
+											maximumLength : 20 
+
+					}
+
+
+					Text {
+						Layout.row: 4
+						Layout.column: 1
+						Layout.columnSpan: 1
+						Layout.rowSpan: 1
+
+						id : labEpKey
+
+						text : "For key:"
+
+						Layout.preferredHeight : 20
+
+					}
+				
+					RowLayout {
+						Layout.row : 4
+						Layout.column : 2
+						Layout.columnSpan : 1
+						Layout.rowSpan : 1
+
+						Layout.preferredHeight : 20
+						Layout.fillWidth : true
+
+						TextField {
+
+							id : labEpNoteVal
+
+							text : __asAPreset.note
+
+							//inputMask: "A9"
+							validator : RegExpValidator {
+								regExp : /^[A-G][0-9]$/
+							}
+							maximumLength : 2
+							placeholderText : "e.g. \"C4\""
+
+						}
+
+						ComboBox {
+							id : lstEpAcc
+							//Layout.fillWidth : true
+							model : accidentals
+							currentIndex : visible?getAccidentalModelIndex(__asAPreset.accidental):0 
+
+							clip : true
+							focus : true
+							width : parent.width
+							height : 30
+
+							style : ComboBoxStyle {
+								id : comStyle
+
+								label : 
+									Text {
+										text : __asAPreset.accidental	
+									}
+									
+								
+									/*Image {
+
+									id : img
+									height : 25
+									width: 25
+									
+									fillMode : Image.PreserveAspectFit
+									source : "./alternatefingering/"+accidentals[0].image
+
+									Component.onCompleted : {
+										lstEpAcc.currentIndexChanged.connect(changeImage)
+									}
+
+									function changeImage() {
+										img.source = "./alternatefingering/"+accidentals[lstEpAcc.currentIndex].image;
+									}
+								}*/
+
+							}
+						}
+
+					}
+					RowLayout {
+						Layout.row : 5
+						Layout.column : 1
+						Layout.columnSpan : 2
+						Layout.rowSpan : 1
+
+						Layout.preferredHeight : btnEpAdd.implicitHeight
+						Layout.fillWidth : true
+						
+						Layout.topMargin: 15
+						Layout.alignment: Qt.AlignRight
+						
+						Button {
+							id: btnEpAdd
+							text: "--"
+							onClicked: {
+								if ("remove"===addPresetWindow.state) {
+									// remove
+									var preset=lstPresets.model.splice(lstPresets.currentIndex,1); // test pour voir si ça passe mieux par le modèle
+									//__library.push(preset);
+									console.log(JSON.stringify(preset));
+									console.log(__library.length);
+									lstPresets.update();
+									lstPresets.forceLayout();
+									addPresetWindow.hide();
+								} else {
+									// add
+									var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation);
+									lstPresets.model.push(preset); // test pour voir si ça passe mieux par le modèle
+									//__library.push(preset);
+									console.log(JSON.stringify(preset));
+									console.log(__library.length);
+									lstPresets.update();
+									lstPresets.forceLayout();
+									addPresetWindow.hide();
+								}
+							}
+						}
+						
+						Button {
+							id: btnEpEsc
+							text: "Cancel"
+							onClicked: {
+								addPresetWindow.hide();
+							}
+						}
+						
+						
+						}
 			}
 		}
 	}
@@ -1553,6 +1680,15 @@ Item { // un small element within the fullWidth/fullHeight where we paint the re
 		}
 		debug(level_TRACE, "buildConfigNotes: " + notes.length);
 		__confignotes = notes;
+	}
+	
+	function getAccidentalModelIndex(accidentalName) {
+		for(var i=0;i<lstEpAcc.model.length;i++) {
+			if (accidentalName===lstEpAcc.model[i]) {
+				return i;
+				}
+			}
+		return 0;
 	}
 
 	// -----------------------------------------------------------------------
@@ -2235,94 +2371,94 @@ readonly property var tpcs : [{
 ]
 
 readonly property var accidentals : [
-	{ 'name': 'NONE' },
-	{ 'name': 'FLAT' },
-	{ 'name': 'NATURAL' },
-	{ 'name': 'SHARP' },
-	{ 'name': 'SHARP2' },
-	{ 'name': 'FLAT2' },
-	{ 'name': 'SHARP3' },
-	{ 'name': 'FLAT3' },
-	{ 'name': 'NATURAL_FLAT' },
-	{ 'name': 'NATURAL_SHARP' },
-	{ 'name': 'SHARP_SHARP' },
-	{ 'name': 'FLAT_ARROW_UP' },
-	{ 'name': 'FLAT_ARROW_DOWN' },
-	{ 'name': 'NATURAL_ARROW_UP' },
-	{ 'name': 'NATURAL_ARROW_DOWN' },
-	{ 'name': 'SHARP_ARROW_UP' },
-	{ 'name': 'SHARP_ARROW_DOWN' },
-	{ 'name': 'SHARP2_ARROW_UP' },
-	{ 'name': 'SHARP2_ARROW_DOWN' },
-	{ 'name': 'FLAT2_ARROW_UP' },
-	{ 'name': 'FLAT2_ARROW_DOWN' },
-	{ 'name': 'ARROW_DOWN' },
-	{ 'name': 'ARROW_UP' },
-	{ 'name': 'MIRRORED_FLAT' },
-	{ 'name': 'MIRRORED_FLAT2' },
-	{ 'name': 'SHARP_SLASH' },
-	{ 'name': 'SHARP_SLASH4' },
-	{ 'name': 'FLAT_SLASH2' },
-	{ 'name': 'FLAT_SLASH' },
-	{ 'name': 'SHARP_SLASH3' },
-	{ 'name': 'SHARP_SLASH2' },
-	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN' },
-	{ 'name': 'FLAT_ONE_ARROW_DOWN' },
-	{ 'name': 'NATURAL_ONE_ARROW_DOWN' },
-	{ 'name': 'SHARP_ONE_ARROW_DOWN' },
-	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_DOWN' },
-	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_UP' },
-	{ 'name': 'FLAT_ONE_ARROW_UP' },
-	{ 'name': 'NATURAL_ONE_ARROW_UP' },
-	{ 'name': 'SHARP_ONE_ARROW_UP' },
-	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_UP' },
-	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_DOWN' },
-	{ 'name': 'FLAT_TWO_ARROWS_DOWN' },
-	{ 'name': 'NATURAL_TWO_ARROWS_DOWN' },
-	{ 'name': 'SHARP_TWO_ARROWS_DOWN' },
-	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_DOWN' },
-	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_UP' },
-	{ 'name': 'FLAT_TWO_ARROWS_UP' },
-	{ 'name': 'NATURAL_TWO_ARROWS_UP' },
-	{ 'name': 'SHARP_TWO_ARROWS_UP' },
-	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_UP' },
-	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_DOWN' },
-	{ 'name': 'FLAT_THREE_ARROWS_DOWN' },
-	{ 'name': 'NATURAL_THREE_ARROWS_DOWN' },
-	{ 'name': 'SHARP_THREE_ARROWS_DOWN' },
-	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_DOWN' },
-	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_UP' },
-	{ 'name': 'FLAT_THREE_ARROWS_UP' },
-	{ 'name': 'NATURAL_THREE_ARROWS_UP' },
-	{ 'name': 'SHARP_THREE_ARROWS_UP' },
-	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_UP' },
-	{ 'name': 'LOWER_ONE_SEPTIMAL_COMMA' },
-	{ 'name': 'RAISE_ONE_SEPTIMAL_COMMA' },
-	{ 'name': 'LOWER_TWO_SEPTIMAL_COMMAS' },
-	{ 'name': 'RAISE_TWO_SEPTIMAL_COMMAS' },
-	{ 'name': 'LOWER_ONE_UNDECIMAL_QUARTERTONE' },
-	{ 'name': 'RAISE_ONE_UNDECIMAL_QUARTERTONE' },
-	{ 'name': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE' },
-	{ 'name': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE' },
-	{ 'name': 'DOUBLE_FLAT_EQUAL_TEMPERED' },
-	{ 'name': 'FLAT_EQUAL_TEMPERED' },
-	{ 'name': 'NATURAL_EQUAL_TEMPERED' },
-	{ 'name': 'SHARP_EQUAL_TEMPERED' },
-	{ 'name': 'DOUBLE_SHARP_EQUAL_TEMPERED' },
-	{ 'name': 'QUARTER_FLAT_EQUAL_TEMPERED' },
-	{ 'name': 'QUARTER_SHARP_EQUAL_TEMPERED' },
-	{ 'name': 'FLAT_17' },
-	{ 'name': 'SHARP_17' },
-	{ 'name': 'FLAT_19' },
-	{ 'name': 'SHARP_19' },
-	{ 'name': 'FLAT_23' },
-	{ 'name': 'SHARP_23' },
-	{ 'name': 'FLAT_31' },
-	{ 'name': 'SHARP_31' },
-	{ 'name': 'FLAT_53' },
-	{ 'name': 'SHARP_53' },
-	{ 'name': 'SORI' },
-	{ 'name': 'KORON' }
+	{ 'name': 'NONE', 'image': 'NONE.png' },
+	{ 'name': 'FLAT', 'image': 'FLAT.png' },
+	{ 'name': 'NATURAL', 'image': 'NATURAL.png' },
+	{ 'name': 'SHARP', 'image': 'SHARP.png' },
+	{ 'name': 'SHARP2', 'image': 'SHARP2.png' },
+	{ 'name': 'FLAT2', 'image': 'FLAT2.png' },
+	{ 'name': 'SHARP3', 'image': 'SHARP3.png' },
+	{ 'name': 'FLAT3', 'image': 'FLAT3.png' },
+	{ 'name': 'NATURAL_FLAT', 'image': 'NATURAL_FLAT.png' },
+	{ 'name': 'NATURAL_SHARP', 'image': 'NATURAL_SHARP.png' },
+	{ 'name': 'SHARP_SHARP', 'image': 'SHARP_SHARP.png' },
+	{ 'name': 'FLAT_ARROW_UP', 'image': 'FLAT_ARROW_UP.png' },
+	{ 'name': 'FLAT_ARROW_DOWN', 'image': 'FLAT_ARROW_DOWN.png' },
+	{ 'name': 'NATURAL_ARROW_UP', 'image': 'NATURAL_ARROW_UP.png' },
+	{ 'name': 'NATURAL_ARROW_DOWN', 'image': 'NATURAL_ARROW_DOWN.png' },
+	{ 'name': 'SHARP_ARROW_UP', 'image': 'SHARP_ARROW_UP.png' },
+	{ 'name': 'SHARP_ARROW_DOWN', 'image': 'SHARP_ARROW_DOWN.png' },
+	{ 'name': 'SHARP2_ARROW_UP', 'image': 'SHARP2_ARROW_UP.png' },
+	{ 'name': 'SHARP2_ARROW_DOWN', 'image': 'SHARP2_ARROW_DOWN.png' },
+	{ 'name': 'FLAT2_ARROW_UP', 'image': 'FLAT2_ARROW_UP.png' },
+	{ 'name': 'FLAT2_ARROW_DOWN', 'image': 'FLAT2_ARROW_DOWN.png' },
+	{ 'name': 'ARROW_DOWN', 'image': 'ARROW_DOWN.png' },
+	{ 'name': 'ARROW_UP', 'image': 'ARROW_UP.png' },
+	{ 'name': 'MIRRORED_FLAT', 'image': 'MIRRORED_FLAT.png' },
+	{ 'name': 'MIRRORED_FLAT2', 'image': 'MIRRORED_FLAT2.png' },
+	{ 'name': 'SHARP_SLASH', 'image': 'SHARP_SLASH.png' },
+	{ 'name': 'SHARP_SLASH4', 'image': 'SHARP_SLASH4.png' },
+	{ 'name': 'FLAT_SLASH2', 'image': 'FLAT_SLASH2.png' },
+	{ 'name': 'FLAT_SLASH', 'image': 'FLAT_SLASH.png' },
+	{ 'name': 'SHARP_SLASH3', 'image': 'SHARP_SLASH3.png' },
+	{ 'name': 'SHARP_SLASH2', 'image': 'SHARP_SLASH2.png' },
+	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN', 'image': 'DOUBLE_FLAT_ONE_ARROW_DOWN.png' },
+	{ 'name': 'FLAT_ONE_ARROW_DOWN', 'image': 'FLAT_ONE_ARROW_DOWN.png' },
+	{ 'name': 'NATURAL_ONE_ARROW_DOWN', 'image': 'NATURAL_ONE_ARROW_DOWN.png' },
+	{ 'name': 'SHARP_ONE_ARROW_DOWN', 'image': 'SHARP_ONE_ARROW_DOWN.png' },
+	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_DOWN', 'image': 'DOUBLE_SHARP_ONE_ARROW_DOWN.png' },
+	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_UP', 'image': 'DOUBLE_FLAT_ONE_ARROW_UP.png' },
+	{ 'name': 'FLAT_ONE_ARROW_UP', 'image': 'FLAT_ONE_ARROW_UP.png' },
+	{ 'name': 'NATURAL_ONE_ARROW_UP', 'image': 'NATURAL_ONE_ARROW_UP.png' },
+	{ 'name': 'SHARP_ONE_ARROW_UP', 'image': 'SHARP_ONE_ARROW_UP.png' },
+	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_UP', 'image': 'DOUBLE_SHARP_ONE_ARROW_UP.png' },
+	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_TWO_ARROWS_DOWN.png' },
+	{ 'name': 'FLAT_TWO_ARROWS_DOWN', 'image': 'FLAT_TWO_ARROWS_DOWN.png' },
+	{ 'name': 'NATURAL_TWO_ARROWS_DOWN', 'image': 'NATURAL_TWO_ARROWS_DOWN.png' },
+	{ 'name': 'SHARP_TWO_ARROWS_DOWN', 'image': 'SHARP_TWO_ARROWS_DOWN.png' },
+	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_TWO_ARROWS_DOWN.png' },
+	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_UP', 'image': 'DOUBLE_FLAT_TWO_ARROWS_UP.png' },
+	{ 'name': 'FLAT_TWO_ARROWS_UP', 'image': 'FLAT_TWO_ARROWS_UP.png' },
+	{ 'name': 'NATURAL_TWO_ARROWS_UP', 'image': 'NATURAL_TWO_ARROWS_UP.png' },
+	{ 'name': 'SHARP_TWO_ARROWS_UP', 'image': 'SHARP_TWO_ARROWS_UP.png' },
+	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_UP', 'image': 'DOUBLE_SHARP_TWO_ARROWS_UP.png' },
+	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_THREE_ARROWS_DOWN.png' },
+	{ 'name': 'FLAT_THREE_ARROWS_DOWN', 'image': 'FLAT_THREE_ARROWS_DOWN.png' },
+	{ 'name': 'NATURAL_THREE_ARROWS_DOWN', 'image': 'NATURAL_THREE_ARROWS_DOWN.png' },
+	{ 'name': 'SHARP_THREE_ARROWS_DOWN', 'image': 'SHARP_THREE_ARROWS_DOWN.png' },
+	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_THREE_ARROWS_DOWN.png' },
+	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_UP', 'image': 'DOUBLE_FLAT_THREE_ARROWS_UP.png' },
+	{ 'name': 'FLAT_THREE_ARROWS_UP', 'image': 'FLAT_THREE_ARROWS_UP.png' },
+	{ 'name': 'NATURAL_THREE_ARROWS_UP', 'image': 'NATURAL_THREE_ARROWS_UP.png' },
+	{ 'name': 'SHARP_THREE_ARROWS_UP', 'image': 'SHARP_THREE_ARROWS_UP.png' },
+	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_UP', 'image': 'DOUBLE_SHARP_THREE_ARROWS_UP.png' },
+	{ 'name': 'LOWER_ONE_SEPTIMAL_COMMA', 'image': 'LOWER_ONE_SEPTIMAL_COMMA.png' },
+	{ 'name': 'RAISE_ONE_SEPTIMAL_COMMA', 'image': 'RAISE_ONE_SEPTIMAL_COMMA.png' },
+	{ 'name': 'LOWER_TWO_SEPTIMAL_COMMAS', 'image': 'LOWER_TWO_SEPTIMAL_COMMAS.png' },
+	{ 'name': 'RAISE_TWO_SEPTIMAL_COMMAS', 'image': 'RAISE_TWO_SEPTIMAL_COMMAS.png' },
+	{ 'name': 'LOWER_ONE_UNDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_UNDECIMAL_QUARTERTONE.png' },
+	{ 'name': 'RAISE_ONE_UNDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_UNDECIMAL_QUARTERTONE.png' },
+	{ 'name': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE.png' },
+	{ 'name': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE.png' },
+	{ 'name': 'DOUBLE_FLAT_EQUAL_TEMPERED', 'image': 'DOUBLE_FLAT_EQUAL_TEMPERED.png' },
+	{ 'name': 'FLAT_EQUAL_TEMPERED', 'image': 'FLAT_EQUAL_TEMPERED.png' },
+	{ 'name': 'NATURAL_EQUAL_TEMPERED', 'image': 'NATURAL_EQUAL_TEMPERED.png' },
+	{ 'name': 'SHARP_EQUAL_TEMPERED', 'image': 'SHARP_EQUAL_TEMPERED.png' },
+	{ 'name': 'DOUBLE_SHARP_EQUAL_TEMPERED', 'image': 'DOUBLE_SHARP_EQUAL_TEMPERED.png' },
+	{ 'name': 'QUARTER_FLAT_EQUAL_TEMPERED', 'image': 'QUARTER_FLAT_EQUAL_TEMPERED.png' },
+	{ 'name': 'QUARTER_SHARP_EQUAL_TEMPERED', 'image': 'QUARTER_SHARP_EQUAL_TEMPERED.png' },
+	{ 'name': 'FLAT_17', 'image': 'FLAT_17.png' },
+	{ 'name': 'SHARP_17', 'image': 'SHARP_17.png' },
+	{ 'name': 'FLAT_19', 'image': 'FLAT_19.png' },
+	{ 'name': 'SHARP_19', 'image': 'SHARP_19.png' },
+	{ 'name': 'FLAT_23', 'image': 'FLAT_23.png' },
+	{ 'name': 'SHARP_23', 'image': 'SHARP_23.png' },
+	{ 'name': 'FLAT_31', 'image': 'FLAT_31.png' },
+	{ 'name': 'SHARP_31', 'image': 'SHARP_31.png' },
+	{ 'name': 'FLAT_53', 'image': 'FLAT_53.png' },
+	{ 'name': 'SHARP_53', 'image': 'SHARP_53.png' },
+	{ 'name': 'SORI', 'image': 'SORI.png' },
+	{ 'name': 'KORON', 'image': 'KORON.png' }
 ];
 
 	  // -----------------------------------------------------------------------
