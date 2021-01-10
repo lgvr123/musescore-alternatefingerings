@@ -1,5 +1,5 @@
 import QtQuick 2.9
-import QtQuick.Controls 1.4
+import QtQuick.Controls 2.2 //1.4 
 import MuseScore 3.0
 import QtQuick.Window 2.2
 import QtQuick.Dialogs 1.2
@@ -19,7 +19,9 @@ MuseScore {
 	/** category of instrument :"flute","clarinet", ... */
 	property string __category : ""
 	/** alias to the different keys schemas for a the current category. */
-	property var __instruments : categories[__category]["instruments"];
+	property var __instruments : categories[__category]["instruments"]
+	property var __modelInstruments : {{Object.keys(__instruments)}}
+
 	/** alias to the different config options in the current category. */
 	property var __config : categories[__category]["config"];
 	/** alias to the different library  in the current category. */
@@ -40,6 +42,7 @@ MuseScore {
 
 	// work variables
 	property var lastoptions;
+        property string currentInstrument: ""
         property var __asAPreset : new presetClass()
 
 	// constants
@@ -151,12 +154,7 @@ MuseScore {
 					// Read the first fingering
 					if (isValidNote) {
 						var fingerings = getFingerings(note);
-//
-enrichNote(note);
-console.log('-->Accidental: '+ note.accidentalType + ' ('+note.accidentalName+')');
-console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.fullname);
-
-
+                                                enrichNote(note); // add note name, accidental name, ...
 
 						if (fingerings && fingerings.length > 0) {
 							fingerings = fingerings.filter(function (f) {
@@ -203,15 +201,17 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		__category = category;
 
 		// On fabrique le modèle pour le ComboBox
+		/* XYZ
 		var model = Object.keys(categories[category]["instruments"]);
 		for (var i = 0; i < model.length; i++) {
 			debugV(level_TRACE, "model", "-->", model[i]);
 		}
-		lstInstru.model = model;
+		lstInstru.model = model; 
+		*/
 
-                pushFingering(fingering?fingering.text:undefined)
-                ready=true;
-                }
+		pushFingering(fingering?fingering.text:undefined)
+		ready=true;
+		}
                 
            
       function pushFingering(ff) {                
@@ -229,12 +229,17 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		} else {
 			// We have no fingering in the selection or we wre not able to identifiy it
 			sFingering = "";
-			if ((categories[__category]["default"]) && (lstInstru.model.indexOf(categories[__category]["default"]) > -1)) {
+			// if ((categories[__category]["default"]) && (lstInstru.model.indexOf(categories[__category]["default"]) > -1)) { // XYZ
+			if ((categories[__category]["default"]) && (__modelInstruments.indexOf(categories[__category]["default"]) > -1)) {
 				// we have a default and valid instrument, we take it
 				instrument_type = categories[__category]["default"];
+			/* XYZ
 			} else if (model.length > 0) {
 				// we haven't a default instrument, we take the first one
-				instrument_type = model[0];
+				instrument_type = model[0];*/
+			} else if (__modelInstruments.length > 0) {
+				// we haven't a default instrument, we take the first one
+				instrument_type = __modelInstruments[0];
 			} else {
 				// this category has no instruments. It should not occur. Anyway. We take an empty instrument.
 				instrument_type = "";
@@ -292,7 +297,8 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		}
 
 		// On sélectionne le bon instrument
-		if (instrument_type !== null) {
+		/* XYZ
+			if (instrument_type !== null) {
 			lstInstru.currentIndex = lstInstru.model.indexOf(instrument_type);
 			//console.log("selecting" + instrument_type + "(" + lstInstru.currentIndex + ")");
 		} else {
@@ -300,7 +306,13 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 			//console.log("selecting (" + lstInstru.currentIndex + ")");
 		}
 		// On force un refresh
-		lstInstru.currentIndexChanged();
+		lstInstru.currentIndexChanged();*/
+		currentInstrument=instrument_type;
+		refreshed = false; // awful trick to force the refresh
+		refreshed = true;
+
+
+
 		// On consruit la liste des notes dépendants des configurations actuellement sélectionnées.
 		// Je voudrais faire ça par binding mais le javascript de QML ne supporte pas flatMap() => je dois le faire manuellement
 		buildConfigNotes();
@@ -377,7 +389,8 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	}
 
 	function buildFingeringRepresentation() {
-		var instru = lstInstru.currentText;
+		// var instru = lstInstru.currentText; // XYZ
+		var instru = currentInstrument;
 		var sFingering = __instruments[instru].base.join('');
 		var kk = __instruments[instru].keys;
 
@@ -753,26 +766,11 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					text : "Instrument :"
 				}
 
-				ComboBox {
-					id : lstInstru
-					Layout.fillWidth : true
-					// Pas de model. Il est construit sur la liste des __instruments gérés
-					model : [""]// init
-					currentIndex : 0 //init
-					clip : true
-					focus : true
-					width : parent.width
-					height : 20
-					//color :"lightgrey"
-					anchors {
-						top : parent.top
-					}
-					onCurrentIndexChanged : {
-						debug(level_DEBUG, "Now current index is :" + model[currentIndex])
-						//debug(level_DEBUG, __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"])
-					}
-
-				}
+                                Loader {
+                                    id: loadInstru
+				    Layout.fillWidth : true
+                                    sourceComponent: (__modelInstruments.length<=1)?txtInstruCompo:lstInstruCompo
+                                }
 
 				Loader {
 					id : configOpenBtn
@@ -868,14 +866,17 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					// Repeater pour les notes de base
 					Repeater {
 						id : repNotes
-						model : (__instruments[lstInstru.model[lstInstru.currentIndex]]) ? __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"] : []
+						//model : (__instruments[lstInstru.model[lstInstru.currentIndex]]) ? __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"] : [] // XYZ
+						// model : (__instruments[currentInstrument]) ? __instruments[currentInstrument]["keys"] : []
+						model : ready ? getNormalNotes(refreshed) : []; //awful hack. Just return the raw __config array
 						//delegate : holeComponent - via Loader, pour passer la note à gérer
 						Loader {
 							id : loaderNotes
 							Binding {
 								target : loaderNotes.item
 								property : "note"
-								value : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index]
+								//value : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index] // XYZ
+								value : __instruments[currentInstrument]["keys"][model.index]
 							}
 							sourceComponent : holeComponent
 						}
@@ -1072,7 +1073,8 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
             Layout.column: 1	
             Layout.columnSpan: 1
             Layout.rowSpan: 4
-
+            
+            
             Layout.fillHeight: true 
 			Layout.preferredWidth : 100
 
@@ -1081,12 +1083,17 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 			model: __library
 			delegate: presetComponent
 			clip: true
+                        focus: true
 
 			// scrollbar
 			flickableDirection: Flickable.VerticalFlick
             boundsBehavior: Flickable.StopAtBounds
-            //ScrollBar.vertical: ScrollBar {}			// Scrollbar dispo à partir de QtQuick.Controls 2.15
+			
                         
+             highlight: Rectangle {
+                color: "lightsteelblue"
+                width: parent.width
+            }                   
 		} // panPresets
 		
 		CheckBox {
@@ -1095,9 +1102,13 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
             Layout.columnSpan: 1
             Layout.rowSpan: 1
 
-			id: chkFilter
+			id: chkFilterPreset
 			
 			text: "limit to current key"
+
+                        onClicked: {
+                              lstPresets.model=getPresetsLibrary(true);
+                        }
 			
 		}
 	}
@@ -1258,12 +1269,14 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	Component {
 		id: presetComponent
 		
-		Rectangle {
-			color : "white"
-			property var __preset : __library[model.index]
+		Item {
 			width : parent.width
 			height : 120 //prsRep.implictHeight+prsLab.implictHeight+prsNote.implictHeight
 			clip : true
+
+                        readonly property ListView __lv: ListView.view
+
+			property var __preset : __lv.model[model.index] //__library[model.index]
 
 			Text {
 				id : prsRep
@@ -1331,13 +1344,57 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 				}
 
 				onClicked : {
-					console.log("Single Click");
+                                        __lv.currentIndex = index;
+					console.log("Single Click on "+lstPresets.currentIndex);
+                              
 				}
 			}
 		}
 
 		}
       
+Component {
+      id: lstInstruCompo
+				ComboBox {
+					id : lstInstru
+					// Pas de model. Il est construit sur la liste des __instruments gérés
+					//model : [""]// init // XYZ
+					model : __modelInstruments //[""]// init
+					// currentIndex : 0 //init // XYZ
+					currentIndex : {{__modelInstruments.indexOf(currentInstrument)}} //init
+					clip : true
+					focus : true
+					width : parent.width
+					height : 20
+					//color :"lightgrey"
+					anchors {
+						top : parent.top
+                                                fill: parent
+					}
+					onCurrentIndexChanged : {
+						debug(level_DEBUG, "Now current index is :" + model[currentIndex])
+                                                currentInstrument= model[currentIndex];
+					}
+
+				}
+
+            }
+
+Component {
+      id: txtInstruCompo
+				Text {
+					id : txtInstru
+                                        text: __modelInstruments[0]
+					anchors {
+						top : parent.top
+                                                fill: parent
+					}
+					verticalAlignment : Text.AlignVCenter
+					horizontalAlignment : Text.AlignLeft
+
+				}
+
+            }
 
 	MessageDialog {
 		id : unkownInstrumentDialog
@@ -1381,7 +1438,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	Window {
 		id : addPresetWindow
 		title : "Manage Library..."
-		width : 300
+		width : 400
 		height : 300
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
@@ -1407,9 +1464,9 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					name : "add";
 					PropertyChanges { target : btnEpAdd; text : "Add" }
 					PropertyChanges { target : labEpCat; text : "Add a new " + __asAPreset.category + " preset : " }
-					PropertyChanges { target : labEpLabVal; enabled : false }
-					PropertyChanges { target : labEpNoteVal; enabled : false }
-					PropertyChanges { target : lstEpAcc; enabled : false }
+					PropertyChanges { target : labEpLabVal; enabled : true }
+					PropertyChanges { target : labEpNoteVal; enabled : true }
+					PropertyChanges { target : lstEpAcc; enabled : true }
 					
 				}
 			]
@@ -1475,7 +1532,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					}
 
 
-					Text {
+					Label {
 						Layout.row: 3
 						Layout.column: 1
 						Layout.columnSpan: 1
@@ -1507,7 +1564,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 					}
 
 
-					Text {
+					Label {
 						Layout.row: 4
 						Layout.column: 1
 						Layout.columnSpan: 1
@@ -1542,6 +1599,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 							}
 							maximumLength : 2
 							placeholderText : "e.g. \"C4\""
+                                                        width: 30
 
 						}
 
@@ -1556,7 +1614,22 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 							width : parent.width
 							height : 30
 
-							style : ComboBoxStyle {
+delegate : ItemDelegate { // requiert QuickControls 2.2
+        text: ""
+        Image {
+            height: 25
+            width: 25
+            anchors {
+                  top: parent.top
+                  bottom: parent.bottom
+                  }
+            source: "./alternatefingering/"+accidentals[index].image 
+            fillMode: Image.Pad
+        }
+
+    }
+
+							/*style : ComboBoxStyle {
 								id : comStyle
 
 								label : 
@@ -1581,9 +1654,9 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 									function changeImage() {
 										img.source = "./alternatefingering/"+accidentals[lstEpAcc.currentIndex].image;
 									}
-								}*/
+								}* /
 
-							}
+							}*/
 						}
 
 					}
@@ -1654,6 +1727,13 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 	}
 
 	/**
+	 * @return the raw notes array of the current instrument.
+	 */
+	function getNormalNotes(refresh) {
+		return (__instruments[currentInstrument]) ? __instruments[currentInstrument]["keys"] : [];
+	}
+
+	/**
 	 * @return the raw __confignotes array *without* any treatment. This way, in the repeater, we can
 	 * acces the right mode by just writing __confignotes[model.index].
 	 */
@@ -1681,7 +1761,25 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		debug(level_TRACE, "buildConfigNotes: " + notes.length);
 		__confignotes = notes;
 	}
-	
+
+        function getPresetsLibrary(refresh) {
+            var note=__notes[0];
+            if (!chkFilterPreset.checked) {
+                  return __library;
+            } else {
+                  var lib=[];
+                  for(var i=0;i<__library.length;i++) {
+                        var preset=__library[i];
+                        console.log(preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
+                        if ((note.extname.name===preset.note && note.accidentalName===preset.accidental)
+                        || (""===preset.note && "NONE"===preset.accidental)) {
+                              lib.push(preset);
+                        } 
+                  }
+                  return lib;
+            }
+        
+	}
 	function getAccidentalModelIndex(accidentalName) {
 		for(var i=0;i<lstEpAcc.model.length;i++) {
 			if (accidentalName===lstEpAcc.model[i]) {
@@ -1719,7 +1817,8 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 		}
 
 		lastoptions['categories'][__category] = {
-			'default' : lstInstru.currentText
+			//'default' : lstInstru.currentText // XYZ
+			'default' : currentInstrument
 		};
 
 		var cfgs = [];
@@ -1999,6 +2098,7 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 			"config" : [
 				// *User instructions*: Modify the last false/true parameter in the
 				// instrumentConfig class to control the default activation of this configuration
+				new instrumentConfigClass("B tail", '\uE002', fbflat, false),
 				new instrumentConfigClass("C# thrill", '\uE003', fcsharptrill, false),
 				new instrumentConfigClass("OpenHole", '\uE004', [], false) // no associated notes with the OpenHole config
 				//,new instrumentConfigClass("Kingma System", '\uE005', [fKCUpLever,fKAuxCSharpTrill,fKBbUpLever,fKBUpLever,fKGUpLever,fKFSharpBar,fKDUpLever],false),  // errors at the glypths level
@@ -2008,10 +2108,10 @@ console.log('-->Note: '+ note.pitch + "/" + note.tpc + " ==> "+note.extname.full
 				'wind.flutes'
 			],
 			"instruments" : {
-				"flute with B tail" : {
+/*				"flute with B tail" : {
 					"base" : ['\uE000', '\uE001', '\uE002'], // B
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat, fgizmo]
-				},
+				},*/
 				"Flute" : {
 					"base" : ['\uE000', '\uE001'], // C
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
