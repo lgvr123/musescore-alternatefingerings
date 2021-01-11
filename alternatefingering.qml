@@ -78,6 +78,7 @@ MuseScore {
 
                 // lecture des options
                 readOptions();
+                readLibrary();
                 
 		// preliminary check of the usedstates
                 displayUsedStates();
@@ -678,6 +679,42 @@ MuseScore {
 
 	}
 
+	function enrichNote(note) {
+		// accidental
+		var id = note.accidentalType;
+		note.accidentalName = "UNKOWN";
+		for (var i = 0; i < accidentals.length; i++) {
+			var acc = accidentals[i];
+			if (id == eval("Accidental." + acc.name)) {
+				note.accidentalName = acc.name;
+				break;
+			}
+		}
+		
+		// note name and octave
+		var tpc={'tpc' : 0, 'name' : '?', 'raw' : '?'};
+		var pitch=note.pitch;
+		var pitchnote=pitchnotes[pitch % 12];
+		var noteOctave=Math.floor(pitch/12)-1;
+
+		for (var i = 0; i < tpcs.length; i++) {
+			var t = tpcs[i];
+			if (note.tpc==t.tpc) {
+				tpc=t;
+				break;
+			}
+		}			
+
+		if (pitchnote == "B" && tpc.raw == "C") {
+			noteOctave++;
+		} else if (pitchnote == "C" && tpc.raw == "B") {
+			noteOctave--;
+		}
+		
+		note.extname={"fullname": tpc.name+noteOctave, "name": tpc.raw+noteOctave, "raw": tpc.raw, "octave": noteOctave};
+		return;
+
+	}
 	// -----------------------------------------------------------------------
 	// --- String extractors -------------------------------------------------
 	// -----------------------------------------------------------------------
@@ -998,13 +1035,15 @@ MuseScore {
 				Layout.alignment : Qt.AlignRight
 
 				Button {
-					width : height
+					implicitHeight: btnOk.height
+					implicitWidth: btnOk.height
 
 					indicator :
 					Image {
 						source : "alternatefingering/save.svg"
 						width : 23
 						fillMode : Image.PreserveAspectFit // ensure it fits
+                                                mipmap: true // smoothing 
 						anchors.centerIn : parent
 					}
 					onClicked : {
@@ -1013,11 +1052,13 @@ MuseScore {
 				}
 
 				Button {
-					width : height
+					implicitHeight: btnOk.height
+					implicitWidth: btnOk.height
 
 					indicator :
 					Image {
 						source : "alternatefingering/add.svg"
+                                                mipmap: true // smoothing 
 						width : 23
 						fillMode : Image.PreserveAspectFit // ensure it fits
 						anchors.centerIn : parent
@@ -1032,11 +1073,13 @@ MuseScore {
 				}
 
 				Button {
-					width : height
+					implicitHeight: btnOk.height
+					implicitWidth: btnOk.height
 
 					indicator :
 					Image {
 						source : "alternatefingering/delete.svg"
+                                                mipmap: true // smoothing 
 						width : 23
 						fillMode : Image.PreserveAspectFit // ensure it fits
 						anchors.centerIn : parent
@@ -1050,7 +1093,8 @@ MuseScore {
 				}
 
 				Button {
-					text : "Ok"
+					id: btnOk
+                                        text : "Ok" 
 					onClicked : {
 						writeFingering()
 					}
@@ -1065,6 +1109,21 @@ MuseScore {
 			}
 		} // panButtons
 
+		/*DialogButtonBox {
+			Layout.row : 5
+			Layout.column : 1
+			Layout.columnSpan : 2
+			Layout.rowSpan : 1
+			Layout.alignment: Qt.AlignRight
+		
+			standardButtons: DialogButtonBox.Ok | DialogButtonBox.Cancel
+
+			onAccepted: writeFingering()
+			
+			onRejected: Qt.quit()
+
+		}*/
+			
 
 		Item {
 			Layout.row : 7
@@ -1110,7 +1169,7 @@ MuseScore {
 
 			highlight : Rectangle {
 				color : "lightsteelblue"
-				width : parent.width
+				width : lstPresets.width
 			}
 		} // panPresets
 
@@ -1122,8 +1181,20 @@ MuseScore {
 
 			id : chkFilterPreset
 
-			text : "limit to current key"
-
+			indicator : Rectangle {
+				implicitHeight : btnOk.height
+				implicitWidth : btnOk.height
+				color : chkFilterPreset.pressed ? "#C0C0C0" : chkFilterPreset.checked ? "#D0D0D0" : "#E0E0E0"
+				anchors.centerIn : parent
+				Image {
+					id : imgFilter
+					mipmap : true // smoothing
+					width : 23
+					source : "alternatefingering/filter.svg"
+					fillMode : Image.PreserveAspectFit // ensure it fits
+					anchors.centerIn : parent
+				}
+			}
 			onClicked : {
 				presetsRefreshed = false; // awfull hack
 				presetsRefreshed = true;
@@ -1460,8 +1531,8 @@ MuseScore {
 	Window {
 		id : addPresetWindow
 		title : "Manage Library..."
-		width : 400
-		height : 300
+		width : 250
+		height : 350
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
 		
@@ -1477,8 +1548,8 @@ MuseScore {
 					name : "remove";
 					PropertyChanges { target : btnEpAdd; text : "Remove" }
 					PropertyChanges { target : labEpCat; text : "Delete the following " + __asAPreset.category + " preset ?" }
-					PropertyChanges { target : labEpLabVal; enabled : false }
-					PropertyChanges { target : labEpNoteVal; enabled : false }
+					PropertyChanges { target : labEpLabVal; readOnly : true }
+					PropertyChanges { target : labEpNoteVal; readOnly : true }
 					PropertyChanges { target : lstEpAcc; enabled : false }
 					
 				},
@@ -1486,8 +1557,8 @@ MuseScore {
 					name : "add";
 					PropertyChanges { target : btnEpAdd; text : "Add" }
 					PropertyChanges { target : labEpCat; text : "Add a new " + __asAPreset.category + " preset : " }
-					PropertyChanges { target : labEpLabVal; enabled : true }
-					PropertyChanges { target : labEpNoteVal; enabled : true }
+					PropertyChanges { target : labEpLabVal; readOnly : false }
+					PropertyChanges { target : labEpNoteVal; readOnly : false }
 					PropertyChanges { target : lstEpAcc; enabled : true }
 					
 				}
@@ -1545,161 +1616,155 @@ MuseScore {
 						horizontalAlignment : Text.AlignHCenter
 
 						onLineLaidOut: { // hack for correct display of Fiati font
-								line.y = line.y * 0.8
-								line.height = line.height * 0.8
-								line.x = line.x - 7
-								line.width = line.width - 7
-							  }
+							line.y = line.y * 0.8
+							line.height = line.height * 0.8
+							line.x = line.x - 7
+							line.width = line.width - 7
 						}
 					}
+				}
 
 
-					Label {
-						Layout.row: 3
-						Layout.column: 1
-						Layout.columnSpan: 1
-						Layout.rowSpan: 1
+				Label {
+					Layout.row: 3
+					Layout.column: 1
+					Layout.columnSpan: 1
+					Layout.rowSpan: 1
 
-						id : labEpLab
+					id : labEpLab
 
-						text : "Label:"
+					text : "Label:"
 
-						Layout.preferredHeight : 20
+					Layout.preferredHeight : 20
 
-					}
+				}
+
+				TextField {
+					Layout.row: 3
+					Layout.column: 2
+					Layout.columnSpan: 1
+					Layout.rowSpan: 1
+
+					id : labEpLabVal
+
+					text : __asAPreset.label
+
+					Layout.preferredHeight : 20
+										Layout.fillWidth: true  
+										placeholderText : "label text (optional)" 
+										maximumLength : 255 
+
+				}
+
+
+				Label {
+					Layout.row: 4
+					Layout.column: 1
+					Layout.columnSpan: 1
+					Layout.rowSpan: 1
+
+					id : labEpKey
+
+					text : "For key:"
+
+					Layout.preferredHeight : 20
+
+
+				}
+			
+				RowLayout {
+					Layout.row : 4
+					Layout.column : 2
+					Layout.columnSpan : 1
+					Layout.rowSpan : 1
+
+					Layout.preferredHeight : 20
+					Layout.fillWidth : false
 
 					TextField {
-						Layout.row: 3
-						Layout.column: 2
-						Layout.columnSpan: 1
-						Layout.rowSpan: 1
 
-						id : labEpLabVal
+						id : labEpNoteVal
 
-						text : __asAPreset.label
+						text : __asAPreset.note
 
-						Layout.preferredHeight : 20
-											Layout.fillWidth: true  
-											placeholderText : "label text (optional)" 
-											maximumLength : 20 
+						//inputMask: "A9"
+						validator : RegExpValidator {regExp : /^[A-G][0-9]$/}
+						maximumLength : 2
+						placeholderText : "e.g. \"C4\""
+						Layout.preferredHeight: 30
+						Layout.preferredWidth: 40
 
 					}
 
+					ComboBox {
+						id : lstEpAcc
+						//Layout.fillWidth : true
+						model : accidentals
+						currentIndex : visible?getAccidentalModelIndex(__asAPreset.accidental):0 
 
-					Label {
-						Layout.row: 4
-						Layout.column: 1
-						Layout.columnSpan: 1
-						Layout.rowSpan: 1
+						clip : true
+						focus : true
+						Layout.preferredHeight: 30
+						Layout.preferredWidth: 80
 
-						id : labEpKey
-
-						text : "For key:"
-
-						Layout.preferredHeight : 20
-
-					}
-				
-					RowLayout {
-						Layout.row : 4
-						Layout.column : 2
-						Layout.columnSpan : 1
-						Layout.rowSpan : 1
-
-						Layout.preferredHeight : 20
-						Layout.fillWidth : true
-
-						TextField {
-
-							id : labEpNoteVal
-
-							text : __asAPreset.note
-
-							//inputMask: "A9"
-							validator : RegExpValidator {regExp : /^[A-G][0-9]$/}
-							maximumLength : 2
-							placeholderText : "e.g. \"C4\""
-							width: 30
-
-						}
-
-						ComboBox {
-							id : lstEpAcc
-							//Layout.fillWidth : true
-							model : accidentals
-							currentIndex : visible?getAccidentalModelIndex(__asAPreset.accidental):0 
-
-							clip : true
-							focus : true
-							width : 30
-							height : 30
-
-							delegate : ItemDelegate { // requiert QuickControls 2.2
-								contentItem : Image {
-									height : 25
-									width : 25
-									source : "./alternatefingering/" + accidentals[index].image
-									fillMode : Image.Pad
-									verticalAlignment : Text.AlignVCenter
-								}
-								highlighted : lstEpAcc.highlightedIndex === index
-
-							}
-
+						delegate : ItemDelegate { // requiert QuickControls 2.2
 							contentItem : Image {
-								id : img
 								height : 25
 								width : 25
+								source : "./alternatefingering/" + accidentals[index].image
 								fillMode : Image.Pad
-								source : "./alternatefingering/" + accidentals[lstEpAcc.currentIndex].image
+								verticalAlignment : Text.AlignVCenter
 							}
+							highlighted : lstEpAcc.highlightedIndex === index
+
 						}
 
+						contentItem : Image {
+							id : img
+							height : 25
+							width : 25
+							fillMode : Image.Pad
+							source : "./alternatefingering/" + accidentals[lstEpAcc.currentIndex].image
+						}
 					}
-					RowLayout {
-						Layout.row : 5
-						Layout.column : 1
-						Layout.columnSpan : 2
-						Layout.rowSpan : 1
 
-						Layout.preferredHeight : btnEpAdd.implicitHeight
-						Layout.fillWidth : true
-						
-						Layout.topMargin: 15
-						Layout.alignment: Qt.AlignRight
-						
-						Button {
-							id: btnEpAdd
-							text: "--"
-							onClicked: {
-								if ("remove"===addPresetWindow.state) {
-									// remove
-									var preset=lstPresets.model.splice(lstPresets.currentIndex,1); // test pour voir si ça passe mieux par le modèle
-									//__library.push(preset);
-									console.log(JSON.stringify(preset));
-									console.log(__library.length);
-									addPresetWindow.hide();
-								} else {
-									// add
-									var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation);
-									__library.push(preset);
-									console.log(JSON.stringify(preset));
-									addPresetWindow.hide();
-								}
-                              presetsRefreshed=false; // awfull hack
-                              presetsRefreshed=true;
-                              saveLibrary();
-							}
-						}
-						
-						Button {
-							id: btnEpEsc
-							text: "Cancel"
-							onClicked: {
-								addPresetWindow.hide();
-							}
-						}
+				}
+				DialogButtonBox {
+					Layout.row : 5
+					Layout.column : 1
+					Layout.columnSpan : 2
+					Layout.rowSpan : 1
+					Layout.alignment: Qt.AlignRight
+				
+					standardButtons: DialogButtonBox.Cancel
+					Button {
+						id: btnEpAdd
+						text: "--"
+						DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
 					}
+
+					onAccepted: {
+						if ("remove"===addPresetWindow.state) {
+							// remove
+							var preset=lstPresets.model.splice(lstPresets.currentIndex,1); // test pour voir si ça passe mieux par le modèle
+							//__library.push(preset);
+							console.log(JSON.stringify(preset));
+							console.log(__library.length);
+							addPresetWindow.hide();
+						} else {
+							// add
+							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation);
+							__library.push(preset);
+							console.log(JSON.stringify(preset));
+							addPresetWindow.hide();
+						}
+					  presetsRefreshed=false; // awfull hack
+					  presetsRefreshed=true;
+					  saveLibrary();
+					}
+					onRejected: addPresetWindow.hide()
+
+				}
 			}
 		}
 	}
@@ -1822,6 +1887,7 @@ MuseScore {
 		}
 
 		lastoptions['states'] = usedstates;
+                lastoptions['filter'] = chkFilterPreset.checked;
 
 		if (typeof lastoptions['categories'] === 'undefined') {
 			lastoptions['categories'] = {};
@@ -1845,7 +1911,7 @@ MuseScore {
 		var t = JSON.stringify(lastoptions) + "\n";
 		console.log(t);
 
-		if (libraryFile.write(t)){
+		if (settingsFile.write(t)){
 			console.log("File written to " + settingsFile.source);
 		
 		}
@@ -1885,7 +1951,7 @@ MuseScore {
 		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"label":"Un bémol", "note":"A", "accidental": "FLAT", "representation": "\uE000\uE001\uE007"}],[{"label":"Un nawak", "note":"B", "accidental": "XYZE", "representation": "\uE000\uE001\uE008"}]}}}';
 		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"category":"flute","label":"From Save","note":"B","accidental":"FLAT","representation":"?????????"}]}}}';
 	
-		try {
+		/*try {
                         console.log("Current "+currentPath());
                         } catch (e) {
                         console.log("Current "+e.message);
@@ -1910,7 +1976,7 @@ MuseScore {
 		console.log("Settings "+settingsFile.source);
                         } catch (e) {
                         console.log("Settings "+e.message);
-                        }
+                        }*/
 	
 		if (!settingsFile.exists()) return;
 		
@@ -1950,117 +2016,35 @@ MuseScore {
 					}
 				}
 			}
-			
-			// library
-			var prsts = desc['library'];
-			for (var k = 0; k < prsts.length; k++) {
-				var prst = prsts[k];
-				console.log("readOptions: " + prst.label + " --> " + prst.note + "/" + prst.accidental);
-
-				if (prst.category == cat) {
-					var preset = new presetClass(prst.category, prst.label, prst.note, prst.accidental, prst.representation);
-					var instrument_type = extractInstrument(cat, preset.representation);
-					if (instrument_type) {
-						// We got an representation matching our category, we keep it
-						console.log("readOptions:  matching preset: " + preset);
-						categories[cat]["library"].push(preset);
-					} else {
-						console.log("readOptions: Non matching preset: " + preset);
-					}
-				}
-			}
 		}
+                
+                var filter=lastoptions['filter'];
+                chkFilterPreset.checked=(filter)?filter:false;
 	}
 	
 	function readLibrary() {
-		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"label":"Un bémol", "note":"A", "accidental": "FLAT", "representation": "\uE000\uE001\uE007"}],[{"label":"Un nawak", "note":"B", "accidental": "XYZE", "representation": "\uE000\uE001\uE008"}]}}}';
-		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"category":"flute","label":"From Save","note":"B","accidental":"FLAT","representation":"?????????"}]}}}';
 	
-		try {
-                        console.log("Current "+currentPath());
-                        } catch (e) {
-                        console.log("Current "+e.message);
-                        }
-		try {
-		console.log("Root "+rootPath());
-                        } catch (e) {
-                        console.log("Root "+e.message);
-                        }
-		try {
-		console.log("Home "+homePath());
-                        } catch (e) {
-                        console.log("Home "+e.message);
-                        }
-		try {
-		console.log("Temp "+tempPath());
-                        } catch (e) {
-                        console.log("Temp "+e.message);
-                        }
-
-                try {
-		console.log("Settings "+settingsFile.source);
-                        } catch (e) {
-                        console.log("Settings "+e.message);
-                        }
-	
-		if (!settingsFile.exists()) return;
+		if (!libraryFile.exists()) return;
 		
-		var json = settingsFile.read();
+		var json = libraryFile.read();
 
+                var allpresets={};      
 		
 		try {
-			lastoptions = JSON.parse(json);
+			allpresets = JSON.parse(json);
 		} catch (e) {
-				console.error('while reading the option file', e.message);		
+				console.error('while reading the library file', e.message);		
 		}
 		
-		
-		usedstates = lastoptions['states'];
-		displayUsedStates();
+               
+                
+                var cats=Object.keys(categories);
+                
+                for(var c=0;c<cats.length;c++) {
+                  var cat=cats[c];
+                  categories[cat]['library']=allpresets[cat];
+                  }
 
-		var cats = Object.keys(lastoptions['categories']);
-		for (var j = 0; j < cats.length; j++) {
-			var cat = cats[j];
-			var desc = lastoptions['categories'][cat];
-			
-			// default instrument
-			categories[cat].default = desc.default;
-			console.log("readOptions: " + cat + " -- " + desc.default);
-
-			// config options
-			var cfgs = desc['config'];
-			for (var k = 0; k < cfgs.length; k++) {
-				var cfg = cfgs[k];
-				console.log("readOptions: " + cfg.name + " --> " + cfg.activated);
-
-				for (var l = 0; l < categories[cat]['config'].length; l++) {
-					var c = categories[cat]['config'][l];
-					if (c.name == cfg.name) {
-						c.activated = cfg.activated;
-						console.log("readOptions: setting " + c.name + " --> " + c.activated);
-					}
-				}
-			}
-			
-			// library
-			var prsts = desc['library'];
-			for (var k = 0; k < prsts.length; k++) {
-				var prst = prsts[k];
-				console.log("readOptions: " + prst.label + " --> " + prst.note + "/" + prst.accidental);
-
-				if (prst.category == cat) {
-					var preset = new presetClass(prst.category, prst.label, prst.note, prst.accidental, prst.representation);
-					var instrument_type = extractInstrument(cat, preset.representation);
-					if (instrument_type) {
-						// We got an representation matching our category, we keep it
-						console.log("readOptions:  matching preset: " + preset);
-						categories[cat]["library"].push(preset);
-					} else {
-						console.log("readOptions: Non matching preset: " + preset);
-					}
-				}
-			}
-		}
 	}
 	
 	
@@ -2405,281 +2389,229 @@ MuseScore {
 	  // -----------------------------------------------------------------------
 	  // --- Accidentals -------------------------------------------------------
 	  // -----------------------------------------------------------------------
+			
+	readonly property var pitchnotes : [ 'C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
 
-function enrichNote(note) {
-	// accidental
-	var id = note.accidentalType;
-	note.accidentalName = "NONE";
-	if (id != 0) {
-		for (var i = 0; i < accidentals.length; i++) {
-			var acc = accidentals[i];
-			if (id == eval("Accidental." + acc.name)) {
-				note.accidentalName = acc.name;
-				break;
-			}
+	readonly property var tpcs : [{
+			'tpc' : -1,
+			'name' : 'F??',
+			'raw' : 'F'
+		}, {
+			'tpc' : 0,
+			'name' : 'C??',
+			'raw' : 'C'
+		}, {
+			'tpc' : 1,
+			'name' : 'G??',
+			'raw' : 'G'
+		}, {
+			'tpc' : 2,
+			'name' : 'D??',
+			'raw' : 'D'
+		}, {
+			'tpc' : 3,
+			'name' : 'A??',
+			'raw' : 'A'
+		}, {
+			'tpc' : 4,
+			'name' : 'E??',
+			'raw' : 'E'
+		}, {
+			'tpc' : 5,
+			'name' : 'B??',
+			'raw' : 'B'
+		}, {
+			'tpc' : 6,
+			'name' : 'F?',
+			'raw' : 'F'
+		}, {
+			'tpc' : 7,
+			'name' : 'C?',
+			'raw' : 'C'
+		}, {
+			'tpc' : 8,
+			'name' : 'G?',
+			'raw' : 'G'
+		}, {
+			'tpc' : 9,
+			'name' : 'D?',
+			'raw' : 'D'
+		}, {
+			'tpc' : 10,
+			'name' : 'A?',
+			'raw' : 'A'
+		}, {
+			'tpc' : 11,
+			'name' : 'E?',
+			'raw' : 'E'
+		}, {
+			'tpc' : 12,
+			'name' : 'B?',
+			'raw' : 'B'
+		}, {
+			'tpc' : 13,
+			'name' : 'F',
+			'raw' : 'F'
+		}, {
+			'tpc' : 14,
+			'name' : 'C',
+			'raw' : 'C'
+		}, {
+			'tpc' : 15,
+			'name' : 'G',
+			'raw' : 'G'
+		}, {
+			'tpc' : 16,
+			'name' : 'D',
+			'raw' : 'D'
+		}, {
+			'tpc' : 17,
+			'name' : 'A',
+			'raw' : 'A'
+		}, {
+			'tpc' : 18,
+			'name' : 'E',
+			'raw' : 'E'
+		}, {
+			'tpc' : 19,
+			'name' : 'B',
+			'raw' : 'B'
+		}, {
+			'tpc' : 20,
+			'name' : 'F?',
+			'raw' : 'F'
+		}, {
+			'tpc' : 21,
+			'name' : 'C?',
+			'raw' : 'C'
+		}, {
+			'tpc' : 22,
+			'name' : 'G?',
+			'raw' : 'G'
+		}, {
+			'tpc' : 23,
+			'name' : 'D?',
+			'raw' : 'D'
+		}, {
+			'tpc' : 24,
+			'name' : 'A?',
+			'raw' : 'A'
+		}, {
+			'tpc' : 25,
+			'name' : 'E?',
+			'raw' : 'E'
+		}, {
+			'tpc' : 26,
+			'name' : 'B?',
+			'raw' : 'B'
+		}, {
+			'tpc' : 27,
+			'name' : 'F??',
+			'raw' : 'F'
+		}, {
+			'tpc' : 28,
+			'name' : 'C??',
+			'raw' : 'C'
+		}, {
+			'tpc' : 29,
+			'name' : 'G??',
+			'raw' : 'G'
+		}, {
+			'tpc' : 30,
+			'name' : 'D??',
+			'raw' : 'D'
+		}, {
+			'tpc' : 31,
+			'name' : 'A??',
+			'raw' : 'A'
+		}, {
+			'tpc' : 32,
+			'name' : 'E??',
+			'raw' : 'E'
+		}, {
+			'tpc' : 33,
+			'name' : 'B??',
+			'raw' : 'B'
 		}
-	}
-	
-	// note name and octave
-	var tpc={'tpc' : 0, 'name' : '?', 'raw' : '?'};
-	var pitch=note.pitch;
-	var pitchnote=pitchnotes[pitch % 12];
-	var noteOctave=Math.floor(pitch/12)-1;
+	]
 
-	for (var i = 0; i < tpcs.length; i++) {
-		var t = tpcs[i];
-		if (note.tpc==t.tpc) {
-			tpc=t;
-			break;
-		}
-	}			
-
-	if (pitchnote == "B" && tpc.raw == "C") {
-		noteOctave++;
-	} else if (pitchnote == "C" && tpc.raw == "B") {
-		noteOctave--;
-	}
-	
-	note.extname={"fullname": tpc.name+noteOctave, "name": tpc.raw+noteOctave, "raw": tpc.raw, "octave": noteOctave};
-	return;
-
-}
-		
-readonly property var pitchnotes : [ 'C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
-
-readonly property var tpcs : [{
-		'tpc' : -1,
-		'name' : 'F??',
-		'raw' : 'F'
-	}, {
-		'tpc' : 0,
-		'name' : 'C??',
-		'raw' : 'C'
-	}, {
-		'tpc' : 1,
-		'name' : 'G??',
-		'raw' : 'G'
-	}, {
-		'tpc' : 2,
-		'name' : 'D??',
-		'raw' : 'D'
-	}, {
-		'tpc' : 3,
-		'name' : 'A??',
-		'raw' : 'A'
-	}, {
-		'tpc' : 4,
-		'name' : 'E??',
-		'raw' : 'E'
-	}, {
-		'tpc' : 5,
-		'name' : 'B??',
-		'raw' : 'B'
-	}, {
-		'tpc' : 6,
-		'name' : 'F?',
-		'raw' : 'F'
-	}, {
-		'tpc' : 7,
-		'name' : 'C?',
-		'raw' : 'C'
-	}, {
-		'tpc' : 8,
-		'name' : 'G?',
-		'raw' : 'G'
-	}, {
-		'tpc' : 9,
-		'name' : 'D?',
-		'raw' : 'D'
-	}, {
-		'tpc' : 10,
-		'name' : 'A?',
-		'raw' : 'A'
-	}, {
-		'tpc' : 11,
-		'name' : 'E?',
-		'raw' : 'E'
-	}, {
-		'tpc' : 12,
-		'name' : 'B?',
-		'raw' : 'B'
-	}, {
-		'tpc' : 13,
-		'name' : 'F',
-		'raw' : 'F'
-	}, {
-		'tpc' : 14,
-		'name' : 'C',
-		'raw' : 'C'
-	}, {
-		'tpc' : 15,
-		'name' : 'G',
-		'raw' : 'G'
-	}, {
-		'tpc' : 16,
-		'name' : 'D',
-		'raw' : 'D'
-	}, {
-		'tpc' : 17,
-		'name' : 'A',
-		'raw' : 'A'
-	}, {
-		'tpc' : 18,
-		'name' : 'E',
-		'raw' : 'E'
-	}, {
-		'tpc' : 19,
-		'name' : 'B',
-		'raw' : 'B'
-	}, {
-		'tpc' : 20,
-		'name' : 'F?',
-		'raw' : 'F'
-	}, {
-		'tpc' : 21,
-		'name' : 'C?',
-		'raw' : 'C'
-	}, {
-		'tpc' : 22,
-		'name' : 'G?',
-		'raw' : 'G'
-	}, {
-		'tpc' : 23,
-		'name' : 'D?',
-		'raw' : 'D'
-	}, {
-		'tpc' : 24,
-		'name' : 'A?',
-		'raw' : 'A'
-	}, {
-		'tpc' : 25,
-		'name' : 'E?',
-		'raw' : 'E'
-	}, {
-		'tpc' : 26,
-		'name' : 'B?',
-		'raw' : 'B'
-	}, {
-		'tpc' : 27,
-		'name' : 'F??',
-		'raw' : 'F'
-	}, {
-		'tpc' : 28,
-		'name' : 'C??',
-		'raw' : 'C'
-	}, {
-		'tpc' : 29,
-		'name' : 'G??',
-		'raw' : 'G'
-	}, {
-		'tpc' : 30,
-		'name' : 'D??',
-		'raw' : 'D'
-	}, {
-		'tpc' : 31,
-		'name' : 'A??',
-		'raw' : 'A'
-	}, {
-		'tpc' : 32,
-		'name' : 'E??',
-		'raw' : 'E'
-	}, {
-		'tpc' : 33,
-		'name' : 'B??',
-		'raw' : 'B'
-	}
-]
-
-readonly property var accidentals : [
-	{ 'name': 'NONE', 'image': 'NONE.png' },
-	{ 'name': 'FLAT', 'image': 'FLAT.png' },
-	{ 'name': 'NATURAL', 'image': 'NATURAL.png' },
-	{ 'name': 'SHARP', 'image': 'SHARP.png' },
-	{ 'name': 'SHARP2', 'image': 'SHARP2.png' },
-	{ 'name': 'FLAT2', 'image': 'FLAT2.png' },
-	{ 'name': 'SHARP3', 'image': 'SHARP3.png' },
-	{ 'name': 'FLAT3', 'image': 'FLAT3.png' },
-	{ 'name': 'NATURAL_FLAT', 'image': 'NATURAL_FLAT.png' },
-	{ 'name': 'NATURAL_SHARP', 'image': 'NATURAL_SHARP.png' },
-	{ 'name': 'SHARP_SHARP', 'image': 'SHARP_SHARP.png' },
-	{ 'name': 'FLAT_ARROW_UP', 'image': 'FLAT_ARROW_UP.png' },
-	{ 'name': 'FLAT_ARROW_DOWN', 'image': 'FLAT_ARROW_DOWN.png' },
-	{ 'name': 'NATURAL_ARROW_UP', 'image': 'NATURAL_ARROW_UP.png' },
-	{ 'name': 'NATURAL_ARROW_DOWN', 'image': 'NATURAL_ARROW_DOWN.png' },
-	{ 'name': 'SHARP_ARROW_UP', 'image': 'SHARP_ARROW_UP.png' },
-	{ 'name': 'SHARP_ARROW_DOWN', 'image': 'SHARP_ARROW_DOWN.png' },
-	{ 'name': 'SHARP2_ARROW_UP', 'image': 'SHARP2_ARROW_UP.png' },
-	{ 'name': 'SHARP2_ARROW_DOWN', 'image': 'SHARP2_ARROW_DOWN.png' },
-	{ 'name': 'FLAT2_ARROW_UP', 'image': 'FLAT2_ARROW_UP.png' },
-	{ 'name': 'FLAT2_ARROW_DOWN', 'image': 'FLAT2_ARROW_DOWN.png' },
-	{ 'name': 'ARROW_DOWN', 'image': 'ARROW_DOWN.png' },
-	{ 'name': 'ARROW_UP', 'image': 'ARROW_UP.png' },
-	{ 'name': 'MIRRORED_FLAT', 'image': 'MIRRORED_FLAT.png' },
-	{ 'name': 'MIRRORED_FLAT2', 'image': 'MIRRORED_FLAT2.png' },
-	{ 'name': 'SHARP_SLASH', 'image': 'SHARP_SLASH.png' },
-	{ 'name': 'SHARP_SLASH4', 'image': 'SHARP_SLASH4.png' },
-	{ 'name': 'FLAT_SLASH2', 'image': 'FLAT_SLASH2.png' },
-	{ 'name': 'FLAT_SLASH', 'image': 'FLAT_SLASH.png' },
-	{ 'name': 'SHARP_SLASH3', 'image': 'SHARP_SLASH3.png' },
-	{ 'name': 'SHARP_SLASH2', 'image': 'SHARP_SLASH2.png' },
-	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN', 'image': 'DOUBLE_FLAT_ONE_ARROW_DOWN.png' },
-	{ 'name': 'FLAT_ONE_ARROW_DOWN', 'image': 'FLAT_ONE_ARROW_DOWN.png' },
-	{ 'name': 'NATURAL_ONE_ARROW_DOWN', 'image': 'NATURAL_ONE_ARROW_DOWN.png' },
-	{ 'name': 'SHARP_ONE_ARROW_DOWN', 'image': 'SHARP_ONE_ARROW_DOWN.png' },
-	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_DOWN', 'image': 'DOUBLE_SHARP_ONE_ARROW_DOWN.png' },
-	{ 'name': 'DOUBLE_FLAT_ONE_ARROW_UP', 'image': 'DOUBLE_FLAT_ONE_ARROW_UP.png' },
-	{ 'name': 'FLAT_ONE_ARROW_UP', 'image': 'FLAT_ONE_ARROW_UP.png' },
-	{ 'name': 'NATURAL_ONE_ARROW_UP', 'image': 'NATURAL_ONE_ARROW_UP.png' },
-	{ 'name': 'SHARP_ONE_ARROW_UP', 'image': 'SHARP_ONE_ARROW_UP.png' },
-	{ 'name': 'DOUBLE_SHARP_ONE_ARROW_UP', 'image': 'DOUBLE_SHARP_ONE_ARROW_UP.png' },
-	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_TWO_ARROWS_DOWN.png' },
-	{ 'name': 'FLAT_TWO_ARROWS_DOWN', 'image': 'FLAT_TWO_ARROWS_DOWN.png' },
-	{ 'name': 'NATURAL_TWO_ARROWS_DOWN', 'image': 'NATURAL_TWO_ARROWS_DOWN.png' },
-	{ 'name': 'SHARP_TWO_ARROWS_DOWN', 'image': 'SHARP_TWO_ARROWS_DOWN.png' },
-	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_TWO_ARROWS_DOWN.png' },
-	{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_UP', 'image': 'DOUBLE_FLAT_TWO_ARROWS_UP.png' },
-	{ 'name': 'FLAT_TWO_ARROWS_UP', 'image': 'FLAT_TWO_ARROWS_UP.png' },
-	{ 'name': 'NATURAL_TWO_ARROWS_UP', 'image': 'NATURAL_TWO_ARROWS_UP.png' },
-	{ 'name': 'SHARP_TWO_ARROWS_UP', 'image': 'SHARP_TWO_ARROWS_UP.png' },
-	{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_UP', 'image': 'DOUBLE_SHARP_TWO_ARROWS_UP.png' },
-	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_THREE_ARROWS_DOWN.png' },
-	{ 'name': 'FLAT_THREE_ARROWS_DOWN', 'image': 'FLAT_THREE_ARROWS_DOWN.png' },
-	{ 'name': 'NATURAL_THREE_ARROWS_DOWN', 'image': 'NATURAL_THREE_ARROWS_DOWN.png' },
-	{ 'name': 'SHARP_THREE_ARROWS_DOWN', 'image': 'SHARP_THREE_ARROWS_DOWN.png' },
-	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_THREE_ARROWS_DOWN.png' },
-	{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_UP', 'image': 'DOUBLE_FLAT_THREE_ARROWS_UP.png' },
-	{ 'name': 'FLAT_THREE_ARROWS_UP', 'image': 'FLAT_THREE_ARROWS_UP.png' },
-	{ 'name': 'NATURAL_THREE_ARROWS_UP', 'image': 'NATURAL_THREE_ARROWS_UP.png' },
-	{ 'name': 'SHARP_THREE_ARROWS_UP', 'image': 'SHARP_THREE_ARROWS_UP.png' },
-	{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_UP', 'image': 'DOUBLE_SHARP_THREE_ARROWS_UP.png' },
-	{ 'name': 'LOWER_ONE_SEPTIMAL_COMMA', 'image': 'LOWER_ONE_SEPTIMAL_COMMA.png' },
-	{ 'name': 'RAISE_ONE_SEPTIMAL_COMMA', 'image': 'RAISE_ONE_SEPTIMAL_COMMA.png' },
-	{ 'name': 'LOWER_TWO_SEPTIMAL_COMMAS', 'image': 'LOWER_TWO_SEPTIMAL_COMMAS.png' },
-	{ 'name': 'RAISE_TWO_SEPTIMAL_COMMAS', 'image': 'RAISE_TWO_SEPTIMAL_COMMAS.png' },
-	{ 'name': 'LOWER_ONE_UNDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_UNDECIMAL_QUARTERTONE.png' },
-	{ 'name': 'RAISE_ONE_UNDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_UNDECIMAL_QUARTERTONE.png' },
-	{ 'name': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE.png' },
-	{ 'name': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE.png' },
-	{ 'name': 'DOUBLE_FLAT_EQUAL_TEMPERED', 'image': 'DOUBLE_FLAT_EQUAL_TEMPERED.png' },
-	{ 'name': 'FLAT_EQUAL_TEMPERED', 'image': 'FLAT_EQUAL_TEMPERED.png' },
-	{ 'name': 'NATURAL_EQUAL_TEMPERED', 'image': 'NATURAL_EQUAL_TEMPERED.png' },
-	{ 'name': 'SHARP_EQUAL_TEMPERED', 'image': 'SHARP_EQUAL_TEMPERED.png' },
-	{ 'name': 'DOUBLE_SHARP_EQUAL_TEMPERED', 'image': 'DOUBLE_SHARP_EQUAL_TEMPERED.png' },
-	{ 'name': 'QUARTER_FLAT_EQUAL_TEMPERED', 'image': 'QUARTER_FLAT_EQUAL_TEMPERED.png' },
-	{ 'name': 'QUARTER_SHARP_EQUAL_TEMPERED', 'image': 'QUARTER_SHARP_EQUAL_TEMPERED.png' },
-	{ 'name': 'FLAT_17', 'image': 'FLAT_17.png' },
-	{ 'name': 'SHARP_17', 'image': 'SHARP_17.png' },
-	{ 'name': 'FLAT_19', 'image': 'FLAT_19.png' },
-	{ 'name': 'SHARP_19', 'image': 'SHARP_19.png' },
-	{ 'name': 'FLAT_23', 'image': 'FLAT_23.png' },
-	{ 'name': 'SHARP_23', 'image': 'SHARP_23.png' },
-	{ 'name': 'FLAT_31', 'image': 'FLAT_31.png' },
-	{ 'name': 'SHARP_31', 'image': 'SHARP_31.png' },
-	{ 'name': 'FLAT_53', 'image': 'FLAT_53.png' },
-	{ 'name': 'SHARP_53', 'image': 'SHARP_53.png' },
-	{ 'name': 'SORI', 'image': 'SORI.png' },
-	{ 'name': 'KORON', 'image': 'KORON.png' }
-];
+	readonly property var accidentals : [
+		{ 'name': 'NONE', 'image': 'NONE.png' },
+		{ 'name': 'FLAT', 'image': 'FLAT.png' },
+		{ 'name': 'NATURAL', 'image': 'NATURAL.png' },
+		{ 'name': 'SHARP', 'image': 'SHARP.png' },
+		{ 'name': 'SHARP2', 'image': 'SHARP2.png' },
+		{ 'name': 'FLAT2', 'image': 'FLAT2.png' },
+		{ 'name': 'NATURAL_FLAT', 'image': 'NATURAL_FLAT.png' },
+		{ 'name': 'NATURAL_SHARP', 'image': 'NATURAL_SHARP.png' },
+		{ 'name': 'SHARP_SHARP', 'image': 'SHARP_SHARP.png' },
+		{ 'name': 'FLAT_ARROW_UP', 'image': 'FLAT_ARROW_UP.png' },
+		{ 'name': 'FLAT_ARROW_DOWN', 'image': 'FLAT_ARROW_DOWN.png' },
+		{ 'name': 'NATURAL_ARROW_UP', 'image': 'NATURAL_ARROW_UP.png' },
+		{ 'name': 'NATURAL_ARROW_DOWN', 'image': 'NATURAL_ARROW_DOWN.png' },
+		{ 'name': 'SHARP_ARROW_UP', 'image': 'SHARP_ARROW_UP.png' },
+		{ 'name': 'SHARP_ARROW_DOWN', 'image': 'SHARP_ARROW_DOWN.png' },
+		{ 'name': 'SHARP2_ARROW_UP', 'image': 'SHARP2_ARROW_UP.png' },
+		{ 'name': 'SHARP2_ARROW_DOWN', 'image': 'SHARP2_ARROW_DOWN.png' },
+		{ 'name': 'FLAT2_ARROW_UP', 'image': 'FLAT2_ARROW_UP.png' },
+		{ 'name': 'FLAT2_ARROW_DOWN', 'image': 'FLAT2_ARROW_DOWN.png' },
+		{ 'name': 'MIRRORED_FLAT', 'image': 'MIRRORED_FLAT.png' },
+		{ 'name': 'MIRRORED_FLAT2', 'image': 'MIRRORED_FLAT2.png' },
+		{ 'name': 'SHARP_SLASH', 'image': 'SHARP_SLASH.png' },
+		{ 'name': 'SHARP_SLASH4', 'image': 'SHARP_SLASH4.png' },
+		{ 'name': 'FLAT_SLASH2', 'image': 'FLAT_SLASH2.png' },
+		{ 'name': 'FLAT_SLASH', 'image': 'FLAT_SLASH.png' },
+		{ 'name': 'SHARP_SLASH3', 'image': 'SHARP_SLASH3.png' },
+		{ 'name': 'SHARP_SLASH2', 'image': 'SHARP_SLASH2.png' },
+		{ 'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN', 'image': 'DOUBLE_FLAT_ONE_ARROW_DOWN.png' },
+		{ 'name': 'FLAT_ONE_ARROW_DOWN', 'image': 'FLAT_ONE_ARROW_DOWN.png' },
+		{ 'name': 'NATURAL_ONE_ARROW_DOWN', 'image': 'NATURAL_ONE_ARROW_DOWN.png' },
+		{ 'name': 'SHARP_ONE_ARROW_DOWN', 'image': 'SHARP_ONE_ARROW_DOWN.png' },
+		{ 'name': 'DOUBLE_SHARP_ONE_ARROW_DOWN', 'image': 'DOUBLE_SHARP_ONE_ARROW_DOWN.png' },
+		{ 'name': 'DOUBLE_FLAT_ONE_ARROW_UP', 'image': 'DOUBLE_FLAT_ONE_ARROW_UP.png' },
+		{ 'name': 'FLAT_ONE_ARROW_UP', 'image': 'FLAT_ONE_ARROW_UP.png' },
+		{ 'name': 'NATURAL_ONE_ARROW_UP', 'image': 'NATURAL_ONE_ARROW_UP.png' },
+		{ 'name': 'SHARP_ONE_ARROW_UP', 'image': 'SHARP_ONE_ARROW_UP.png' },
+		{ 'name': 'DOUBLE_SHARP_ONE_ARROW_UP', 'image': 'DOUBLE_SHARP_ONE_ARROW_UP.png' },
+		{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_TWO_ARROWS_DOWN.png' },
+		{ 'name': 'FLAT_TWO_ARROWS_DOWN', 'image': 'FLAT_TWO_ARROWS_DOWN.png' },
+		{ 'name': 'NATURAL_TWO_ARROWS_DOWN', 'image': 'NATURAL_TWO_ARROWS_DOWN.png' },
+		{ 'name': 'SHARP_TWO_ARROWS_DOWN', 'image': 'SHARP_TWO_ARROWS_DOWN.png' },
+		{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_TWO_ARROWS_DOWN.png' },
+		{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_UP', 'image': 'DOUBLE_FLAT_TWO_ARROWS_UP.png' },
+		{ 'name': 'FLAT_TWO_ARROWS_UP', 'image': 'FLAT_TWO_ARROWS_UP.png' },
+		{ 'name': 'NATURAL_TWO_ARROWS_UP', 'image': 'NATURAL_TWO_ARROWS_UP.png' },
+		{ 'name': 'SHARP_TWO_ARROWS_UP', 'image': 'SHARP_TWO_ARROWS_UP.png' },
+		{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_UP', 'image': 'DOUBLE_SHARP_TWO_ARROWS_UP.png' },
+		{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_THREE_ARROWS_DOWN.png' },
+		{ 'name': 'FLAT_THREE_ARROWS_DOWN', 'image': 'FLAT_THREE_ARROWS_DOWN.png' },
+		{ 'name': 'NATURAL_THREE_ARROWS_DOWN', 'image': 'NATURAL_THREE_ARROWS_DOWN.png' },
+		{ 'name': 'SHARP_THREE_ARROWS_DOWN', 'image': 'SHARP_THREE_ARROWS_DOWN.png' },
+		{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_THREE_ARROWS_DOWN.png' },
+		{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_UP', 'image': 'DOUBLE_FLAT_THREE_ARROWS_UP.png' },
+		{ 'name': 'FLAT_THREE_ARROWS_UP', 'image': 'FLAT_THREE_ARROWS_UP.png' },
+		{ 'name': 'NATURAL_THREE_ARROWS_UP', 'image': 'NATURAL_THREE_ARROWS_UP.png' },
+		{ 'name': 'SHARP_THREE_ARROWS_UP', 'image': 'SHARP_THREE_ARROWS_UP.png' },
+		{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_UP', 'image': 'DOUBLE_SHARP_THREE_ARROWS_UP.png' },
+		{ 'name': 'LOWER_ONE_SEPTIMAL_COMMA', 'image': 'LOWER_ONE_SEPTIMAL_COMMA.png' },
+		{ 'name': 'RAISE_ONE_SEPTIMAL_COMMA', 'image': 'RAISE_ONE_SEPTIMAL_COMMA.png' },
+		{ 'name': 'LOWER_TWO_SEPTIMAL_COMMAS', 'image': 'LOWER_TWO_SEPTIMAL_COMMAS.png' },
+		{ 'name': 'RAISE_TWO_SEPTIMAL_COMMAS', 'image': 'RAISE_TWO_SEPTIMAL_COMMAS.png' },
+		{ 'name': 'LOWER_ONE_UNDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_UNDECIMAL_QUARTERTONE.png' },
+		{ 'name': 'RAISE_ONE_UNDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_UNDECIMAL_QUARTERTONE.png' },
+		{ 'name': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE.png' },
+		{ 'name': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE.png' },
+		{ 'name': 'DOUBLE_FLAT_EQUAL_TEMPERED', 'image': 'DOUBLE_FLAT_EQUAL_TEMPERED.png' },
+		{ 'name': 'FLAT_EQUAL_TEMPERED', 'image': 'FLAT_EQUAL_TEMPERED.png' },
+		{ 'name': 'NATURAL_EQUAL_TEMPERED', 'image': 'NATURAL_EQUAL_TEMPERED.png' },
+		{ 'name': 'SHARP_EQUAL_TEMPERED', 'image': 'SHARP_EQUAL_TEMPERED.png' },
+		{ 'name': 'DOUBLE_SHARP_EQUAL_TEMPERED', 'image': 'DOUBLE_SHARP_EQUAL_TEMPERED.png' },
+		{ 'name': 'QUARTER_FLAT_EQUAL_TEMPERED', 'image': 'QUARTER_FLAT_EQUAL_TEMPERED.png' },
+		{ 'name': 'QUARTER_SHARP_EQUAL_TEMPERED', 'image': 'QUARTER_SHARP_EQUAL_TEMPERED.png' },
+		{ 'name': 'SORI', 'image': 'SORI.png' },
+		{ 'name': 'KORON', 'image': 'KORON.png' }
+		//,{ 'name': 'UNKNOWN', 'image': 'UNKNOWN.png' }
+	];
 
 	  // -----------------------------------------------------------------------
 	// --- Debug -------------------------------------------------------
