@@ -1,5 +1,5 @@
 import QtQuick 2.9
-import QtQuick.Controls 2.2 //1.4 
+import QtQuick.Controls 2.2 
 import MuseScore 3.0
 import QtQuick.Window 2.2
 import QtQuick.Dialogs 1.2
@@ -60,6 +60,8 @@ MuseScore {
 	property var usedstates : basestates.concat(thrillstates);
 
 	readonly property int titlePointSize: 12
+	readonly property int tooltipShow: 500
+	readonly property int tooltipHide: 5000
 	
 	readonly property int level_NONE : 0;
 	readonly property int level_INFO : 10;
@@ -205,14 +207,6 @@ MuseScore {
 		__category = category;
 
 		// On fabrique le modèle pour le ComboBox
-		/* XYZ
-		var model = Object.keys(categories[category]["instruments"]);
-		for (var i = 0; i < model.length; i++) {
-			debugV(level_TRACE, "model", "-->", model[i]);
-		}
-		lstInstru.model = model; 
-		*/
-
 		pushFingering(fingering?fingering.text:undefined)
 		
 		ready=true;
@@ -234,14 +228,9 @@ MuseScore {
 		} else {
 			// We have no fingering in the selection or we wre not able to identifiy it
 			sFingering = "";
-			// if ((categories[__category]["default"]) && (lstInstru.model.indexOf(categories[__category]["default"]) > -1)) { // XYZ
 			if ((categories[__category]["default"]) && (__modelInstruments.indexOf(categories[__category]["default"]) > -1)) {
 				// we have a default and valid instrument, we take it
 				instrument_type = categories[__category]["default"];
-			/* XYZ
-			} else if (model.length > 0) {
-				// we haven't a default instrument, we take the first one
-				instrument_type = model[0];*/
 			} else if (__modelInstruments.length > 0) {
 				// we haven't a default instrument, we take the first one
 				instrument_type = __modelInstruments[0];
@@ -302,16 +291,6 @@ MuseScore {
 		}
 
 		// On sélectionne le bon instrument
-		/* XYZ
-			if (instrument_type !== null) {
-			lstInstru.currentIndex = lstInstru.model.indexOf(instrument_type);
-			//console.log("selecting" + instrument_type + "(" + lstInstru.currentIndex + ")");
-		} else {
-			lstInstru.currentIndex = 0;
-			//console.log("selecting (" + lstInstru.currentIndex + ")");
-		}
-		// On force un refresh
-		lstInstru.currentIndexChanged();*/
 		currentInstrument=instrument_type;
 		refreshed = false; // awful trick to force the refresh
 		refreshed = true;
@@ -394,7 +373,6 @@ MuseScore {
 	}
 
 	function buildFingeringRepresentation() {
-		// var instru = lstInstru.currentText; // XYZ
 		var instru = currentInstrument;
 		var sFingering = __instruments[instru].base.join('');
 		var kk = __instruments[instru].keys;
@@ -906,8 +884,6 @@ MuseScore {
 					// Repeater pour les notes de base
 					Repeater {
 						id : repNotes
-						//model : (__instruments[lstInstru.model[lstInstru.currentIndex]]) ? __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"] : [] // XYZ
-						// model : (__instruments[currentInstrument]) ? __instruments[currentInstrument]["keys"] : []
 						model : ready ? getNormalNotes(refreshed) : []; //awful hack. Just return the raw __config array
 						//delegate : holeComponent - via Loader, pour passer la note à gérer
 						Loader {
@@ -915,7 +891,6 @@ MuseScore {
 							Binding {
 								target : loaderNotes.item
 								property : "note"
-								//value : __instruments[lstInstru.model[lstInstru.currentIndex]]["keys"][model.index] // XYZ
 								value : __instruments[currentInstrument]["keys"][model.index]
 							}
 							sourceComponent : holeComponent
@@ -1047,22 +1022,32 @@ MuseScore {
 					onClicked : {
 						saveOptions()
 					}
-				}
+					
+					ToolTip.text : "Save the options"
+					hoverEnabled: true
+					ToolTip.delay: tooltipShow
+					ToolTip.timeout: tooltipHide
+					ToolTip.visible: hovered				}
 
-				Button {
-					implicitHeight : buttonBox.contentItem.height
-					implicitWidth : buttonBox.contentItem.height
+				// Button {
+					// implicitHeight : buttonBox.contentItem.height
+					// implicitWidth : buttonBox.contentItem.height
 
-					indicator :
-					Image {
-						source : "alternatefingering/info.svg"
-						mipmap : true // smoothing
-						width : 23
-						fillMode : Image.PreserveAspectFit // ensure it fits
-						anchors.centerIn : parent
-					}
-					onClicked : {}
-				}
+					// indicator :
+					// Image {
+						// source : "alternatefingering/info.svg"
+						// mipmap : true // smoothing
+						// width : 23
+						// fillMode : Image.PreserveAspectFit // ensure it fits
+						// anchors.centerIn : parent
+					// }
+					// onClicked : {}
+					//ToolTip.text : "More info..."
+					// hoverEnabled: true
+					// ToolTip.delay: tooltipShow
+					// ToolTip.timeout: tooltipHide
+					// ToolTip.visible: hovered				}
+				// }
 
 				Item { // spacer // DEBUG Item/Rectangle
 					id: spacer
@@ -1198,6 +1183,12 @@ MuseScore {
 								presetsRefreshed = true;
 							}
 
+							ToolTip.text : "Show only the current note's favorites"
+							hoverEnabled: true
+							ToolTip.delay: tooltipShow
+							ToolTip.timeout: tooltipHide
+							ToolTip.visible: hovered				
+							
 						}
 
 						Button {
@@ -1215,10 +1206,15 @@ MuseScore {
 							onClicked : {
 								var note = __notes[0];
 								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalName, buildFingeringRepresentation());
-								console.log(JSON.stringify(__asAPreset));
+								debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "add"
-									addPresetWindow.show()
+								addPresetWindow.show()
 							}
+							ToolTip.text : "Add current keys combination as new favorite"
+							hoverEnabled: true
+							ToolTip.delay: tooltipShow
+							ToolTip.timeout: tooltipHide
+							ToolTip.visible: hovered				
 						}
 
 						Button {
@@ -1235,14 +1231,19 @@ MuseScore {
 							}
 							onClicked : {
 								__asAPreset = lstPresets.model[lstPresets.currentIndex]
-									console.log(JSON.stringify(__asAPreset));
+									debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "remove"
 									addPresetWindow.show()
 							}
+						ToolTip.text : "Remove the selected favorite"
+						hoverEnabled: true
+						ToolTip.delay: tooltipShow
+						ToolTip.timeout: tooltipHide
+						ToolTip.visible: hovered				
 						}
 					}
-				} // left column
-			}
+				} 
+			} // left column
 		}
 	}
 	// ----------------------------------------------------------------------
@@ -1296,14 +1297,6 @@ MuseScore {
 			scale : note ? note.size : 1;
 
 			source : "./alternatefingering/open.svg"
-
-			// Tooltip requires QtQuick.Controls 2.15 which is not available in MuseScore 3
-			/**hoverEnabled : true
-			ToolTip.delay : 1000
-			ToolTip.timeout : 5000
-			ToolTip.visible : hovered
-			ToolTip.text : __key.name
-			 */
 
 			states : [
 				State {
@@ -1394,6 +1387,12 @@ MuseScore {
 					debugV(level_TRACE, "note", "current state", parent.state);
 
 				}
+
+				ToolTip.text : note.name
+				hoverEnabled: true
+				ToolTip.delay: tooltipShow
+				ToolTip.timeout: tooltipHide
+				ToolTip.visible: hovered	
 			}
 		}
 	}
@@ -1480,13 +1479,11 @@ MuseScore {
 				acceptedButtons : Qt.LeftButton
 
 				onDoubleClicked : {
-					//console.log("Double Click");
 					pushFingering(__preset.representation);
 				}
 
 				onClicked : {
 					__lv.currentIndex = index;
-					//console.log("Single Click on " + lstPresets.currentIndex);
 				}
 			}
 		}
@@ -1638,7 +1635,8 @@ MuseScore {
 
 					font.weight : Font.DemiBold
 					verticalAlignment : Text.AlignVCenter
-					horizontalAlignment : Text.AlignHCenter
+					horizontalAlignment : Text.AlignLeft
+					font.pointSize: 10
 
 				}
 
@@ -1798,16 +1796,23 @@ MuseScore {
 					onAccepted: {
 						if ("remove"===addPresetWindow.state) {
 							// remove
-							var preset=lstPresets.model.splice(lstPresets.currentIndex,1); // test pour voir si ça passe mieux par le modèle
-							//__library.push(preset);
-							console.log(JSON.stringify(preset));
-							console.log(__library.length);
+							for (var i = 0; i < __library.length; i++) {
+								var p = __library[i];
+								if ((p.category === __asAPreset.category) &&
+									(p.label === __asAPreset.label) &&
+									(p.note === __asAPreset.note) &&
+									(p.accidental === __asAPreset.accidental) &&
+									(p.representation === __asAPreset.representation)) {
+									__library.splice(i, 1);
+									break;
+								}
+							}
 							addPresetWindow.hide();
-						} else {
+							}
+							else {
 							// add
 							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation);
 							__library.push(preset);
-							console.log(JSON.stringify(preset));
 							addPresetWindow.hide();
 						}
 					  presetsRefreshed=false; // awfull hack
@@ -1878,7 +1883,7 @@ MuseScore {
                   var lib=[];
                   for(var i=0;i<__library.length;i++) {
                         var preset=__library[i];
-                        console.log(preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
+                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
                         if ((note.extname.name===preset.note && note.accidentalName===preset.accidental)
                         || (""===preset.note && "NONE"===preset.accidental)) {
                               lib.push(preset);
@@ -1946,7 +1951,6 @@ MuseScore {
 		}
 
 		lastoptions['categories'][__category] = {
-			//'default' : lstInstru.currentText // XYZ
 			'default' : currentInstrument
 		};
 
@@ -1961,14 +1965,13 @@ MuseScore {
 		lastoptions['categories'][__category]['config'] = cfgs;
 		
 		var t = JSON.stringify(lastoptions) + "\n";
-		console.log(t);
+		debug(level_DEBUG, t);
 
 		if (settingsFile.write(t)){
-			console.log("File written to " + settingsFile.source);
-		
+			txtStatus.text="Settings saved to " + settingsFile.source;
 		}
 		else {
-			console.log("Could not save settings");
+			txtStatus.text="Error while saving the settings";
 		}
 				
 		
@@ -1986,14 +1989,14 @@ MuseScore {
                   }
 
 		var t = JSON.stringify(allpresets) + "\n";
-		console.log(t);
+		debug(level_DEBUG, t);
 
 		if (libraryFile.write(t)){
-			console.log("File written to " + libraryFile.source);
-		
+			//txtStatus.text="Library saved to " + libraryFile.source;
+			txtStatus.text="";
 		}
 		else {
-			console.log("Could not save the library");
+			txtStatus.text="Error while saving the library";
 		}
 				
 		
@@ -2052,19 +2055,19 @@ MuseScore {
 			
 			// default instrument
 			categories[cat].default = desc.default;
-			console.log("readOptions: " + cat + " -- " + desc.default);
+			debug(level_DEBUG, "readOptions: " + cat + " -- " + desc.default);
 
 			// config options
 			var cfgs = desc['config'];
 			for (var k = 0; k < cfgs.length; k++) {
 				var cfg = cfgs[k];
-				console.log("readOptions: " + cfg.name + " --> " + cfg.activated);
+				debug(level_DEBUG, "readOptions: " + cfg.name + " --> " + cfg.activated);
 
 				for (var l = 0; l < categories[cat]['config'].length; l++) {
 					var c = categories[cat]['config'][l];
 					if (c.name == cfg.name) {
 						c.activated = cfg.activated;
-						console.log("readOptions: setting " + c.name + " --> " + c.activated);
+						debug(level_DEBUG, "readOptions: setting " + c.name + " --> " + c.activated);
 					}
 				}
 			}
@@ -2438,7 +2441,6 @@ MuseScore {
 			if (accidental!==undefined) {
 				var acc=String(accidental);
 				var accid=eval("Accidental." + acc);
-				console.log("## acc = "+acc +" --> "+accid);
 				if (accid===undefined || accid==0) acc="NONE";
 				this.accidental=acc;
 			}
