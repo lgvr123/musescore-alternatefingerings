@@ -13,8 +13,8 @@ MuseScore {
 	version : "1.2.0"
 	pluginType : "dialog"
 	requiresScore : true
-        width: 500
-        height: 500
+        width: 600
+        height: 600
         
 	/** category of instrument :"flute","clarinet", ... */
 	property string __category : ""
@@ -59,6 +59,8 @@ MuseScore {
 	//property var usedstates : basestates;
 	property var usedstates : basestates.concat(thrillstates);
 
+	readonly property int titlePointSize: 12
+	
 	readonly property int level_NONE : 0;
 	readonly property int level_INFO : 10;
 	readonly property int level_DEBUG : 20;
@@ -212,6 +214,7 @@ MuseScore {
 		*/
 
 		pushFingering(fingering?fingering.text:undefined)
+		
 		ready=true;
 		}
                 
@@ -782,7 +785,7 @@ MuseScore {
 		anchors.topMargin : 10
 		anchors.rightMargin : 10
 		anchors.leftMargin : 10
-		anchors.bottomMargin : 0
+		anchors.bottomMargin : 5
 
 		Item {
 			Layout.row : 1
@@ -802,13 +805,22 @@ MuseScore {
 
 				Label {
 					text : "Instrument :"
+					font.pointSize: titlePointSize
+					leftPadding: 10
+					rightPadding: 10
 				}
 
-                                Loader {
-                                    id: loadInstru
-				    Layout.fillWidth : true
-                                    sourceComponent: (__modelInstruments.length<=1)?txtInstruCompo:lstInstruCompo
-                                }
+				Loader {
+					id: loadInstru
+						Layout.fillWidth : true
+						sourceComponent: (__modelInstruments.length<=1)?txtInstruCompo:lstInstruCompo
+					}
+				
+				Text {
+					text : "Config"
+					horizontalAlignment : Qt.AlignRight
+					rightPadding: 10
+				}
 
 				Loader {
 					id : configOpenBtn
@@ -836,24 +848,21 @@ MuseScore {
 			Layout.fillHeight : true
 			Layout.fillWidth : true
 
-			Item {
+			Rectangle {
 
 				id : panConfig
 				visible : false
-				//color : "red"
-				//border.color: "grey"
-				//border.width: 2
-				Layout.preferredWidth : layConfig.implicitWidth + 10
+				color : "#F0F0F0"
+				//Layout.preferredWidth : layConfig.implicitWidth + 10
+				Layout.fillWidth : true
 				Layout.preferredHeight : layConfig.implicitHeight + 10
 				anchors.margins : 20
 				Grid {
 					id : layConfig
 
-					columns : 2
+					columns : 3
 					columnSpacing : 5
 					rowSpacing : 5
-					//horizontalItemAlignment : Grid.AlignLeft
-					//verticalItemAlignment  : Grid.AlignTop
 
 					Repeater {
 						model : ready ? __config : []
@@ -878,23 +887,20 @@ MuseScore {
 			} //panConfig
 
 
-			Rectangle { // debug was Item
-				//Layout.row: 3
-				//Layout.column: 2
-				//Layout.columnSpan: 1
-				//Layout.rowSpan: 1
+			Rectangle { 
+				id : panKeys
+
 				Layout.fillHeight : true
 				Layout.fillWidth : true
 
-				color : "blue"
-				id : panKeys
+				color : "#F0F0F0"
+				clip: true
 
 				Item { // un small element within the fullWidth/fullHeight where we paint the repeater
 					anchors.horizontalCenter : parent.horizontalCenter
 					anchors.verticalCenter : parent.verticalCenter
-					width : 240 //repNotes.implicitHeight // 12 columns
-					height : 100 // repNotes.implicitWidth // 4 rows
-					//color: "white"
+					width : 100 //repNotes.implicitHeight // 4 columns
+					height : 240 // repNotes.implicitWidth // 12 rows
 
 
 					// Repeater pour les notes de base
@@ -935,15 +941,12 @@ MuseScore {
 			} //panKeys
 
 			Item {
-				//Layout.row: 4
-				//Layout.column: 2			
-				//Layout.columnSpan: 1
-				//Layout.rowSpan: 1
 
 				id : panOptionsOpen
 				Layout.preferredHeight : lpoo.implicitHeight + 4 // 4 pour les marges
-				//Layout.fillHeight : false
 				Layout.fillWidth : true
+				//color: "#C0C0C0"
+				
 				RowLayout {
 					id : lpoo
 					anchors.fill : parent
@@ -952,6 +955,7 @@ MuseScore {
 					Text {
 						text : "Options"
 						Layout.fillWidth : true
+						horizontalAlignment : Qt.AlignRight
 					}
 					Loader {
 						id : optionsOpenBtn
@@ -965,18 +969,12 @@ MuseScore {
 				}
 			} //panOptionsOpen
 			
-			Item { 
-				//Layout.row: 5
-				//Layout.column: 2			
-				//Layout.columnSpan: 1
-				//Layout.rowSpan: 1
-
+			Rectangle { 
 				id : panOptions
 				visible : false
-				//color : "red"
-				//border.color: "grey"
-				//border.width: 2
-				Layout.preferredWidth : layOptions.implicitWidth+10
+				color : "#F0F0F0"
+				//Layout.preferredWidth : layOptions.implicitWidth+10
+				Layout.fillWidth : true
 				Layout.preferredHeight : layOptions.implicitHeight + 10
 				anchors.margins : 20
 				Grid {
@@ -985,9 +983,6 @@ MuseScore {
 					columns : 2
 					columnSpacing : 5
 					rowSpacing : 5
-					//horizontalItemAlignment : Grid.AlignLeft
-					//verticalItemAlignment  : Grid.AlignTop
-
 
 					CheckBox {
 						id : chkTechnicHalf
@@ -1019,12 +1014,12 @@ MuseScore {
 					}
 				}
 			} //panOptions
-		}
+		} // right column
 
-		Item {
+		Item { // buttons row // DEBUG was Item
 			Layout.row : 6
-			Layout.column : 2
-			Layout.columnSpan : 1
+			Layout.column : 1
+			Layout.columnSpan : 2
 			Layout.rowSpan : 1
 			Layout.fillWidth : true
 			Layout.preferredHeight : panButtons.implicitHeight
@@ -1032,18 +1027,21 @@ MuseScore {
 			RowLayout {
 				id : panButtons
 
-				Layout.alignment : Qt.AlignRight
-
+				//Layout.alignment : Qt.AlignRight
+				//Layout.fillWidth : true
+				//anchors { left: parent.left; right: parent.right }
+				anchors.fill: parent
+				
 				Button {
-					implicitHeight: btnOk.height
-					implicitWidth: btnOk.height
+					implicitHeight : buttonBox.contentItem.height
+					implicitWidth : buttonBox.contentItem.height
 
 					indicator :
 					Image {
 						source : "alternatefingering/save.svg"
 						width : 23
 						fillMode : Image.PreserveAspectFit // ensure it fits
-                                                mipmap: true // smoothing 
+						mipmap : true // smoothing
 						anchors.centerIn : parent
 					}
 					onClicked : {
@@ -1052,87 +1050,42 @@ MuseScore {
 				}
 
 				Button {
-					implicitHeight: btnOk.height
-					implicitWidth: btnOk.height
+					implicitHeight : buttonBox.contentItem.height
+					implicitWidth : buttonBox.contentItem.height
 
 					indicator :
 					Image {
-						source : "alternatefingering/add.svg"
-                                                mipmap: true // smoothing 
+						source : "alternatefingering/info.svg"
+						mipmap : true // smoothing
 						width : 23
 						fillMode : Image.PreserveAspectFit // ensure it fits
 						anchors.centerIn : parent
 					}
-					onClicked : {
-						var note = __notes[0];
-						__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalName, buildFingeringRepresentation());
-						console.log(JSON.stringify(__asAPreset));
-						addPresetWindow.state = "add"
-						addPresetWindow.show()
-					}
+					onClicked : {}
 				}
 
-				Button {
-					implicitHeight: btnOk.height
-					implicitWidth: btnOk.height
-
-					indicator :
-					Image {
-						source : "alternatefingering/delete.svg"
-                                                mipmap: true // smoothing 
-						width : 23
-						fillMode : Image.PreserveAspectFit // ensure it fits
-						anchors.centerIn : parent
-					}
-					onClicked : {
-						__asAPreset = lstPresets.model[lstPresets.currentIndex]
-						console.log(JSON.stringify(__asAPreset));
-						addPresetWindow.state = "remove"
-						addPresetWindow.show()
-					}
+				Item { // spacer // DEBUG Item/Rectangle
+					id: spacer
+					implicitHeight : 10
+					Layout.fillWidth : true
 				}
 
-				Button {
-					id: btnOk
-                                        text : "Ok" 
-					onClicked : {
-						writeFingering()
-					}
-				}
-
-				Button {
-					text : "Cancel"
-					onClicked : {
-						Qt.quit()
-					}
+				DialogButtonBox {
+					standardButtons : DialogButtonBox.Ok | DialogButtonBox.Cancel
+					id : buttonBox
+					background.opacity: 0 // hide default white background
+					onAccepted : writeFingering()
+					onRejected : Qt.quit()
 				}
 			}
-		} // panButtons
-
-		/*DialogButtonBox {
-			Layout.row : 5
-			Layout.column : 1
-			Layout.columnSpan : 2
-			Layout.rowSpan : 1
-			Layout.alignment: Qt.AlignRight
+		} // button rows 
 		
-			standardButtons: DialogButtonBox.Ok | DialogButtonBox.Cancel
-
-			onAccepted: writeFingering()
-			
-			onRejected: Qt.quit()
-
-		}*/
-			
-
-		Item {
+		Item { // status bar
 			Layout.row : 7
 			Layout.column : 1
 			Layout.columnSpan : 2
 			Layout.rowSpan : 1
 			Layout.fillWidth : true
-			//color: "#aaaaaa"
-			//border.color: "black"
 			Layout.preferredHeight : 15 //txtStatus.implicitHeight
 
 			id : panStatusBar
@@ -1140,66 +1093,156 @@ MuseScore {
 			Text {
 				id : txtStatus
 				text : ""
-				wrapMode : Text.WrapAnywhere
-				width : parent.width
-				//padding: 3
+				wrapMode : Text.NoWrap
+				elide : Text.ElideRight
+				maximumLineCount : 1
+				anchors.left: parent.left
+				anchors.right: txtNote.left
 			}
 
-		} // panStatusBar
+			Text {
+				id : txtNote
+				text : (__notes.length>0)?__notes[0].extname.name:"--"
+				anchors.right: txtNoteAcc.left
+				leftPadding: 5
+				rightPadding: 0
+			}
 
-		ListView { // Presets
+			Image {
+				id : txtNoteAcc
+				source: "./alternatefingering/"+((__notes.length>0)?getAccidentalImage(__notes[0].accidentalName):"NONE.png")
+				fillMode : Image.PreserveAspectFit
+				height : 20
+				width : 20
+				anchors.right: parent.right
+				
+			}
+
+		} // status bar
+
+		GroupBox {  
+			title: "Favorites"
 			Layout.row : 2
 			Layout.column : 1
 			Layout.columnSpan : 1
 			Layout.rowSpan : 4
 
 			Layout.fillHeight : true
-			Layout.preferredWidth : 100
+			
+			anchors.rightMargin: 5
+			anchors.topMargin: 10
+			anchors.bottomMargin: 10
+			//bottomPadding: 10
 
-			id : lstPresets
+			ColumnLayout { // left column
+				anchors.fill: parent
+				spacing:10
 
-			model : getPresetsLibrary(presetsRefreshed) //__library
-			delegate : presetComponent
-			clip : true
-			focus : true
+				ListView { // Presets
+					Layout.fillHeight : true
+					//Layout.fillWidth : true
+					width : 100
 
-			// scrollbar
-			flickableDirection : Flickable.VerticalFlick
-			boundsBehavior : Flickable.StopAtBounds
+					id : lstPresets
 
-			highlight : Rectangle {
-				color : "lightsteelblue"
-				width : lstPresets.width
+					model : getPresetsLibrary(presetsRefreshed) //__library
+					delegate : presetComponent
+					clip : true
+					focus : true
+
+					// scrollbar
+					flickableDirection : Flickable.VerticalFlick
+					boundsBehavior : Flickable.StopAtBounds
+
+					highlight : Rectangle {
+						color : "lightsteelblue"
+						width : lstPresets.width
+					}
+				} // presets
+
+				Item { // preset buttons // DEBUG Item/Rectangle
+					Layout.preferredHeight : panPresetActions.implicitHeight
+					Layout.preferredWidth : panPresetActions.implicitWidth
+					Layout.alignment : Qt.AlignVCenter | Qt.AlignHCenter
+
+					// color : "violet"
+					clip : true
+
+					RowLayout {
+						id : panPresetActions
+						spacing : 2
+
+						CheckBox {
+
+							id : chkFilterPreset
+
+							padding : 0
+							spacing : 0
+
+							indicator : Rectangle {
+								implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
+								implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
+								color : chkFilterPreset.pressed ? "#C0C0C0" : chkFilterPreset.checked ? "#D0D0D0" : "#E0E0E0"
+								anchors.centerIn : parent
+								Image {
+									id : imgFilter
+									mipmap : true // smoothing
+									width : 23
+									source : "alternatefingering/filter.svg"
+									fillMode : Image.PreserveAspectFit // ensure it fits
+									anchors.centerIn : parent
+								}
+							}
+							onClicked : {
+								presetsRefreshed = false; // awfull hack
+								presetsRefreshed = true;
+							}
+
+						}
+
+						Button {
+							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
+							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
+
+							indicator :
+							Image {
+								source : "alternatefingering/add.svg"
+								mipmap : true // smoothing
+								width : 23
+								fillMode : Image.PreserveAspectFit // ensure it fits
+								anchors.centerIn : parent
+							}
+							onClicked : {
+								var note = __notes[0];
+								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalName, buildFingeringRepresentation());
+								console.log(JSON.stringify(__asAPreset));
+								addPresetWindow.state = "add"
+									addPresetWindow.show()
+							}
+						}
+
+						Button {
+							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
+							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
+
+							indicator :
+							Image {
+								source : "alternatefingering/delete.svg"
+								mipmap : true // smoothing
+								width : 23
+								fillMode : Image.PreserveAspectFit // ensure it fits
+								anchors.centerIn : parent
+							}
+							onClicked : {
+								__asAPreset = lstPresets.model[lstPresets.currentIndex]
+									console.log(JSON.stringify(__asAPreset));
+								addPresetWindow.state = "remove"
+									addPresetWindow.show()
+							}
+						}
+					}
+				} // left column
 			}
-		} // panPresets
-
-		CheckBox {
-			Layout.row : 6
-			Layout.column : 1
-			Layout.columnSpan : 1
-			Layout.rowSpan : 1
-
-			id : chkFilterPreset
-
-			indicator : Rectangle {
-				implicitHeight : btnOk.height
-				implicitWidth : btnOk.height
-				color : chkFilterPreset.pressed ? "#C0C0C0" : chkFilterPreset.checked ? "#D0D0D0" : "#E0E0E0"
-				anchors.centerIn : parent
-				Image {
-					id : imgFilter
-					mipmap : true // smoothing
-					width : 23
-					source : "alternatefingering/filter.svg"
-					fillMode : Image.PreserveAspectFit // ensure it fits
-					anchors.centerIn : parent
-				}
-			}
-			onClicked : {
-				presetsRefreshed = false; // awfull hack
-				presetsRefreshed = true;
-			}
-
 		}
 	}
 	// ----------------------------------------------------------------------
@@ -1465,6 +1508,12 @@ MuseScore {
 				top : parent.top
 				fill : parent
 			}
+			contentItem : Text {
+				text: __modelInstruments[currentIndex]
+				font.pointSize: titlePointSize
+				verticalAlignment: Qt.AlignVCenter
+			}
+
 			onCurrentIndexChanged : {
 				debug(level_DEBUG, "Now current index is :" + model[currentIndex])
 				currentInstrument = model[currentIndex];
@@ -1479,6 +1528,7 @@ MuseScore {
 		Text {
 			id : txtInstru
 			text : __modelInstruments[0]
+			font.pointSize: titlePointSize
 			anchors {
 				top : parent.top
 				fill : parent
@@ -1735,7 +1785,9 @@ MuseScore {
 					Layout.columnSpan : 2
 					Layout.rowSpan : 1
 					Layout.alignment: Qt.AlignRight
-				
+
+					background.opacity: 0 // hide default white background
+
 					standardButtons: DialogButtonBox.Cancel
 					Button {
 						id: btnEpAdd
@@ -2064,14 +2116,23 @@ MuseScore {
 	// --- Instruments -------------------------------------------------------
 	// -----------------------------------------------------------------------
 
+	property double cA: 2
+	property double cB: 3
+	property double cC: 2.1
+	property double cD: 4
+	property double cE: 3.8
+	property double cF: 1.2
+	property double cG: 4.5
+	property double cH: 1
+	
 	property var flbflat : new noteClass4("L Bb", {
 		'closed' : '\uE006',
 		'thrill' : '\uE03C'
-	}, 3, 1.5);
+	}, cA, 1.5);
 	property var flb : new noteClass4("L B", {
 		'closed' : '\uE007',
 		'thrill' : '\uE03D'
-	}, 3, 2.5);
+	}, cA, 2.5);
 	property var fl1 : new noteClass4("L1", {
 		'closed' : '\uE008',
 		'left' : '\uE024',
@@ -2079,7 +2140,7 @@ MuseScore {
 		'halfleft' : '\uE030',
 		'halfright' : '\uE036',
 		'thrill' : '\uE03E'
-	}, 2, 1);
+	}, cB, 1);
 	property var fl2 : new noteClass4("L2", {
 		'closed' : '\uE009',
 		'ring' : '\uE01F',
@@ -2088,7 +2149,7 @@ MuseScore {
 		'halfleft' : '\uE031',
 		'halfright' : '\uE037',
 		'thrill' : '\uE03F'
-	}, 2, 2, 1);
+	}, cB, 2, 1);
 	property var fl3 : new noteClass4("L3", {
 		'closed' : '\uE00A',
 		'ring' : '\uE020',
@@ -2097,19 +2158,19 @@ MuseScore {
 		'halfleft' : '\uE032',
 		'halfright' : '\uE038',
 		'thrill' : '\uE040'
-	}, 2, 3);
+	}, cB, 3);
 	property var fgsharp : new noteClass4("G #", {
 		'closed' : '\uE00B',
 		'thrill' : '\uE041'
-	}, 1, 3.5);
+	}, cD, 3.5);
 	property var fcsharptrill : new noteClass4("C # trill", {
 		'closed' : '\uE00C',
 		'thrill' : '\uE042'
-	}, 2, 4.2, 0.8);
+	}, cB, 4.2, 0.8);
 	property var frbflat : new noteClass4("Bb trill", {
 		'closed' : '\uE00D',
 		'thrill' : '\uE043'
-	}, 2.8, 4.5, 0.8);
+	}, cC, 4.5, 0.8);
 	property var fr1 : new noteClass4("R1", {
 		'closed' : '\uE00E',
 		'ring' : '\uE021',
@@ -2118,11 +2179,11 @@ MuseScore {
 		'halfleft' : '\uE033',
 		'halfright' : '\uE039',
 		'thrill' : '\uE044'
-	}, 2, 5);
+	}, cB, 5);
 	property var fdtrill : new noteClass4("D trill", {
 		'closed' : '\uE00F',
 		'thrill' : '\uE045'
-	}, 2.8, 5.5, 0.8);
+	}, cC, 5.5, 0.8);
 	property var fr2 : new noteClass4("R2", {
 		'closed' : '\uE010',
 		'ring' : '\uE022',
@@ -2131,11 +2192,11 @@ MuseScore {
 		'halfleft' : '\uE034',
 		'halfright' : '\uE03A',
 		'thrill' : '\uE046'
-	}, 2, 6);
+	}, cB, 6);
 	property var fdsharptrill : new noteClass4("D # trill", {
 		'closed' : '\uE011',
 		'thrill' : '\uE047'
-	}, 2.8, 6.5, 0.8);
+	}, cC, 6.5, 0.8);
 	property var fr3 : new noteClass4("R3", {
 		'closed' : '\uE012',
 		'ring' : '\uE023',
@@ -2144,56 +2205,56 @@ MuseScore {
 		'halfleft' : '\uE035',
 		'halfright' : '\uE03B',
 		'thrill' : '\uE048'
-	}, 2, 7);
+	}, cB, 7);
 	property var fe : new noteClass4("Low E", {
 		'closed' : '\uE013',
 		'thrill' : '\uE049'
-	}, 3, 8);
+	}, cA, 8);
 	property var fcsharp : new noteClass4("Low C #", {
 		'closed' : '\uE014',
 		'thrill' : '\uE04A'
-	}, 3, 9);
+	}, cA, 9);
 	property var fc : new noteClass4("Low C", {
 		'closed' : '\uE015',
 		'thrill' : '\uE04B'
-	}, 2, 9);
+	}, cB, 9);
 	property var fbflat : new noteClass4("Low Bb", {
 		'closed' : '\uE016',
 		'thrill' : '\uE04C'
-	}, 1, 9);
+	}, cD, 9);
 	property var fgizmo : new noteClass4("Gizmo", {
 		"closed" : "\uE017",
 		"thrill" : "\uE04D"
-	}, 1, 10, 0.8);
+	}, cD, 10, 0.8);
 
 	property var fKCUpLever : new noteClass4("fKCUpLever", {
 		'closed' : '\uE018',
 		'thrill' : '\uE04E'
-	}, 1.2, 1.5, 0.8);
+	}, cE, 1.5, 0.8);
 	property var fKAuxCSharpTrill : new noteClass4("fKAuxCSharpTrill", {
 		'closed' : '\uE019',
 		'thrill' : '\uE04F'
-	}, 1.2, 2.5, 0.8);
+	}, cE, 2.5, 0.8);
 	property var fKBbUpLever : new noteClass4("fKBbUpLever", {
 		'closed' : '\uE01A',
 		'thrill' : '\uE050'
-	}, 3.8, 1, 0.8);
+	}, cF, 1, 0.8);
 	property var fKBUpLever : new noteClass4("fKBUpLever", {
 		'closed' : '\uE01B',
 		'thrill' : '\uE051'
-	}, 3.8, 2, 0.8);
+	}, cF, 2, 0.8);
 	property var fKGUpLever : new noteClass4("fKGUpLever", {
 		'closed' : '\uE01C',
 		'thrill' : '\uE052'
-	}, 0.5, 4.5, 0.8);
+	}, cG, 4.5, 0.8);
 	property var fKFSharpBar : new noteClass4("fKFSharpBar", {
 		'closed' : '\uE01D',
 		'thrill' : '\uE053'
-	}, 4, 5, 0.8);
+	}, cH, 5, 0.8);
 	property var fKDUpLever : new noteClass4("fKDUpLever", {
 		'closed' : '\uE01E',
 		'thrill' : '\uE054'
-	}, 3, 10, 0.8);
+	}, cA, 10, 0.8);
 
 	property var categories : {
 		"flute" : {
@@ -2212,10 +2273,10 @@ MuseScore {
 				'wind.flutes'
 			],
 			"instruments" : {
-/*				"flute with B tail" : {
+				"flute with B tail" : {
 					"base" : ['\uE000', '\uE001', '\uE002'], // B
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat, fgizmo]
-				},*/
+				},
 				"Flute" : {
 					"base" : ['\uE000', '\uE001'], // C
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
@@ -2260,8 +2321,8 @@ MuseScore {
 	 * @ param row, colum where to put that key in the diagram
 	 * @return a note/key object
 	 */
-	function noteClass(name, representation, row, column) {
-		noteClass2.call(this, name, representation, row, column, 1);
+	function noteClass(name, representation, column, row) {
+		noteClass2.call(this, name, representation, column, row, 1);
 	}
 
 	/**
@@ -2272,10 +2333,10 @@ MuseScore {
 	 * @param size The size of the key on the diagram
 	 * @return a note/key object
 	 */
-	function noteClass2(name, representation, row, column, size) {
+	function noteClass2(name, representation, column, row, size) {
 		noteClass4.call(this, name, {
 			"closed" : representation
-		}, row, column, size);
+		}, column, row, size);
 		this.representation = representation;
 	}
 
@@ -2289,7 +2350,7 @@ MuseScore {
 	 * @param size The size of the key on the diagram
 	 * @return a note/key object
 	 */
-	function noteClass4(name, xmodes, row, column, size) {
+	function noteClass4(name, xmodes, column, row, size) {
 		this.name = name;
 		this.modes = xmodes;
 		if (!this.modes.open) {
