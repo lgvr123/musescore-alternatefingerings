@@ -29,6 +29,9 @@
 ## Known issues
 * Kingma Sysem for the flute is not supporterd
 
+## Credits
+Icons made by [hirschwolf](https://www.flaticon.com/authors/hirschwolf) from [www.flaticon.com](https://www.flaticon.com/)
+
 ## Idea
 The idea of this plugin followed my discovery of the [Fingering Diagram plugin for MuseScore 3.x](https://github.com/eduardomourar/fingering-diagram#fingering-diagram-plugin-for-musescore-3x) and whish to broaden it my usage.
 
