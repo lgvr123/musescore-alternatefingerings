@@ -1,11 +1,19 @@
 # Alternate Fingerings plugin for MuseScore 3.x
 Alternate Fingerings plugin for MuseScore 3.x is a tool to add and edit manually a keys combination for non-standard play positions.
 
+## New features in 1.2.0
+* Manage your library of presets, filter by note, by accident. Support "similarity" between accidentals (e.g. FLAT ~~ NATURAL + FLAT)
+* Your default instrument configuration and plugin options can be saved to disk
+* Remove the fingerings of the selected notes
+* Revamped User Interface
+
 ## Features
 * Support for the flute family of instruments (wind.flutes.flute). 
-* Full support for open, closed, half-opn holes.
-* Very configuranle
-* The fingering is stored at the *note* level as a *Fingering* text.
+* Manage your library of presets, filter by note and accident
+* Full support for open, closed, half-open holes, and more
+* Very configurable and saved to disk
+* The fingering is written at the *note* level as a *Fingering* text.
+* Remove the fingerings of the selected notes
 
 ## Pre-requisistes
 * This plugin relies on Fiati font being installed, which can be downloaded here: https://github.com/eduardomourar/fiati/releases For windows 10 users: Make sure to install the font for "All Users" or MuseScore (and thus this plugin) won't have access to it.
@@ -18,16 +26,6 @@ Alternate Fingerings plugin for MuseScore 3.x is a tool to add and edit manually
 
 ## Known issues
 * Kingma Sysem for the flute is not supporterd
-* No easy configuration of the plugin default behaviour
-
-## Configuration
-There is no user-friendly way for the user to configure the default behaviour of the plugin.
-The only way is to look in the code. The 3 behaviours that can be configured are:
-* What is the default instrument-variant for an instruement . E.g. For the flute, is it a regular flute or a flute with a B tail.
-* What are the default options for the instrument. E.g. For the flute: open holes, extra C# trill key, ...
-* What are the default key behaviours : open/closed, open/closed/half-closed/quarter-closed/ring only/...
-
-Those options can be found in the code by searching on _"*User instructions*"_.
 
 ## Idea
 The idea of this plugin followed my discovery of the [Fingering Diagram plugin for MuseScore 3.x](https://github.com/eduardomourar/fingering-diagram#fingering-diagram-plugin-for-musescore-3x) and whish to broaden it my usage.
