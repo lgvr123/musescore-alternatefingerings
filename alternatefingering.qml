@@ -13,8 +13,10 @@ MuseScore {
 	version : "1.2.0"
 	pluginType : "dialog"
 	requiresScore : true
-        width: 600
-        height: 600
+	width: 600
+	height: 600
+	
+	id: mainWindow
         
 	/** category of instrument :"flute","clarinet", ... */
 	property string __category : ""
@@ -304,7 +306,7 @@ MuseScore {
 		ready = true;
 	}
 	// -----------------------------------------------------------------------
-	// --- Write the score ----------------------------------------------------
+	// --- Modify the score ----------------------------------------------------
 	// -----------------------------------------------------------------------
 	function writeFingering() {
 
@@ -369,7 +371,6 @@ MuseScore {
 		}
 
 		curScore.endCmd(false);
-		Qt.quit();
 	}
 
 	function buildFingeringRepresentation() {
@@ -406,6 +407,40 @@ MuseScore {
 
 		return sFingering;
 
+	}
+
+	function removeAllFingerings() {
+
+		var nbNotes=__notes.length;
+		var nbFing=0
+		
+		curScore.startCmd();
+		if (atFingeringLevel) {
+			// Managing fingering in the Fingering element (note.elements)
+			for (var i = 0; i < __notes.length; i++) {
+				var note = __notes[i];
+				// first note of chord. Going to treat the chord as once
+				debug(level_TRACE, "dealing with first note");
+				var chordnotes = note.parent.notes;
+				debug(level_TRACE, "with" + chordnotes.length + "notes in the chord");
+				var f = undefined;
+				// We delete all the fingering found and 
+				for (var j = 0; j < chordnotes.length; j++) {
+					var nt = chordnotes[j];
+					var fgs = getFingerings(nt);
+					if (fgs && fgs.length > 0) {
+						for (var k =  0 ; k < fgs.length; k++) {
+							nbFing++;
+							nt.remove(fgs[k]);
+							debug(level_TRACE, "removing unneeded fingering");
+						}
+					}
+				}
+			}
+		}
+
+		curScore.endCmd(false);
+		return {'nbnotes': nbNotes, 'nbdeleted': nbFing};
 	}
 
 	// -----------------------------------------------------------------------
@@ -914,81 +949,7 @@ MuseScore {
 					}
 				}
 			} //panKeys
-
-			Item {
-
-				id : panOptionsOpen
-				Layout.preferredHeight : lpoo.implicitHeight + 4 // 4 pour les marges
-				Layout.fillWidth : true
-				//color: "#C0C0C0"
-				
-				RowLayout {
-					id : lpoo
-					anchors.fill : parent
-					anchors.margins : 2
-					spacing : 2
-					Text {
-						text : "Options"
-						Layout.fillWidth : true
-						horizontalAlignment : Qt.AlignRight
-					}
-					Loader {
-						id : optionsOpenBtn
-						Binding {
-							target : optionsOpenBtn.item
-							property : "panel"
-							value : panOptions // should be a valid it
-						}
-						sourceComponent : openPanelComponent
-					}
-				}
-			} //panOptionsOpen
 			
-			Rectangle { 
-				id : panOptions
-				visible : false
-				color : "#F0F0F0"
-				//Layout.preferredWidth : layOptions.implicitWidth+10
-				Layout.fillWidth : true
-				Layout.preferredHeight : layOptions.implicitHeight + 10
-				anchors.margins : 20
-				Grid {
-					id : layOptions
-
-					columns : 2
-					columnSpacing : 5
-					rowSpacing : 5
-
-					CheckBox {
-						id : chkTechnicHalf
-						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
-						text : "Include playing half holes"
-						onClicked : onTechnicOptionClicked()
-						checked : false;
-					}
-					CheckBox {
-						id : chkTechnicQuarter
-						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
-						text : "Include playing quarter holes"
-						onClicked : onTechnicOptionClicked()
-						checked : false;
-					}
-					CheckBox {
-						id : chkTechnicRing
-						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
-						text : "Include playing ring"
-						onClicked : onTechnicOptionClicked()
-						checked : false;
-					}
-					CheckBox {
-						id : chkTechnicThrill
-						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
-						text : "Include thrill keys"
-						onClicked : onTechnicOptionClicked()
-						checked : true;
-					}
-				}
-			} //panOptions
 		} // right column
 
 		Item { // buttons row // DEBUG was Item
@@ -1019,35 +980,35 @@ MuseScore {
 						mipmap : true // smoothing
 						anchors.centerIn : parent
 					}
-					onClicked : {
-						saveOptions()
-					}
+					onClicked : saveOptions()
+					
 					
 					ToolTip.text : "Save the options"
 					hoverEnabled: true
 					ToolTip.delay: tooltipShow
 					ToolTip.timeout: tooltipHide
-					ToolTip.visible: hovered				}
+					ToolTip.visible: hovered				
+				}
 
-				// Button {
-					// implicitHeight : buttonBox.contentItem.height
-					// implicitWidth : buttonBox.contentItem.height
+				Button {
+					implicitHeight : buttonBox.contentItem.height
+					implicitWidth : buttonBox.contentItem.height
 
-					// indicator :
-					// Image {
-						// source : "alternatefingering/info.svg"
-						// mipmap : true // smoothing
-						// width : 23
-						// fillMode : Image.PreserveAspectFit // ensure it fits
-						// anchors.centerIn : parent
-					// }
-					// onClicked : {}
-					//ToolTip.text : "More info..."
-					// hoverEnabled: true
-					// ToolTip.delay: tooltipShow
-					// ToolTip.timeout: tooltipHide
-					// ToolTip.visible: hovered				}
-				// }
+					indicator :
+					Image {
+						source : "alternatefingering/settings.svg"
+						mipmap : true // smoothing
+						width : 23
+						fillMode : Image.PreserveAspectFit // ensure it fits
+						anchors.centerIn : parent
+					}
+					onClicked : optionsWindow.show()
+					ToolTip.text : "Settings..."
+					hoverEnabled: true
+					ToolTip.delay: tooltipShow
+					ToolTip.timeout: tooltipHide
+					ToolTip.visible: hovered
+				}
 
 				Item { // spacer // DEBUG Item/Rectangle
 					id: spacer
@@ -1055,12 +1016,31 @@ MuseScore {
 					Layout.fillWidth : true
 				}
 
+				Button {
+					text: "Remove fingerings..."
+					implicitHeight : buttonBox.contentItem.height
+					//implicitWidth : buttonBox.contentChildren[0].width
+					onClicked: 
+						confirmRemoveMissingDialog.open()
+				}
+
 				DialogButtonBox {
-					standardButtons : DialogButtonBox.Ok | DialogButtonBox.Cancel
+					standardButtons : DialogButtonBox.Close
 					id : buttonBox
+
 					background.opacity: 0 // hide default white background
-					onAccepted : writeFingering()
+
+					Button {
+						text: "Add"
+						DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+						}
+
+					onAccepted : {
+						writeFingering();
+						Qt.quit();
+						}
 					onRejected : Qt.quit()
+
 				}
 			}
 		} // button rows 
@@ -1106,7 +1086,7 @@ MuseScore {
 		} // status bar
 
 		GroupBox {  
-			title: "Favorites"
+			title: "Favorites"+(chkFilterPreset.checkState  === Qt.Checked ? " (strict)" : chkFilterPreset.checkState  === Qt.PartiallyChecked ? " (similar)" : "")
 			Layout.row : 2
 			Layout.column : 1
 			Layout.columnSpan : 1
@@ -1117,7 +1097,7 @@ MuseScore {
 			anchors.rightMargin: 5
 			anchors.topMargin: 10
 			anchors.bottomMargin: 10
-			//bottomPadding: 10
+			//topPadding: 10
 
 			ColumnLayout { // left column
 				anchors.fill: parent
@@ -1160,6 +1140,8 @@ MuseScore {
 						CheckBox {
 
 							id : chkFilterPreset
+							
+							tristate: true
 
 							padding : 0
 							spacing : 0
@@ -1167,12 +1149,13 @@ MuseScore {
 							indicator : Rectangle {
 								implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
 								implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
-								color : chkFilterPreset.pressed ? "#C0C0C0" : chkFilterPreset.checked ? "#D0D0D0" : "#E0E0E0"
+								color : chkFilterPreset.pressed ? "#C0C0C0" : 
+									chkFilterPreset.checkState  === Qt.Checked ? "#C0C0C0" : chkFilterPreset.checkState  === Qt.PartiallyChecked ? "#D0D0D0" : "#E0E0E0"
 								anchors.centerIn : parent
 								Image {
 									id : imgFilter
 									mipmap : true // smoothing
-									width : 23
+									width : 21  // 23, a little bit smaller
 									source : "alternatefingering/filter.svg"
 									fillMode : Image.PreserveAspectFit // ensure it fits
 									anchors.centerIn : parent
@@ -1221,7 +1204,9 @@ MuseScore {
 							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
 							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
 
-							indicator :
+                                                         enabled: (lstPresets.currentIndex>=0)
+							
+							indicator : 
 							Image {
 								source : "alternatefingering/delete.svg"
 								mipmap : true // smoothing
@@ -1231,6 +1216,7 @@ MuseScore {
 							}
 							onClicked : {
 								__asAPreset = lstPresets.model[lstPresets.currentIndex]
+                                                                
 									debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "remove"
 									addPresetWindow.show()
@@ -1392,7 +1378,7 @@ MuseScore {
 				hoverEnabled: true
 				ToolTip.delay: tooltipShow
 				ToolTip.timeout: tooltipHide
-				ToolTip.visible: hovered	
+				ToolTip.visible: containsMouse // "hovered" does not work for MouseArea
 			}
 		}
 	}
@@ -1418,7 +1404,7 @@ MuseScore {
 					top : parent.top
 					left : parent.left
 					rightMargin : 5
-					leftMargin : 5
+					leftMargin : 10
 				}
 
 				font.family : "fiati"
@@ -1485,6 +1471,13 @@ MuseScore {
 				onClicked : {
 					__lv.currentIndex = index;
 				}
+
+							ToolTip.text : __preset.label
+							hoverEnabled: true
+							ToolTip.delay: tooltipShow
+							ToolTip.timeout: tooltipHide
+							ToolTip.visible: containsMouse && __preset.label && __preset.label !== ""// "hovered" does not work for MouseArea
+
 			}
 		}
 
@@ -1506,7 +1499,7 @@ MuseScore {
 				fill : parent
 			}
 			contentItem : Text {
-				text: __modelInstruments[currentIndex]
+				text: (__modelInstruments[currentIndex])?__modelInstruments[currentIndex]:"--"
 				font.pointSize: titlePointSize
 				verticalAlignment: Qt.AlignVCenter
 			}
@@ -1527,7 +1520,7 @@ MuseScore {
 			text : __modelInstruments[0]
 			font.pointSize: titlePointSize
 			anchors {
-				top : parent.top
+				//top : parent.top
 				fill : parent
 			}
 			verticalAlignment : Text.AlignVCenter
@@ -1561,7 +1554,7 @@ MuseScore {
 
 	MessageDialog {
 		id : fontMissingDialog
-		icon : StandardIcon.Warning
+		icon : StandardIcon.Question
 		standardButtons : StandardButton.Ok
 		title : 'Missing Fiati music font!'
 		text : 'The Fiati music font is not installed on your device.'
@@ -1574,6 +1567,171 @@ MuseScore {
 		}
 	}
 
+	MessageDialog {
+		id : confirmRemoveMissingDialog
+		icon : StandardIcon.Warning
+		standardButtons : StandardButton.Yes | StandardButton.No
+		title : 'Confirm '
+		text : 'Do you confirm the deletion of the fingerings of the '+__notes.length+' selected note'+(__notes.length>1?'s':'')+' ?'
+		onYes : {
+			var res=removeAllFingerings();
+			if (res.nbdeleted>0) txtStatus.text=res.nbnotes+" note"+(res.nbnotes>1?"s":"")+" treated; "+res.nbdeleted+" fingering"+(res.deleted>1?"s":"")+" deleted";
+			else txtStatus.text="No fingerings deleted";
+			confirmRemoveMissingDialog.close();
+			
+		}
+		onNo: confirmRemoveMissingDialog.close();
+	}
+
+	Window {
+		id : optionsWindow
+		title : "Options..."
+		width : 400
+		height : 400
+		modality : Qt.WindowModal
+		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+		//color: "#E3E3E3"
+
+		ColumnLayout {
+
+			anchors.fill : parent
+			spacing : 5
+			anchors.margins : 5
+
+			Text {
+				Layout.fillWidth: true
+				verticalAlignment : Text.AlignVCenter
+				horizontalAlignment : Text.AlignHCenter
+				font.pointSize: 12
+				text : 'Alternate Fingerings'
+			}
+
+			Text {
+				Layout.fillWidth: true
+				verticalAlignment : Text.AlignVCenter
+				horizontalAlignment : Text.AlignHCenter
+				font.pointSize: 9
+				topPadding: -5
+				bottomPadding: 15
+				text : 'by <a href="https://www.laurentvanroy.be/" title="Laurent van Roy">Laurent van Roy</a>'
+				onLinkActivated: Qt.openUrlExternally(link)
+			}
+			
+			
+			Rectangle {
+				Layout.preferredHeight : txtOptFing.implicitHeight + 4 // 4 pour les marges
+				Layout.fillWidth : true
+				color: "#C0C0C0"
+				
+				Text {
+					id : txtOptFing
+					text : "Fingering optionss"
+					Layout.fillWidth : true
+					rightPadding: 5
+					leftPadding: 5
+					horizontalAlignment : Qt.AlignLeft
+				}
+				
+			}
+			Rectangle { 
+				color : "#F0F0F0"
+				Layout.fillWidth : true
+				Layout.fillHeight: true
+				anchors.margins : 20
+				Flow {
+					anchors.fill: parent
+
+					CheckBox {
+						id : chkTechnicHalf
+						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+						text : "Include playing half holes"
+						onClicked : onTechnicOptionClicked()
+						checked : false;
+					}
+					CheckBox {
+						id : chkTechnicQuarter
+						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+						text : "Include playing quarter holes"
+						onClicked : onTechnicOptionClicked()
+						checked : false;
+					}
+					CheckBox {
+						id : chkTechnicRing
+						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+						text : "Include playing ring"
+						onClicked : onTechnicOptionClicked()
+						checked : false;
+					}
+					CheckBox {
+						id : chkTechnicThrill
+						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+						text : "Include thrill keys"
+						onClicked : onTechnicOptionClicked()
+						checked : true;
+					}
+				}
+			} 
+	
+			Rectangle {
+				Layout.preferredHeight : txtOptMisc.implicitHeight + 4 // 4 pour les marges
+				Layout.fillWidth : true
+				color: "#C0C0C0"
+				
+				Text {
+					id : txtOptMisc
+					text : "Misc. optionss"
+					Layout.fillWidth : true
+					horizontalAlignment : Qt.AlignLeft
+					rightPadding: 5
+					leftPadding: 5
+				}
+				
+			}
+			Rectangle { 
+				color : "#F0F0F0"
+				Layout.fillWidth : true
+				Layout.fillHeight: true
+				anchors.margins : 20
+				Flow {
+					anchors.fill: parent
+					CheckBox {
+						id : chkEquivAccidental
+						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+						text : "Accidental equivalence in presets "
+						onClicked : { presetsRefreshed=false; presetsRefreshed=true; } // awfull hack 
+						checked : true;
+					}
+				}
+			} 
+	
+
+			DialogButtonBox {
+				id: opionsButtonBox
+				Layout.alignment : Qt.AlignHCenter
+				Layout.fillWidth : true
+				background.opacity : 0 // hide default white background
+				standardButtons : DialogButtonBox.Close //| DialogButtonBox.Save
+				onRejected : optionsWindow.hide()
+				onAccepted: { saveOptions(); optionsWindow.hide() }
+			}
+			
+			Text {
+				Layout.fillWidth: true
+				verticalAlignment : Text.AlignVCenter
+				horizontalAlignment : Text.AlignHCenter
+				font.pointSize: 10
+
+				text : 'Icons made by <a href="https://www.flaticon.com/authors/hirschwolf" title="hirschwolf">hirschwolf</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>'
+				
+				wrapMode: Text.Wrap
+				
+				onLinkActivated: Qt.openUrlExternally(link)
+
+			}
+			
+
+		}
+	}
       
 	Window {
 		id : addPresetWindow
@@ -1603,7 +1761,7 @@ MuseScore {
 				State {
 					name : "add";
 					PropertyChanges { target : btnEpAdd; text : "Add" }
-					PropertyChanges { target : labEpCat; text : "Add a new " + __asAPreset.category + " preset : " }
+					PropertyChanges { target : labEpCat; text : "Add the new " + __asAPreset.category + " preset : " }
 					PropertyChanges { target : labEpLabVal; readOnly : false }
 					PropertyChanges { target : labEpNoteVal; readOnly : false }
 					PropertyChanges { target : lstEpAcc; enabled : true }
@@ -1636,7 +1794,7 @@ MuseScore {
 					font.weight : Font.DemiBold
 					verticalAlignment : Text.AlignVCenter
 					horizontalAlignment : Text.AlignLeft
-					font.pointSize: 10
+					font.pointSize: 11
 
 				}
 
@@ -1697,7 +1855,7 @@ MuseScore {
 
 					text : __asAPreset.label
 
-					Layout.preferredHeight : 20
+					Layout.preferredHeight : 30
 										Layout.fillWidth: true  
 										placeholderText : "label text (optional)" 
 										maximumLength : 255 
@@ -1726,7 +1884,7 @@ MuseScore {
 					Layout.columnSpan : 1
 					Layout.rowSpan : 1
 
-					Layout.preferredHeight : 20
+//					Layout.preferredHeight : 20
 					Layout.fillWidth : false
 
 					TextField {
@@ -1877,14 +2035,29 @@ MuseScore {
 
         function getPresetsLibrary(refresh) { // refresh is just meant for the "awful hack" ;-)
             var note=__notes[0];
-            if (!chkFilterPreset.checked) {
+            if (chkFilterPreset.checkState === Qt.Unchecked) {
+				// everything
                   return __library;
-            } else {
+            } else if (chkFilterPreset.checkState === Qt.Checked) {
+				// strong filter (on note and accidental)
+				  var useEquiv=chkEquivAccidental.checked;
                   var lib=[];
                   for(var i=0;i<__library.length;i++) {
                         var preset=__library[i];
                         debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
-                        if ((note.extname.name===preset.note && note.accidentalName===preset.accidental)
+                        if ((note.extname.name===preset.note && (note.accidentalName===preset.accidental || (useEquiv && isEquivAccidental(note.accidentalName,preset.accidental))))
+                        || (""===preset.note && "NONE"===preset.accidental)) {
+                              lib.push(preset);
+                        } 
+                  }
+                  return lib;
+            } else  {
+				// loose filter (on note only)
+                  var lib=[];
+                  for(var i=0;i<__library.length;i++) {
+                        var preset=__library[i];
+                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
+                        if ((note.extname.name===preset.note)
                         || (""===preset.note && "NONE"===preset.accidental)) {
                               lib.push(preset);
                         } 
@@ -1943,9 +2116,26 @@ MuseScore {
 			lastoptions = {};
 		}
 
+		// used states
 		lastoptions['states'] = usedstates;
-                lastoptions['filter'] = chkFilterPreset.checked;
+		
+		// preset filter
+		if (chkFilterPreset.checkState === Qt.Unchecked) {
+			// everything
+			lastoptions['filter'] = "false";
+		} else if (chkFilterPreset.checkState === Qt.Checked) {
+			// strong filter
+			lastoptions['filter'] = "true";
+		} else {
+			// loose filter
+			lastoptions['filter'] = "partial";
+		}
 
+		// accidental equivalence
+		lastoptions['equivalence'] = chkEquivAccidental.checked		
+		
+		
+		// instruments config
 		if (typeof lastoptions['categories'] === 'undefined') {
 			lastoptions['categories'] = {};
 		}
@@ -2044,10 +2234,28 @@ MuseScore {
 				console.error('while reading the option file', e.message);		
 		}
 		
-		
+		// used states
 		usedstates = lastoptions['states'];
 		displayUsedStates();
 
+		// preset filter
+		var filter = lastoptions['filter'];
+		if (filter === "false") {
+			// everything
+			chkFilterPreset.checkState = Qt.Unchecked;
+		} else if (filter === "true") {
+			// strong filter
+			chkFilterPreset.checkState = Qt.Checked;
+		} else {
+			// loose filter
+			chkFilterPreset.checkState = Qt.PartiallyChecked
+		}
+
+		// accidental equivalence
+		chkEquivAccidental.checked=(lastoptions['equivalence']==="true");	
+		
+
+		// instruments config
 		var cats = Object.keys(lastoptions['categories']);
 		for (var j = 0; j < cats.length; j++) {
 			var cat = cats[j];
@@ -2073,8 +2281,6 @@ MuseScore {
 			}
 		}
                 
-                var filter=lastoptions['filter'];
-                chkFilterPreset.checked=(filter)?filter:false;
 	}
 	
 	function readLibrary() {
@@ -2276,10 +2482,10 @@ MuseScore {
 				'wind.flutes'
 			],
 			"instruments" : {
-				"flute with B tail" : {
+/*				"flute with B tail" : {
 					"base" : ['\uE000', '\uE001', '\uE002'], // B
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat, fgizmo]
-				},
+				},*/
 				"Flute" : {
 					"base" : ['\uE000', '\uE001'], // C
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
@@ -2675,6 +2881,23 @@ MuseScore {
 		{ 'name': 'KORON', 'image': 'KORON.png' }
 		//,{ 'name': 'UNKNOWN', 'image': 'UNKNOWN.png' }
 	];
+
+
+	readonly property var equivalences : [
+		['SHARP','NATURAL_SHARP'],
+		['FLAT','NATURAL_FLAT'],
+		['NONE','NATURAL'],
+		['SHARP2','SHARP_SHARP']
+	];
+	
+	function isEquivAccidental(a1, a2) {
+		for (var i = 0; i < equivalences.length; i++) {
+			if ((equivalences[i][0] === a1 && equivalences[i][1] === a2) ||
+				(equivalences[i][0] === a2 && equivalences[i][1] === a1))
+				return true;
+		}
+		return false;
+	}
 
 	  // -----------------------------------------------------------------------
 	// --- Debug -------------------------------------------------------
