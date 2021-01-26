@@ -46,6 +46,7 @@ MuseScore {
 	// work variables
 	property var lastoptions;
         property string currentInstrument: ""
+        property var currentPreset : undefined
         property var __asAPreset : new presetClass()
 
 	// constants
@@ -1066,7 +1067,8 @@ console.log("found "+head);
 			Layout.columnSpan : 2
 			Layout.rowSpan : 1
 			Layout.fillWidth : true
-			Layout.preferredHeight : 15 //txtStatus.implicitHeight
+			Layout.preferredHeight : txtNote.implicitHeight
+                        //color: "#F0F0F0"
 
 			id : panStatusBar
 
@@ -1077,37 +1079,163 @@ console.log("found "+head);
 				elide : Text.ElideRight
 				maximumLineCount : 1
 				anchors.left: parent.left
-				anchors.right: txtNote.left
+				anchors.right: txtCurPNote.left
 			}
 
-			Text {
+			Item {
+				id : txtCurPNote
+				anchors.right : txtCurPAcc.left
+				implicitHeight : txtNoteAcc.height
+				implicitWidth : 24
+				Text {
+					text : (currentPreset) ? currentPreset.note : "--"
+					leftPadding : 5
+					rightPadding : 5
+					anchors.centerIn : parent			
+				}
+				// dummy left border
+				Rectangle {
+					width : 2
+					x : 0
+					color : "#929292"
+					implicitHeight : 18
+					anchors.verticalCenter : parent.verticalCenter
+				}
+			}
+
+			Item {
+				id : txtCurPAcc
+				anchors.right : txtCurPHead.left
+				anchors.leftMargin : 5
+				implicitHeight : i_pna.height
+				implicitWidth : i_pna.width
+				Image {
+					id: i_pna
+					source : "./alternatefingering/" + ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
+					fillMode : Image.PreserveAspectFit
+					anchors.centerIn : parent
+					height : 20
+					width : 20
+				}
+				
+				// dummy left border
+				Rectangle {
+					width : 2
+					x : 0
+					color : "#929292"
+					implicitHeight : 18
+					anchors.verticalCenter : parent.verticalCenter
+				}
+			}
+
+			Item {
+				id : txtCurPHead
+				anchors.right : txtNote.left
+				anchors.leftMargin : 5
+				implicitHeight : i_pnh.height
+				implicitWidth : i_pnh.width
+
+				Image {
+					id: i_pnh
+					source : "./alternatefingering/" + ((currentPreset) ? getHeadImage(currentPreset.head) : "NONE.png")
+					fillMode : Image.PreserveAspectFit
+					anchors.centerIn : parent
+					height : 20
+					width : 20
+				}
+				
+				// dummy left border
+				Rectangle {
+					width : 2
+					x : 0
+					color : "#929292"
+					implicitHeight : 18
+					anchors.verticalCenter : parent.verticalCenter
+				}
+			}
+			Rectangle {
 				id : txtNote
-				text : (__notes.length>0)?__notes[0].extname.name:"--"
-				anchors.right: txtNoteAcc.left
-				leftPadding: 5
-				rightPadding: 0
+				anchors.right : txtNoteAcc.left
+				implicitHeight : txtNoteAcc.height
+				implicitWidth : 24
+				// anchors.leftMargin : 5
+
+				color: (currentPreset && (__notes.length > 0) && (currentPreset.note!=__notes[0].extname.name))?"lightpink":"transparent"
+				
+				Text {
+					id: i_tn
+					text : (__notes.length > 0) ? __notes[0].extname.name : "--"
+					anchors.centerIn : parent			
+					leftPadding: 5
+					rightPadding: 5
+				}
+				
+				// dummy left border
+				Rectangle {
+					width : 2
+					x : 0
+					color : "#929292"
+					implicitHeight : 18
+					anchors.verticalCenter : parent.verticalCenter
+				}
+				
 			}
 
-			Image {
+			Rectangle {
 				id : txtNoteAcc
-				source: "./alternatefingering/"+((__notes.length>0)?__notes[0].accidentalData.image:"NONE.png")
-				fillMode : Image.PreserveAspectFit
-				height : 20
-				width : 20
-				anchors.right: txtNoteHead.left
-			}
+				anchors.right : txtNoteHead.left
+				anchors.leftMargin : 5
+				implicitHeight : i_tna.height
+				implicitWidth : i_tna.width
+				
+				color: (currentPreset && (__notes.length > 0) && (currentPreset.accidental!=generic_preset) && (currentPreset.accidental!=__notes[0].accidentalData.name))?"lightpink":"transparent"
 
-			Image {
+				Image {
+					id: i_tna
+					source : "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].accidentalData.image : "NONE.png")
+					fillMode : Image.PreserveAspectFit
+					anchors.centerIn : parent
+					height : 20
+					width : 20
+				}
+				// dummy left border
+				Rectangle {
+					width : 2
+					x : 0
+					color : "#929292"
+					implicitHeight : 18
+					anchors.verticalCenter : parent.verticalCenter
+				}
+
+			}
+			Rectangle {
 				id : txtNoteHead
-				source: "./alternatefingering/"+((__notes.length>0)?__notes[0].headData.image:"NONE.png")
+				anchors.right : parent.right
+				anchors.leftMargin : 5
+				implicitHeight : i_tnh.height
+				implicitWidth : i_tnh.width
+				
+				color: (currentPreset && (__notes.length > 0) && (currentPreset.head!=generic_preset)  && (currentPreset.head!=__notes[0].headData.name))?"lightpink":"transparent"
+
+				Image {
+					id: i_tnh
+				source : "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].headData.image : "NONE.png")
 				fillMode : Image.PreserveAspectFit
-				height : 20
-				width : 20
-				anchors.right: parent.right
-			}
+					anchors.centerIn : parent
+					height : 20
+					width : 20
+				}
+				// dummy left border
+				Rectangle {
+					width : 2
+					x : 0
+					color : "#929292"
+					implicitHeight : 18
+					anchors.verticalCenter : parent.verticalCenter
+				}
 
+			}			
 		} // status bar
-
 		GroupBox {  
 			title: "Favorites"+(chkFilterPreset.checkState  === Qt.Checked ? " (strict)" : chkFilterPreset.checkState  === Qt.PartiallyChecked ? " (similar)" : "")
 			Layout.row : 2
@@ -1394,6 +1522,8 @@ console.log("found "+head);
 					parent.state = states[nextIndex];
 					debugV(level_TRACE, "note", "current state", note.currentMode);
 					debugV(level_TRACE, "note", "current state", parent.state);
+					// On reset le "currentPreset" 
+					currentPreset=undefined;
 
 				}
 
@@ -1488,6 +1618,7 @@ console.log("found "+head);
 				acceptedButtons : Qt.LeftButton
 
 				onDoubleClicked : {
+					currentPreset=__preset;
 					pushFingering(__preset.representation);
 				}
 
@@ -1626,7 +1757,7 @@ console.log("found "+head);
 				verticalAlignment : Text.AlignVCenter
 				horizontalAlignment : Text.AlignHCenter
 				font.pointSize: 12
-				text : 'Alternate Fingerings'
+				text : 'Alternate Fingerings '+version
 			}
 
 			Text {
@@ -2056,39 +2187,39 @@ console.log("found "+head);
 		__confignotes = notes;
 	}
 
-        function getPresetsLibrary(refresh) { // refresh is just meant for the "awful hack" ;-)
-            var note=__notes[0];
-            if (chkFilterPreset.checkState === Qt.Unchecked) {
-				// everything
-                  return __library;
-            } else if (chkFilterPreset.checkState === Qt.Checked) {
-				// strong filter (on note and accidental)
-				  var useEquiv=chkEquivAccidental.checked;
-                  var lib=[];
-                  for(var i=0;i<__library.length;i++) {
-                        var preset=__library[i];
-                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
-                        if ((note.extname.name===preset.note && (note.accidentalData.name===preset.accidental || (useEquiv && isEquivAccidental(note.accidentalData.name,preset.accidental))))
-                        || (""===preset.note && "NONE"===preset.accidental)) {
-                              lib.push(preset);
-                        } 
-                  }
-                  return lib;
-            } else  {
-				// loose filter (on note only)
-                  var lib=[];
-                  for(var i=0;i<__library.length;i++) {
-                        var preset=__library[i];
-                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
-                        if ((note.extname.name===preset.note)
-                        || (""===preset.note && "NONE"===preset.accidental)) {
-                              lib.push(preset);
-                        } 
-                  }
-                  return lib;
-            }
-        
+	function getPresetsLibrary(refresh) { // refresh is just meant for the "awful hack" ;-)
+		var note=__notes[0];
+		if (chkFilterPreset.checkState === Qt.Unchecked) {
+			// everything
+			  return __library;
+		} else if (chkFilterPreset.checkState === Qt.Checked) {
+			// strong filter (on note and accidental)
+			  var useEquiv=chkEquivAccidental.checked;
+			  var lib=[];
+			  for(var i=0;i<__library.length;i++) {
+					var preset=__library[i];
+					debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
+					if ((note.extname.name===preset.note && (note.accidentalData.name===preset.accidental || (useEquiv && isEquivAccidental(note.accidentalData.name,preset.accidental))))
+					|| (""===preset.note && "NONE"===preset.accidental)) {
+						  lib.push(preset);
+					} 
+			  }
+			  return lib;
+		} else  {
+			// loose filter (on note only)
+			  var lib=[];
+			  for(var i=0;i<__library.length;i++) {
+					var preset=__library[i];
+					debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
+					if ((note.extname.name===preset.note)
+					|| (""===preset.note && "NONE"===preset.accidental)) {
+						  lib.push(preset);
+					} 
+			  }
+			  return lib;
+		}
 	}
+        
 	function getAccidentalModelIndex(accidentalName) {
 		for(var i=0;i<accidentals.length;i++) {
 			if (accidentalName===accidentals[i].name) {
@@ -2098,7 +2229,10 @@ console.log("found "+head);
 		return 0;
 	}
 
-      function getAccidentalImage(accidentalName) {
+    function getAccidentalImage(accidentalName) {
+		if (accidentalName==generic_preset) {
+			return "generic.png"
+		}
 		for(var i=0;i<accidentals.length;i++) {
 			if (accidentalName===accidentals[i].name) {
 				return accidentals[i].image;
@@ -2106,6 +2240,19 @@ console.log("found "+head);
 			}
 		return "NONE.png";
 	}
+	
+	function getHeadImage(headName) {
+		if (headName==generic_preset) {
+			return "generic.png"
+		}
+		for(var i=0;i<heads.length;i++) {
+			if (headName===heads[i].name) {
+				return heads[i].image;
+				}
+			}
+		return "NONE.png";
+	}
+
 
 	// -----------------------------------------------------------------------
 	// --- Property File -----------------------------------------------------
@@ -2192,14 +2339,14 @@ console.log("found "+head);
 
 	function saveLibrary() {
 
-                var allpresets={};
-                
-                var cats=Object.keys(categories);
-                
-                for(var c=0;c<cats.length;c++) {
-                  var cat=cats[c];
-                  allpresets[cat]=categories[cat]['library'];
-                  }
+		var allpresets={};
+		
+		var cats=Object.keys(categories);
+		
+		for(var c=0;c<cats.length;c++) {
+		  var cat=cats[c];
+		  allpresets[cat]=categories[cat]['library'];
+		  }
 
 		var t = JSON.stringify(allpresets) + "\n";
 		debug(level_DEBUG, t);
@@ -2317,12 +2464,23 @@ console.log("found "+head);
 		} catch (e) {
 				console.error('while reading the library file', e.message);		
 		}
+
 		
 		var cats=Object.keys(categories);
 		
 		for(var c=0;c<cats.length;c++) {
 		  var cat=cats[c];
 		  categories[cat]['library']=allpresets[cat];
+
+		// alignement de la librairie v1.2.0 à v1.3.0
+		for(var i=0; i < allpresets[cat].length; i++) {
+                        var p=allpresets[cat][i];
+                        debugO(level_DEBUG,"readLibrary: preset:",p);
+			if (p.head==undefined) {
+				p.head=generic_preset;
+			}
+		}
+
 		  }
 
 	}
@@ -2663,7 +2821,7 @@ console.log("found "+head);
 			this.label = (label!==undefined)?String(label):"";
 			this.note= (note!==undefined)?String(note):"";
 			
-			this.accidental=ALL;
+			this.accidental=generic_preset;
 			if (accidental!==undefined && accidental!=="") {
 				var acc=String(accidental);
 				var accid=eval("Accidental." + acc);
@@ -2671,7 +2829,7 @@ console.log("found "+head);
 				this.accidental=acc;
 			}
 			
-			this.head=ALL;
+			this.head=generic_preset;
 			if (head!==undefined && head!=="") {
 				var hd=String(head);
 				var accid=eval("NoteHeadgroup." + hd);
@@ -2682,7 +2840,7 @@ console.log("found "+head);
 			this.representation=(representation!==undefined)?String(representation):"";
 	  }
 	  
-	  readonly property string ALL: "--" 
+	  readonly property string generic_preset: "--" 
 	  
 	  // -----------------------------------------------------------------------
 	  // --- Accidentals -------------------------------------------------------
