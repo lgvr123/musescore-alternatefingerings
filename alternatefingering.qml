@@ -10,7 +10,7 @@ import FileIO 3.0
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
-	version : "1.2.0"
+	version : "1.3.0"
 	pluginType : "dialog"
 	requiresScore : true
 	width: 600
@@ -162,7 +162,7 @@ MuseScore {
 					// Read the first fingering
 					if (isValidNote) {
 						var fingerings = getFingerings(note);
-                                                enrichNote(note); // add note name, accidental name, ...
+						enrichNote(note); // add note name, accidental name, ...
 
 						if (fingerings && fingerings.length > 0) {
 							fingerings = fingerings.filter(function (f) {
@@ -698,11 +698,11 @@ MuseScore {
 	function enrichNote(note) {
 		// accidental
 		var id = note.accidentalType;
-		note.accidentalName = "UNKOWN";
+		note.accidentalData = {name: "UNKOWN", image: "NONE.png"};
 		for (var i = 0; i < accidentals.length; i++) {
 			var acc = accidentals[i];
 			if (id == eval("Accidental." + acc.name)) {
-				note.accidentalName = acc.name;
+				note.accidentalData = acc;
 				break;
 			}
 		}
@@ -728,6 +728,21 @@ MuseScore {
 		}
 		
 		note.extname={"fullname": tpc.name+noteOctave, "name": tpc.raw+noteOctave, "raw": tpc.raw, "octave": noteOctave};
+		
+		// head
+		var grp = note.headGroup?note.headGroup:0;
+		note.headData = {name: "UNKOWN", image: "NONE.png"};
+		for (var i = 0; i < heads.length; i++) {
+			var head = heads[i];
+                        console.log("----> "+grp+"--"+head.name+"--"+eval("NoteHeadGroup." + head.name));
+			if (grp == eval("NoteHeadGroup." + head.name)) {
+console.log("found "+head);
+				note.headData = head;
+				break;
+			}
+		}
+		
+		
 		return;
 
 	}
@@ -1075,12 +1090,20 @@ MuseScore {
 
 			Image {
 				id : txtNoteAcc
-				source: "./alternatefingering/"+((__notes.length>0)?getAccidentalImage(__notes[0].accidentalName):"NONE.png")
+				source: "./alternatefingering/"+((__notes.length>0)?__notes[0].accidentalData.image:"NONE.png")
+				fillMode : Image.PreserveAspectFit
+				height : 20
+				width : 20
+				anchors.right: txtNoteHead.left
+			}
+
+			Image {
+				id : txtNoteHead
+				source: "./alternatefingering/"+((__notes.length>0)?__notes[0].headData.image:"NONE.png")
 				fillMode : Image.PreserveAspectFit
 				height : 20
 				width : 20
 				anchors.right: parent.right
-				
 			}
 
 		} // status bar
@@ -1188,7 +1211,7 @@ MuseScore {
 							}
 							onClicked : {
 								var note = __notes[0];
-								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalName, buildFingeringRepresentation());
+								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalData.name, buildFingeringRepresentation());
 								debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "add"
 								addPresetWindow.show()
@@ -2044,8 +2067,8 @@ MuseScore {
                   var lib=[];
                   for(var i=0;i<__library.length;i++) {
                         var preset=__library[i];
-                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
-                        if ((note.extname.name===preset.note && (note.accidentalName===preset.accidental || (useEquiv && isEquivAccidental(note.accidentalName,preset.accidental))))
+                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
+                        if ((note.extname.name===preset.note && (note.accidentalData.name===preset.accidental || (useEquiv && isEquivAccidental(note.accidentalData.name,preset.accidental))))
                         || (""===preset.note && "NONE"===preset.accidental)) {
                               lib.push(preset);
                         } 
@@ -2056,7 +2079,7 @@ MuseScore {
                   var lib=[];
                   for(var i=0;i<__library.length;i++) {
                         var preset=__library[i];
-                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalName+";"+preset.accidental);
+                        debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
                         if ((note.extname.name===preset.note)
                         || (""===preset.note && "NONE"===preset.accidental)) {
                               lib.push(preset);
@@ -2193,8 +2216,6 @@ MuseScore {
 	}
 
 	function readOptions() {
-		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"label":"Un bémol", "note":"A", "accidental": "FLAT", "representation": "\uE000\uE001\uE007"}],[{"label":"Un nawak", "note":"B", "accidental": "XYZE", "representation": "\uE000\uE001\uE008"}]}}}';
-		//var json = '{"states":["open","closed","ring","thrill"],"categories":{"flute":{"default":"flute with B tail","config":[{"name": "C# thrill", "activated" :true},{"name": "OpenHole", "activated" :false}],"library":[{"category":"flute","label":"From Save","note":"B","accidental":"FLAT","representation":"?????????"}]}}}';
 	
 		/*try {
                         console.log("Current "+currentPath());
@@ -2289,7 +2310,7 @@ MuseScore {
 		
 		var json = libraryFile.read();
 
-                var allpresets={};      
+		var allpresets={};      
 		
 		try {
 			allpresets = JSON.parse(json);
@@ -2297,14 +2318,12 @@ MuseScore {
 				console.error('while reading the library file', e.message);		
 		}
 		
-               
-                
-                var cats=Object.keys(categories);
-                
-                for(var c=0;c<cats.length;c++) {
-                  var cat=cats[c];
-                  categories[cat]['library']=allpresets[cat];
-                  }
+		var cats=Object.keys(categories);
+		
+		for(var c=0;c<cats.length;c++) {
+		  var cat=cats[c];
+		  categories[cat]['library']=allpresets[cat];
+		  }
 
 	}
 	
@@ -2634,26 +2653,36 @@ MuseScore {
 	  * Class representing a preset.
 	  * @param category A category of instrument. Must match any of the categories defined in the categories arrays
 	  * @param label A label. Optional. If non proivded then replaced by an empty string
-	  * @param accidental The accidental of the note. A *string* corresponding to an element of  Musescore Accidental enumeration. Optional. If non proivded then replaced by "NONE".
+	  * @param accidental The accidental of the note. A *string* corresponding to an element of  Musescore Accidental enumeration. Optional. If non proivded then replaced by "--", meaining "suitable to all notes". 
 	  * @param representation The textual representation of the key combination. Is expected to be a valid unicode combination ,ut no verification is made. Optional. If non proivded then replaced by an empty string.
+	  * @param head The head of the note. A *string* corresponding to an element of  Musescore HeadGroup enumeration. Optional. If non proivded then replaced by "--", meaining "suitable to all notes". 
 	  */
 	  
-	  function presetClass(category, label, note, accidental,representation) {
+	  function presetClass(category, label, note, accidental,representation, head) {
 			this.category=(category!==undefined)?String(category):"??";
 			this.label = (label!==undefined)?String(label):"";
 			this.note= (note!==undefined)?String(note):"";
 			
-			this.accidental="NONE";
-			if (accidental!==undefined) {
+			this.accidental=ALL;
+			if (accidental!==undefined && accidental!=="") {
 				var acc=String(accidental);
 				var accid=eval("Accidental." + acc);
 				if (accid===undefined || accid==0) acc="NONE";
 				this.accidental=acc;
 			}
 			
+			this.head=ALL;
+			if (head!==undefined && head!=="") {
+				var hd=String(head);
+				var accid=eval("NoteHeadgroup." + hd);
+				if (accid===undefined || accid==0) hd="HEAD_NORMAL";
+				this.head=hd;
+			}
+			
 			this.representation=(representation!==undefined)?String(representation):"";
 	  }
 	  
+	  readonly property string ALL: "--" 
 	  
 	  // -----------------------------------------------------------------------
 	  // --- Accidentals -------------------------------------------------------
@@ -2881,8 +2910,6 @@ MuseScore {
 		{ 'name': 'KORON', 'image': 'KORON.png' }
 		//,{ 'name': 'UNKNOWN', 'image': 'UNKNOWN.png' }
 	];
-
-
 	readonly property var equivalences : [
 		['SHARP','NATURAL_SHARP'],
 		['FLAT','NATURAL_FLAT'],
@@ -2890,6 +2917,73 @@ MuseScore {
 		['SHARP2','SHARP_SHARP']
 	];
 	
+	readonly property var heads : [
+		{ 'name': 'HEAD_NORMAL ', 'image': 'HEAD_NORMAL.png' },
+		{ 'name': 'HEAD_CROSS ', 'image': 'HEAD_CROSS.png' },
+		{ 'name': 'HEAD_PLUS ', 'image': 'HEAD_PLUS.png' },
+		{ 'name': 'HEAD_XCIRCLE ', 'image': 'HEAD_XCIRCLE.png' },
+		{ 'name': 'HEAD_WITHX ', 'image': 'HEAD_WITHX.png' },
+		{ 'name': 'HEAD_TRIANGLE_UP ', 'image': 'HEAD_TRIANGLE_UP.png' },
+		{ 'name': 'HEAD_TRIANGLE_DOWN ', 'image': 'HEAD_TRIANGLE_DOWN.png' },
+		{ 'name': 'HEAD_SLASHED1 ', 'image': 'HEAD_SLASHED1.png' },
+		{ 'name': 'HEAD_SLASHED2 ', 'image': 'HEAD_SLASHED2.png' },
+		{ 'name': 'HEAD_DIAMOND ', 'image': 'HEAD_DIAMOND.png' },
+		{ 'name': 'HEAD_DIAMOND_OLD ', 'image': 'HEAD_DIAMOND_OLD.png' },
+		{ 'name': 'HEAD_CIRCLED ', 'image': 'HEAD_CIRCLED.png' },
+		{ 'name': 'HEAD_CIRCLED_LARGE ', 'image': 'HEAD_CIRCLED_LARGE.png' },
+		{ 'name': 'HEAD_LARGE_ARROW ', 'image': 'HEAD_LARGE_ARROW.png' },
+		{ 'name': 'HEAD_BREVIS_ALT ', 'image': 'HEAD_BREVIS_ALT.png' },
+		{ 'name': 'HEAD_SLASH ', 'image': 'HEAD_SLASH.png' },
+		{ 'name': 'HEAD_SOL ', 'image': 'HEAD_SOL.png' },
+		{ 'name': 'HEAD_LA ', 'image': 'HEAD_LA.png' },
+		{ 'name': 'HEAD_FA ', 'image': 'HEAD_FA.png' },
+		{ 'name': 'HEAD_MI ', 'image': 'HEAD_MI.png' },
+		{ 'name': 'HEAD_DO ', 'image': 'HEAD_DO.png' },
+		{ 'name': 'HEAD_RE ', 'image': 'HEAD_RE.png' },
+		{ 'name': 'HEAD_TI ', 'image': 'HEAD_TI.png' },
+		{ 'name': 'HEAD_DO_WALKER ', 'image': 'HEAD_DO_WALKER.png' },
+		{ 'name': 'HEAD_RE_WALKER ', 'image': 'HEAD_RE_WALKER.png' },
+		{ 'name': 'HEAD_TI_WALKER ', 'image': 'HEAD_TI_WALKER.png' },
+		{ 'name': 'HEAD_DO_FUNK ', 'image': 'HEAD_DO_FUNK.png' },
+		{ 'name': 'HEAD_RE_FUNK ', 'image': 'HEAD_RE_FUNK.png' },
+		{ 'name': 'HEAD_TI_FUNK ', 'image': 'HEAD_TI_FUNK.png' },
+		{ 'name': 'HEAD_DO_NAME ', 'image': 'HEAD_DO_NAME.png' },
+		{ 'name': 'HEAD_RE_NAME ', 'image': 'HEAD_RE_NAME.png' },
+		{ 'name': 'HEAD_MI_NAME ', 'image': 'HEAD_MI_NAME.png' },
+		{ 'name': 'HEAD_FA_NAME ', 'image': 'HEAD_FA_NAME.png' },
+		{ 'name': 'HEAD_SOL_NAME ', 'image': 'HEAD_SOL_NAME.png' },
+		{ 'name': 'HEAD_LA_NAME ', 'image': 'HEAD_LA_NAME.png' },
+		{ 'name': 'HEAD_TI_NAME ', 'image': 'HEAD_TI_NAME.png' },
+		{ 'name': 'HEAD_SI_NAME ', 'image': 'HEAD_SI_NAME.png' },
+		{ 'name': 'HEAD_A_SHARP ', 'image': 'HEAD_A_SHARP.png' },
+		{ 'name': 'HEAD_A ', 'image': 'HEAD_A.png' },
+		{ 'name': 'HEAD_A_FLAT ', 'image': 'HEAD_A_FLAT.png' },
+		{ 'name': 'HEAD_B_SHARP ', 'image': 'HEAD_B_SHARP.png' },
+		{ 'name': 'HEAD_B ', 'image': 'HEAD_B.png' },
+		{ 'name': 'HEAD_B_FLAT ', 'image': 'HEAD_B_FLAT.png' },
+		{ 'name': 'HEAD_C_SHARP ', 'image': 'HEAD_C_SHARP.png' },
+		{ 'name': 'HEAD_C ', 'image': 'HEAD_C.png' },
+		{ 'name': 'HEAD_C_FLAT ', 'image': 'HEAD_C_FLAT.png' },
+		{ 'name': 'HEAD_D_SHARP ', 'image': 'HEAD_D_SHARP.png' },
+		{ 'name': 'HEAD_D ', 'image': 'HEAD_D.png' },
+		{ 'name': 'HEAD_D_FLAT ', 'image': 'HEAD_D_FLAT.png' },
+		{ 'name': 'HEAD_E_SHARP ', 'image': 'HEAD_E_SHARP.png' },
+		{ 'name': 'HEAD_E ', 'image': 'HEAD_E.png' },
+		{ 'name': 'HEAD_E_FLAT ', 'image': 'HEAD_E_FLAT.png' },
+		{ 'name': 'HEAD_F_SHARP ', 'image': 'HEAD_F_SHARP.png' },
+		{ 'name': 'HEAD_F ', 'image': 'HEAD_F.png' },
+		{ 'name': 'HEAD_F_FLAT ', 'image': 'HEAD_F_FLAT.png' },
+		{ 'name': 'HEAD_G_SHARP ', 'image': 'HEAD_G_SHARP.png' },
+		{ 'name': 'HEAD_G ', 'image': 'HEAD_G.png' },
+		{ 'name': 'HEAD_G_FLAT ', 'image': 'HEAD_G_FLAT.png' },
+		{ 'name': 'HEAD_H ', 'image': 'HEAD_H.png' },
+		{ 'name': 'HEAD_H_SHARP ', 'image': 'HEAD_H_SHARP.png' },
+		{ 'name': 'HEAD_CUSTOM ', 'image': 'HEAD_CUSTOM.png' },
+		{ 'name': 'HEAD_GROUPS ', 'image': 'HEAD_GROUPS.png' },
+		{ 'name': 'HEAD_INVALID ', 'image': 'HEAD_INVALID.png' }
+	];
+
+
 	function isEquivAccidental(a1, a2) {
 		for (var i = 0; i < equivalences.length; i++) {
 			if ((equivalences[i][0] === a1 && equivalences[i][1] === a2) ||
