@@ -40,14 +40,14 @@ MuseScore {
 	property var __notes : [];
 
 	// config
-	readonly property int debugLevel : level_TRACE;
+	readonly property int debugLevel : level_INFO;
 	readonly property bool atFingeringLevel : true;
 
 	// work variables
 	property var lastoptions;
-        property string currentInstrument: ""
-        property var currentPreset : undefined
-        property var __asAPreset : new presetClass()
+	property string currentInstrument: ""
+	property var currentPreset : undefined
+	property var __asAPreset : new presetClass()
 
 	// constants
 	/* All the supported states. */
@@ -314,6 +314,7 @@ MuseScore {
 		var sFingering = buildFingeringRepresentation();
 		
 		debugV(level_INFO, "Fingering", "as string", sFingering);
+		
 		curScore.startCmd();
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
@@ -362,6 +363,7 @@ MuseScore {
 						f.text = sFingering;
 						debug(level_DEBUG, "exsiting fingering modified");
 					}
+
 				} else {
 					// We don't treat the other notes of the same chord
 					debug(level_DEBUG, "skipping one note");
@@ -410,6 +412,139 @@ MuseScore {
 
 	}
 
+	/**
+	* Analyze the alignement needs (accidental and/or heads). If the alignement strategy is "Ask each time" and 
+	* if there is a need in alignement, then ask what to do. Otherwise (depending on the strategy), either align
+	* without further questions or leave.
+	*/
+	function alignToPreset() {
+
+		// no preset ? no alignement needed
+		if (currentPreset===undefined) {
+			// console.log("--No preset => no alignement");
+			alignToPreset_after();
+			return;
+			}
+			
+			
+		var forceAcc=(lstForceAccidental.currentIndex>=0)?lstForceAccidental.model.get(lstForceAccidental.currentIndex).value:-1;
+		var forceHead=(lstForceHead.currentIndex>=0)?lstForceHead.model.get(lstForceHead.currentIndex).value:-1;
+		//console.log("--Default forceAcc="+forceAcc);		
+		//console.log("--Default forceHead="+forceHead);		
+
+		// both default behaviours set to "Never Align" ? no alignement needed
+		if (forceAcc==0 && forceHead==0)  {
+			//console.log("-- => no alignement");		
+			alignToPreset_after();
+			return;
+			}
+		
+		// otherwise, collect the notes and check if some confirmation is needed
+		var needAskAcc=false;
+		var needAskHead=false;
+
+		var allnotes=[];
+		
+		if (atFingeringLevel) {
+		
+			// Managing fingering in the Fingering element (note.elements)
+			var prevNote;
+			var firstNote;
+			for (var i = 0; i < __notes.length; i++) {
+				var note = __notes[i];
+				if ((i == 0) || (prevNote && !prevNote.parent.is(note.parent))) {
+					// first note of chord. Going to treat the chord as once
+					debug(level_TRACE, "dealing with first note");
+					var chordnotes = note.parent.notes;
+					
+
+						for (var j = 0; j < chordnotes.length; j++) {
+							var nt = enrichNote(chordnotes[j]);
+                                                      allnotes.push(nt);
+							// accidental
+							if (currentPreset.accidental!==generic_preset && currentPreset.accidental!==nt.accidentalData.name && forceAcc===-1) {
+								needAskAcc=true;
+							}
+							// head
+							if (currentPreset.head!==generic_preset && currentPreset.head!==nt.headData.name && forceHead===-1) {
+								needAskHead=true;
+							}
+							
+						
+					}
+				} 
+				prevNote = note;
+			}
+
+		}
+		
+		// no default behaviour but no notes with a different head/accidental ? we consider this as no aligneement
+		if (forceAcc===-1 && !needAskAcc) forceAcc=0;
+		if (forceHead===-1 && !needAskHead) forceHead=0;
+
+		// console.log("--Now forceAcc="+forceAcc);		
+		// console.log("--Now forceHead="+forceHead);		
+		
+		if ((forceAcc===-1 && needAskAcc) || (forceHead===-1 && needAskHead)) {
+			confirmPushToNoteDialog.notes=allnotes;
+			confirmPushToNoteDialog.forceHead=forceHead;
+			confirmPushToNoteDialog.forceAcc=forceAcc;
+			confirmPushToNoteDialog.open();
+			// console.log("-- => need to ask");		
+		} else if (forceAcc==1 || forceHead==1) {
+			// console.log("-- => can align without asking");		
+			alignToPreset_do(allnotes,forceAcc,forceHead);
+		} else {
+			// console.log("-- => no alignment");		
+			alignToPreset_after();
+		}
+	}
+
+	/**
+	* Execute the alignement. An alignement strategy set as "Ask" is considered here as "Never align"
+	*/
+	function alignToPreset_do(allnotes, forceAcc, forceHead) {
+
+		// console.log("--Aligning with forceAcc="+forceAcc);		
+		// console.log("--Aligning with forceHead="+forceHead);		
+		// both default behaviours set to "Never Align" ? no alignement needed
+		if (forceAcc == 0 && forceHead == 0) {
+			// console.log("-- => no alignment");		
+			alignToPreset_after();
+			return;
+		}
+
+		curScore.startCmd();
+
+		for (var j = 0; j < allnotes.length; j++) {
+			var nt = allnotes[j]; //no enrichment needed. Done during preparation
+
+			// accidental
+			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
+				// we must align the head
+				if (forceAcc == 1) {
+					nt.accidentalType = eval("Accidental." + currentPreset.accidental);
+				}
+			}
+			// head
+			if (currentPreset.head !== generic_preset && currentPreset.head !== nt.headData.name) {
+				// we must align the head
+				if (forceHead == 1) {
+					nt.headGroup = eval("NoteHeadGroup." + currentPreset.head);
+				}
+			}
+		}
+		curScore.endCmd(false);
+
+		alignToPreset_after();
+	}
+	
+	function alignToPreset_after() {
+		//console.log("===AFTER ALIGNEMENT TO PRESET==");
+		Qt.quit()
+	}
+
+	
 	function removeAllFingerings() {
 
 		var nbNotes=__notes.length;
@@ -700,7 +835,7 @@ MuseScore {
 		// accidental
 		var id = note.accidentalType;
 		note.accidentalData = {name: "UNKOWN", image: "NONE.png"};
-		for (var i = 0; i < accidentals.length; i++) {
+		for (var i = 1; i < accidentals.length; i++) { // starting at 1 because 0 is the generic one ("--")
 			var acc = accidentals[i];
 			if (id == eval("Accidental." + acc.name)) {
 				note.accidentalData = acc;
@@ -733,18 +868,16 @@ MuseScore {
 		// head
 		var grp = note.headGroup?note.headGroup:0;
 		note.headData = {name: "UNKOWN", image: "NONE.png"};
-		for (var i = 0; i < heads.length; i++) {
+		for (var i = 1; i < heads.length; i++) { // starting at 1 because 0 is the generic one ("--")
 			var head = heads[i];
-                        console.log("----> "+grp+"--"+head.name+"--"+eval("NoteHeadGroup." + head.name));
 			if (grp == eval("NoteHeadGroup." + head.name)) {
-console.log("found "+head);
 				note.headData = head;
 				break;
 			}
 		}
 		
 		
-		return;
+		return note;
 
 	}
 	// -----------------------------------------------------------------------
@@ -846,7 +979,7 @@ console.log("found "+head);
 					}
 				
 				Text {
-					text : "Config"
+					text : "Instrument config"
 					horizontalAlignment : Qt.AlignRight
 					rightPadding: 10
 				}
@@ -1053,7 +1186,7 @@ console.log("found "+head);
 
 					onAccepted : {
 						writeFingering();
-						Qt.quit();
+						alignToPreset();
 						}
 					onRejected : Qt.quit()
 
@@ -1257,7 +1390,7 @@ console.log("found "+head);
 				ListView { // Presets
 					Layout.fillHeight : true
 					//Layout.fillWidth : true
-					width : 100
+					width : 125
 
 					id : lstPresets
 
@@ -1265,6 +1398,10 @@ console.log("found "+head);
 					delegate : presetComponent
 					clip : true
 					focus : true
+					
+					highlightMoveDuration : 250 // 250 pour changer la sélection
+					highlightMoveVelocity : 2000 // ou 2000px/sec
+					
 
 					// scrollbar
 					flickableDirection : Flickable.VerticalFlick
@@ -1339,7 +1476,7 @@ console.log("found "+head);
 							}
 							onClicked : {
 								var note = __notes[0];
-								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalData.name, buildFingeringRepresentation());
+								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalData.name, buildFingeringRepresentation(), note.headData.name);
 								debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "add"
 								addPresetWindow.show()
@@ -1355,7 +1492,35 @@ console.log("found "+head);
 							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
 							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
 
-                                                         enabled: (lstPresets.currentIndex>=0)
+							 enabled: (lstPresets.currentIndex>=0)
+							
+							indicator : 
+							Image {
+								source : "alternatefingering/edit.svg"
+								mipmap : true // smoothing
+								width : 23
+								fillMode : Image.PreserveAspectFit // ensure it fits
+								anchors.centerIn : parent
+							}
+							onClicked : {
+								__asAPreset = lstPresets.model[lstPresets.currentIndex]
+                                                                
+								debug(level_DEBUG, JSON.stringify(__asAPreset));
+								addPresetWindow.state = "edit"
+								addPresetWindow.show()
+							}
+							ToolTip.text : "Edit the selected favorite"
+							hoverEnabled: true
+							ToolTip.delay: tooltipShow
+							ToolTip.timeout: tooltipHide
+							ToolTip.visible: hovered				
+						}
+						
+						Button {
+							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
+							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
+
+							 enabled: (lstPresets.currentIndex>=0)
 							
 							indicator : 
 							Image {
@@ -1367,16 +1532,16 @@ console.log("found "+head);
 							}
 							onClicked : {
 								__asAPreset = lstPresets.model[lstPresets.currentIndex]
-                                                                
+																
 									debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "remove"
 									addPresetWindow.show()
 							}
-						ToolTip.text : "Remove the selected favorite"
-						hoverEnabled: true
-						ToolTip.delay: tooltipShow
-						ToolTip.timeout: tooltipHide
-						ToolTip.visible: hovered				
+							ToolTip.text : "Remove the selected favorite"
+							hoverEnabled: true
+							ToolTip.delay: tooltipShow
+							ToolTip.timeout: tooltipHide
+							ToolTip.visible: hovered				
 						}
 					}
 				} 
@@ -1613,6 +1778,18 @@ console.log("found "+head);
 				}
 			}
 
+			Image {
+				id : prsHead
+				source : "./alternatefingering/" + getHeadImage(__preset.head)
+				fillMode : Image.PreserveAspectFit
+				height : 20
+				width : 20
+				anchors {
+					left : prsAcc.right
+					top : prsLab.bottom
+				}
+			}
+
 			MouseArea {
 				anchors.fill : parent;
 				acceptedButtons : Qt.LeftButton
@@ -1737,11 +1914,50 @@ console.log("found "+head);
 		onNo: confirmRemoveMissingDialog.close();
 	}
 
+	MessageDialog {
+		id : confirmPushToNoteDialog
+		icon : StandardIcon.Question
+		property var notes: []
+		property int forceAcc: 0
+		property int forceHead: 0
+		
+		standardButtons : StandardButton.Yes | StandardButton.No
+		title : 'Align notes to preset'
+		text : 'Some of the selected notes have a different accidental and/or head than the chosen preset.<br/>'+
+			'Do want to align the notes '+			
+			((forceAcc==-1)?'<b>accidentals</b>':'') + 
+			((forceAcc==-1 && forceHead==-1)?' and ':'') + 
+			((forceHead==-1)?'<b>heads</b>':'') + 
+			' on the preset ?<br/>'
+			
+		informativeText  : 'Your choice will apply to all the selected notes.<br/><br/>'
+		detailedText : 
+			((forceAcc==1)?'Accidentals will always be aligned if different.\n':
+				((forceAcc==0)?'Accidentals will never be aligned.\n':
+				'Accidentals will be aligned depending on your choice.\n'))+			
+			((forceHead==1)?'Heads will always be aligned if different.\n':
+				((forceHead==0)?'Heads will never be aligned.\n':
+				'Heads will be aligned depending on your choice.\n'))+
+				'\nThose behaviours can be changed in the options.'
+		onYes : {
+			if (forceAcc==-1) forceAcc=1;
+			if (forceHead==-1) forceHead=1;
+			confirmPushToNoteDialog.close();
+			alignToPreset_do(notes,forceAcc,forceHead);
+		}
+		onNo: {
+			if (forceAcc==-1) forceAcc=0;
+			if (forceHead==-1) forceHead=0;
+			confirmPushToNoteDialog.close();
+			alignToPreset_do(notes,forceAcc,forceHead);
+			}
+	}
+
 	Window {
 		id : optionsWindow
 		title : "Options..."
-		width : 400
-		height : 400
+		width : 500
+		height : 450
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
 		//color: "#E3E3E3"
@@ -1788,12 +2004,18 @@ console.log("found "+head);
 				
 			}
 			Rectangle { 
-				color : "#F0F0F0"
+				Layout.preferredHeight : layFO.height + anchors.margins*2
 				Layout.fillWidth : true
-				Layout.fillHeight: true
-				anchors.margins : 20
+				//Layout.fillHeight: true
+				
+				//anchors.margins : 20
+				color : "#F0F0F0"
+				
 				Flow {
-					anchors.fill: parent
+					id: layFO
+					//anchors.fill: parent
+					anchors.left: parent.left;
+					anchors.right: parent.right
 
 					CheckBox {
 						id : chkTechnicHalf
@@ -1833,7 +2055,7 @@ console.log("found "+head);
 				
 				Text {
 					id : txtOptMisc
-					text : "Misc. optionss"
+					text : "Misc. options"
 					Layout.fillWidth : true
 					horizontalAlignment : Qt.AlignLeft
 					rightPadding: 5
@@ -1843,20 +2065,92 @@ console.log("found "+head);
 			}
 			Rectangle { 
 				color : "#F0F0F0"
+				//anchors.margins : 20
+				Layout.preferredHeight : layMO.height + anchors.margins*2 +10
 				Layout.fillWidth : true
-				Layout.fillHeight: true
-				anchors.margins : 20
-				Flow {
-					anchors.fill: parent
+
+				GridLayout {
+                    id: layMO
+
+					//implicitHeight: childrenRect.height + anchors.margins*2 + 15
+					implicitWidth: childrenRect.width + anchors.margins*2
+					
+					rowSpacing : 5
+					columnSpacing : 2
+					
+					columns: 2
+					rows: 2
 					CheckBox {
 						id : chkEquivAccidental
+						Layout.columnSpan: 2
 						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
 						text : "Accidental equivalence in presets "
 						onClicked : { presetsRefreshed=false; presetsRefreshed=true; } // awfull hack 
 						checked : true;
 					}
+					
+					Text {
+						text: "Align the notes accidentals on the preset"
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
+						Layout.rightMargin: 5
+						Layout.leftMargin: 5
+					}
+					ComboBox {
+						id : lstForceAccidental
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft							
+						textRole : "text"
+						model : ListModel {
+							ListElement {
+								text : "Ask each time"
+								value : -1
+							}
+							ListElement {
+								text : "Never align"
+								value : 0
+							}
+							ListElement {
+								text : "Always align"
+								value : 1
+							}
+						}
+					}
+				
+					Text {
+						text: "Align the notes heads on the preset"
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
+						Layout.rightMargin: 5
+						Layout.leftMargin: 5
+					}
+
+					ComboBox {
+						id : lstForceHead
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft							
+						textRole : "text"
+						model : ListModel {
+							ListElement {
+								text : "Ask each time"
+								value : -1
+							}
+							ListElement {
+								text : "Never align"
+								value : 0
+							}
+							ListElement {
+								text : "Always align"
+								value : 1
+							}
+						}
+					}
+					
 				}
 			} 
+
+					Item {
+						// spacer
+						Layout.fillHeight: true;
+						Layout.fillWidth: true;
+						//Layout.columnSpan: 2
+					}
 	
 
 			DialogButtonBox {
@@ -1890,17 +2184,17 @@ console.log("found "+head);
 	Window {
 		id : addPresetWindow
 		title : "Manage Library..."
-		width : 250
+		width : 325
 		height : 350
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
 		
-		property string state: "remove"
+		property string state: "add"
 
 		Item {
 			anchors.fill: parent
 
-                        state: addPresetWindow.state
+			state: addPresetWindow.state
 			
 			states : [
 				State {
@@ -1919,7 +2213,14 @@ console.log("found "+head);
 					PropertyChanges { target : labEpLabVal; readOnly : false }
 					PropertyChanges { target : labEpNoteVal; readOnly : false }
 					PropertyChanges { target : lstEpAcc; enabled : true }
-					
+				},
+				State {
+					name : "edit";
+					PropertyChanges { target : btnEpAdd; text : "Save" }
+					PropertyChanges { target : labEpCat; text : "Edit the " + __asAPreset.category + " preset : " }
+					PropertyChanges { target : labEpLabVal; readOnly : false }
+					PropertyChanges { target : labEpNoteVal; readOnly : false }
+					PropertyChanges { target : lstEpAcc; enabled : true }
 				}
 			]
 			
@@ -2080,15 +2381,44 @@ console.log("found "+head);
 						}
 
 						contentItem : Image {
-							id : img
 							height : 25
 							width : 25
 							fillMode : Image.Pad
 							source : "./alternatefingering/" + accidentals[lstEpAcc.currentIndex].image
 						}
 					}
+					ComboBox {
+						id : lstEpHead
+						//Layout.fillWidth : true
+						model : heads
+						currentIndex : visible?getHeadModelIndex(__asAPreset.head):0 
 
+						clip : true
+						focus : true
+						Layout.preferredHeight: 30
+						Layout.preferredWidth: 80
+
+						delegate : ItemDelegate { // requiert QuickControls 2.2
+							contentItem : Image {
+								height : 25
+								width : 25
+								source : "./alternatefingering/" + heads[index].image
+								fillMode : Image.Pad
+								verticalAlignment : Text.AlignVCenter
+							}
+							highlighted : lstEpHead.highlightedIndex === index
+
+						}
+
+						contentItem : Image {
+							height : 25
+							width : 25
+							fillMode : Image.Pad
+							source : "./alternatefingering/" + heads[lstEpHead.currentIndex].image
+						}
+					}
 				}
+
 				DialogButtonBox {
 					Layout.row : 5
 					Layout.column : 1
@@ -2114,21 +2444,73 @@ console.log("found "+head);
 									(p.label === __asAPreset.label) &&
 									(p.note === __asAPreset.note) &&
 									(p.accidental === __asAPreset.accidental) &&
+									(p.head === __asAPreset.head) &&
 									(p.representation === __asAPreset.representation)) {
 									__library.splice(i, 1);
 									break;
 								}
 							}
 							addPresetWindow.hide();
-							}
-							else {
+						}
+							
+						else if ("add"===addPresetWindow.state) {
 							// add
-							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation);
+							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation, lstEpHead.model[lstEpHead.currentIndex].name);
 							__library.push(preset);
 							addPresetWindow.hide();
+							
+							// make added preset as current preset
+							currentPreset=preset;
+							
+							// set added preset as working preset
+							__asAPreset=preset;
 						}
-					  presetsRefreshed=false; // awfull hack
-					  presetsRefreshed=true;
+						
+						else if ("edit"===addPresetWindow.state) {
+							// edit
+							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation, lstEpHead.model[lstEpHead.currentIndex].name);
+
+							for (var i = 0; i < __library.length; i++) {
+								var p = __library[i];
+								if ((p.category === __asAPreset.category) &&
+									(p.label === __asAPreset.label) &&
+									(p.note === __asAPreset.note) &&
+									(p.accidental === __asAPreset.accidental) &&
+									(p.head === __asAPreset.head) &&
+									(p.representation === __asAPreset.representation)) {
+									__library[i]=preset;
+									break;
+								}
+							}
+
+							addPresetWindow.hide();
+
+							// set edited preset as working preset
+							__asAPreset=preset;
+						}
+						
+						presetsRefreshed=false; // awfull hack
+						presetsRefreshed=true;
+
+						// Select the added/edited preset in the list view
+						if ("remove"!==addPresetWindow.state) {
+							for (var i = 0; i < lstPresets.model.length; i++) {
+								var p = lstPresets.model[i];
+								if ((p.category === __asAPreset.category) &&
+									(p.label === __asAPreset.label) &&
+									(p.note === __asAPreset.note) &&
+									(p.accidental === __asAPreset.accidental) &&
+									(p.head === __asAPreset.head) &&
+									(p.representation === __asAPreset.representation)) {
+									lstPresets.currentIndex=i;
+									break;
+								}
+							}
+							
+						}
+						  
+					  
+					  
 					  saveLibrary();
 					}
 					onRejected: addPresetWindow.hide()
@@ -2240,6 +2622,15 @@ console.log("found "+head);
 			}
 		return "NONE.png";
 	}
+
+	function getHeadModelIndex(headName) {
+		for(var i=0;i<heads.length;i++) {
+			if (headName===heads[i].name) {
+				return i;
+				}
+			}
+		return 0;
+	}
 	
 	function getHeadImage(headName) {
 		if (headName==generic_preset) {
@@ -2303,6 +2694,17 @@ console.log("found "+head);
 
 		// accidental equivalence
 		lastoptions['equivalence'] = chkEquivAccidental.checked		
+		
+		// push to notes options
+		var idx=lstForceAccidental.currentIndex;
+		var value=-1;
+		if (idx>=-1) value=lstForceAccidental.model.get(idx).value;
+		lastoptions['pushacc']=value;
+
+		idx=lstForceHead.currentIndex;
+		value=-1;
+		if (idx>=-1) value=lstForceHead.model.get(idx).value;
+		lastoptions['pushhead']=value;
 		
 		
 		// instruments config
@@ -2421,7 +2823,26 @@ console.log("found "+head);
 
 		// accidental equivalence
 		chkEquivAccidental.checked=(lastoptions['equivalence']==="true");	
-		
+
+		// push to notes options
+		var force=lastoptions['pushacc'];
+		if (force===undefined) force=-1;
+		for (var i=0; i<lstForceAccidental.model.count;i++) {
+			if (lstForceAccidental.model.get(i).value==force) {
+				lstForceAccidental.currentIndex=i;
+				break;
+			}
+		}
+
+		force=lastoptions['pushhead'];
+		if (force===undefined) force=-1;
+		for (var i=0; i<lstForceHead.model.count;i++) {
+			if (lstForceHead.model.get(i).value==force) {
+				lstForceHead.currentIndex=i;
+				break;
+			}
+		}
+
 
 		// instruments config
 		var cats = Object.keys(lastoptions['categories']);
@@ -2822,7 +3243,7 @@ console.log("found "+head);
 			this.note= (note!==undefined)?String(note):"";
 			
 			this.accidental=generic_preset;
-			if (accidental!==undefined && accidental!=="") {
+			if (accidental!==undefined && accidental!=="" && accidental!==generic_preset) {
 				var acc=String(accidental);
 				var accid=eval("Accidental." + acc);
 				if (accid===undefined || accid==0) acc="NONE";
@@ -2830,9 +3251,9 @@ console.log("found "+head);
 			}
 			
 			this.head=generic_preset;
-			if (head!==undefined && head!=="") {
+			if (head!==undefined && head!=="" && head!==generic_preset) {
 				var hd=String(head);
-				var accid=eval("NoteHeadgroup." + hd);
+				var accid=eval("NoteHeadGroup." + hd);
 				if (accid===undefined || accid==0) hd="HEAD_NORMAL";
 				this.head=hd;
 			}
@@ -2992,6 +3413,7 @@ console.log("found "+head);
 	]
 
 	readonly property var accidentals : [
+		{ 'name': generic_preset, 'image': 'generic.png' },
 		{ 'name': 'NONE', 'image': 'NONE.png' },
 		{ 'name': 'FLAT', 'image': 'FLAT.png' },
 		{ 'name': 'NATURAL', 'image': 'NATURAL.png' },
@@ -3076,69 +3498,70 @@ console.log("found "+head);
 	];
 	
 	readonly property var heads : [
-		{ 'name': 'HEAD_NORMAL ', 'image': 'HEAD_NORMAL.png' },
-		{ 'name': 'HEAD_CROSS ', 'image': 'HEAD_CROSS.png' },
-		{ 'name': 'HEAD_PLUS ', 'image': 'HEAD_PLUS.png' },
-		{ 'name': 'HEAD_XCIRCLE ', 'image': 'HEAD_XCIRCLE.png' },
-		{ 'name': 'HEAD_WITHX ', 'image': 'HEAD_WITHX.png' },
-		{ 'name': 'HEAD_TRIANGLE_UP ', 'image': 'HEAD_TRIANGLE_UP.png' },
-		{ 'name': 'HEAD_TRIANGLE_DOWN ', 'image': 'HEAD_TRIANGLE_DOWN.png' },
-		{ 'name': 'HEAD_SLASHED1 ', 'image': 'HEAD_SLASHED1.png' },
-		{ 'name': 'HEAD_SLASHED2 ', 'image': 'HEAD_SLASHED2.png' },
-		{ 'name': 'HEAD_DIAMOND ', 'image': 'HEAD_DIAMOND.png' },
-		{ 'name': 'HEAD_DIAMOND_OLD ', 'image': 'HEAD_DIAMOND_OLD.png' },
-		{ 'name': 'HEAD_CIRCLED ', 'image': 'HEAD_CIRCLED.png' },
-		{ 'name': 'HEAD_CIRCLED_LARGE ', 'image': 'HEAD_CIRCLED_LARGE.png' },
-		{ 'name': 'HEAD_LARGE_ARROW ', 'image': 'HEAD_LARGE_ARROW.png' },
-		{ 'name': 'HEAD_BREVIS_ALT ', 'image': 'HEAD_BREVIS_ALT.png' },
-		{ 'name': 'HEAD_SLASH ', 'image': 'HEAD_SLASH.png' },
-		{ 'name': 'HEAD_SOL ', 'image': 'HEAD_SOL.png' },
-		{ 'name': 'HEAD_LA ', 'image': 'HEAD_LA.png' },
-		{ 'name': 'HEAD_FA ', 'image': 'HEAD_FA.png' },
-		{ 'name': 'HEAD_MI ', 'image': 'HEAD_MI.png' },
-		{ 'name': 'HEAD_DO ', 'image': 'HEAD_DO.png' },
-		{ 'name': 'HEAD_RE ', 'image': 'HEAD_RE.png' },
-		{ 'name': 'HEAD_TI ', 'image': 'HEAD_TI.png' },
-		{ 'name': 'HEAD_DO_WALKER ', 'image': 'HEAD_DO_WALKER.png' },
-		{ 'name': 'HEAD_RE_WALKER ', 'image': 'HEAD_RE_WALKER.png' },
-		{ 'name': 'HEAD_TI_WALKER ', 'image': 'HEAD_TI_WALKER.png' },
-		{ 'name': 'HEAD_DO_FUNK ', 'image': 'HEAD_DO_FUNK.png' },
-		{ 'name': 'HEAD_RE_FUNK ', 'image': 'HEAD_RE_FUNK.png' },
-		{ 'name': 'HEAD_TI_FUNK ', 'image': 'HEAD_TI_FUNK.png' },
-		{ 'name': 'HEAD_DO_NAME ', 'image': 'HEAD_DO_NAME.png' },
-		{ 'name': 'HEAD_RE_NAME ', 'image': 'HEAD_RE_NAME.png' },
-		{ 'name': 'HEAD_MI_NAME ', 'image': 'HEAD_MI_NAME.png' },
-		{ 'name': 'HEAD_FA_NAME ', 'image': 'HEAD_FA_NAME.png' },
-		{ 'name': 'HEAD_SOL_NAME ', 'image': 'HEAD_SOL_NAME.png' },
-		{ 'name': 'HEAD_LA_NAME ', 'image': 'HEAD_LA_NAME.png' },
-		{ 'name': 'HEAD_TI_NAME ', 'image': 'HEAD_TI_NAME.png' },
-		{ 'name': 'HEAD_SI_NAME ', 'image': 'HEAD_SI_NAME.png' },
-		{ 'name': 'HEAD_A_SHARP ', 'image': 'HEAD_A_SHARP.png' },
-		{ 'name': 'HEAD_A ', 'image': 'HEAD_A.png' },
-		{ 'name': 'HEAD_A_FLAT ', 'image': 'HEAD_A_FLAT.png' },
-		{ 'name': 'HEAD_B_SHARP ', 'image': 'HEAD_B_SHARP.png' },
-		{ 'name': 'HEAD_B ', 'image': 'HEAD_B.png' },
-		{ 'name': 'HEAD_B_FLAT ', 'image': 'HEAD_B_FLAT.png' },
-		{ 'name': 'HEAD_C_SHARP ', 'image': 'HEAD_C_SHARP.png' },
-		{ 'name': 'HEAD_C ', 'image': 'HEAD_C.png' },
-		{ 'name': 'HEAD_C_FLAT ', 'image': 'HEAD_C_FLAT.png' },
-		{ 'name': 'HEAD_D_SHARP ', 'image': 'HEAD_D_SHARP.png' },
-		{ 'name': 'HEAD_D ', 'image': 'HEAD_D.png' },
-		{ 'name': 'HEAD_D_FLAT ', 'image': 'HEAD_D_FLAT.png' },
-		{ 'name': 'HEAD_E_SHARP ', 'image': 'HEAD_E_SHARP.png' },
-		{ 'name': 'HEAD_E ', 'image': 'HEAD_E.png' },
-		{ 'name': 'HEAD_E_FLAT ', 'image': 'HEAD_E_FLAT.png' },
-		{ 'name': 'HEAD_F_SHARP ', 'image': 'HEAD_F_SHARP.png' },
-		{ 'name': 'HEAD_F ', 'image': 'HEAD_F.png' },
-		{ 'name': 'HEAD_F_FLAT ', 'image': 'HEAD_F_FLAT.png' },
-		{ 'name': 'HEAD_G_SHARP ', 'image': 'HEAD_G_SHARP.png' },
-		{ 'name': 'HEAD_G ', 'image': 'HEAD_G.png' },
-		{ 'name': 'HEAD_G_FLAT ', 'image': 'HEAD_G_FLAT.png' },
-		{ 'name': 'HEAD_H ', 'image': 'HEAD_H.png' },
-		{ 'name': 'HEAD_H_SHARP ', 'image': 'HEAD_H_SHARP.png' },
-		{ 'name': 'HEAD_CUSTOM ', 'image': 'HEAD_CUSTOM.png' },
-		{ 'name': 'HEAD_GROUPS ', 'image': 'HEAD_GROUPS.png' },
-		{ 'name': 'HEAD_INVALID ', 'image': 'HEAD_INVALID.png' }
+		{ 'name': generic_preset, 'image': 'generic.png' },
+		{ 'name': 'HEAD_NORMAL', 'image': 'HEAD_NORMAL.png' },
+		{ 'name': 'HEAD_CROSS', 'image': 'HEAD_CROSS.png' },
+		{ 'name': 'HEAD_PLUS', 'image': 'HEAD_PLUS.png' },
+		{ 'name': 'HEAD_XCIRCLE', 'image': 'HEAD_XCIRCLE.png' },
+		{ 'name': 'HEAD_WITHX', 'image': 'HEAD_WITHX.png' },
+		{ 'name': 'HEAD_TRIANGLE_UP', 'image': 'HEAD_TRIANGLE_UP.png' },
+		{ 'name': 'HEAD_TRIANGLE_DOWN', 'image': 'HEAD_TRIANGLE_DOWN.png' },
+		{ 'name': 'HEAD_SLASHED1', 'image': 'HEAD_SLASHED1.png' },
+		{ 'name': 'HEAD_SLASHED2', 'image': 'HEAD_SLASHED2.png' },
+		{ 'name': 'HEAD_DIAMOND', 'image': 'HEAD_DIAMOND.png' },
+		{ 'name': 'HEAD_DIAMOND_OLD', 'image': 'HEAD_DIAMOND_OLD.png' },
+		{ 'name': 'HEAD_CIRCLED', 'image': 'HEAD_CIRCLED.png' },
+		{ 'name': 'HEAD_CIRCLED_LARGE', 'image': 'HEAD_CIRCLED_LARGE.png' },
+		{ 'name': 'HEAD_LARGE_ARROW', 'image': 'HEAD_LARGE_ARROW.png' },
+		{ 'name': 'HEAD_BREVIS_ALT', 'image': 'HEAD_BREVIS_ALT.png' },
+		{ 'name': 'HEAD_SLASH', 'image': 'HEAD_SLASH.png' },
+		{ 'name': 'HEAD_SOL', 'image': 'HEAD_SOL.png' },
+		{ 'name': 'HEAD_LA', 'image': 'HEAD_LA.png' },
+		{ 'name': 'HEAD_FA', 'image': 'HEAD_FA.png' },
+		{ 'name': 'HEAD_MI', 'image': 'HEAD_MI.png' },
+		{ 'name': 'HEAD_DO', 'image': 'HEAD_DO.png' },
+		{ 'name': 'HEAD_RE', 'image': 'HEAD_RE.png' },
+		{ 'name': 'HEAD_TI', 'image': 'HEAD_TI.png' },
+		{ 'name': 'HEAD_DO_WALKER', 'image': 'HEAD_DO_WALKER.png' },
+		{ 'name': 'HEAD_RE_WALKER', 'image': 'HEAD_RE_WALKER.png' },
+		{ 'name': 'HEAD_TI_WALKER', 'image': 'HEAD_TI_WALKER.png' },
+		{ 'name': 'HEAD_DO_FUNK', 'image': 'HEAD_DO_FUNK.png' },
+		{ 'name': 'HEAD_RE_FUNK', 'image': 'HEAD_RE_FUNK.png' },
+		{ 'name': 'HEAD_TI_FUNK', 'image': 'HEAD_TI_FUNK.png' },
+		{ 'name': 'HEAD_DO_NAME', 'image': 'HEAD_DO_NAME.png' },
+		{ 'name': 'HEAD_RE_NAME', 'image': 'HEAD_RE_NAME.png' },
+		{ 'name': 'HEAD_MI_NAME', 'image': 'HEAD_MI_NAME.png' },
+		{ 'name': 'HEAD_FA_NAME', 'image': 'HEAD_FA_NAME.png' },
+		{ 'name': 'HEAD_SOL_NAME', 'image': 'HEAD_SOL_NAME.png' },
+		{ 'name': 'HEAD_LA_NAME', 'image': 'HEAD_LA_NAME.png' },
+		{ 'name': 'HEAD_TI_NAME', 'image': 'HEAD_TI_NAME.png' },
+		{ 'name': 'HEAD_SI_NAME', 'image': 'HEAD_SI_NAME.png' },
+		{ 'name': 'HEAD_A_SHARP', 'image': 'HEAD_A_SHARP.png' },
+		{ 'name': 'HEAD_A', 'image': 'HEAD_A.png' },
+		{ 'name': 'HEAD_A_FLAT', 'image': 'HEAD_A_FLAT.png' },
+		{ 'name': 'HEAD_B_SHARP', 'image': 'HEAD_B_SHARP.png' },
+		{ 'name': 'HEAD_B', 'image': 'HEAD_B.png' },
+		{ 'name': 'HEAD_B_FLAT', 'image': 'HEAD_B_FLAT.png' },
+		{ 'name': 'HEAD_C_SHARP', 'image': 'HEAD_C_SHARP.png' },
+		{ 'name': 'HEAD_C', 'image': 'HEAD_C.png' },
+		{ 'name': 'HEAD_C_FLAT', 'image': 'HEAD_C_FLAT.png' },
+		{ 'name': 'HEAD_D_SHARP', 'image': 'HEAD_D_SHARP.png' },
+		{ 'name': 'HEAD_D', 'image': 'HEAD_D.png' },
+		{ 'name': 'HEAD_D_FLAT', 'image': 'HEAD_D_FLAT.png' },
+		{ 'name': 'HEAD_E_SHARP', 'image': 'HEAD_E_SHARP.png' },
+		{ 'name': 'HEAD_E', 'image': 'HEAD_E.png' },
+		{ 'name': 'HEAD_E_FLAT', 'image': 'HEAD_E_FLAT.png' },
+		{ 'name': 'HEAD_F_SHARP', 'image': 'HEAD_F_SHARP.png' },
+		{ 'name': 'HEAD_F', 'image': 'HEAD_F.png' },
+		{ 'name': 'HEAD_F_FLAT', 'image': 'HEAD_F_FLAT.png' },
+		{ 'name': 'HEAD_G_SHARP', 'image': 'HEAD_G_SHARP.png' },
+		{ 'name': 'HEAD_G', 'image': 'HEAD_G.png' },
+		{ 'name': 'HEAD_G_FLAT', 'image': 'HEAD_G_FLAT.png' },
+		{ 'name': 'HEAD_H', 'image': 'HEAD_H.png' },
+		{ 'name': 'HEAD_H_SHARP', 'image': 'HEAD_H_SHARP.png' },
+		{ 'name': 'HEAD_CUSTOM', 'image': 'HEAD_CUSTOM.png' },
+		{ 'name': 'HEAD_GROUPS', 'image': 'HEAD_GROUPS.png' },
+		{ 'name': 'HEAD_INVALID', 'image': 'HEAD_INVALID.png' }
 	];
 
 
