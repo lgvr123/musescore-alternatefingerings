@@ -12,6 +12,7 @@ MuseScore {
 	description : "Add and edit alternate fingering"
 	version : "1.3.0"
 	pluginType : "dialog"
+	//dockArea: "right"
 	requiresScore : true
 	width: 600
 	height: 600
@@ -40,7 +41,7 @@ MuseScore {
 	property var __notes : [];
 
 	// config
-	readonly property int debugLevel : level_INFO;
+	readonly property int debugLevel : level_DEBUG;
 	readonly property bool atFingeringLevel : true;
 
 	// work variables
@@ -212,12 +213,21 @@ MuseScore {
 		// On fabrique le modèle pour le ComboBox
 		pushFingering(fingering?fingering.text:undefined)
 		
-		ready=true;
+		// on sélectionne la config dans la liste des presets
+		selectPreset(
+			new presetClass(__category, "", note.extname.name, note.accidentalData.name, fingering ? fingering.text : undefined, note.headData.name), false);
+                if (lstPresets.currentIndex>=0) {
+                        currentPreset=lstPresets.model[lstPresets.currentIndex];
+                        debugO(level_DEBUG, "Matching startup preset",currentPreset);
+                } else {
+                        debug(level_DEBUG,"Matching startup preset - none");
+                }
+
+		ready = true;
 		}
-                
            
       function pushFingering(ff) {                
-                ready=false;
+		ready=false;
 
 		// Basé sur la sélection, on récupère le doigté déjà saisi
 		var sFingering;
@@ -2494,19 +2504,7 @@ MuseScore {
 
 						// Select the added/edited preset in the list view
 						if ("remove"!==addPresetWindow.state) {
-							for (var i = 0; i < lstPresets.model.length; i++) {
-								var p = lstPresets.model[i];
-								if ((p.category === __asAPreset.category) &&
-									(p.label === __asAPreset.label) &&
-									(p.note === __asAPreset.note) &&
-									(p.accidental === __asAPreset.accidental) &&
-									(p.head === __asAPreset.head) &&
-									(p.representation === __asAPreset.representation)) {
-									lstPresets.currentIndex=i;
-									break;
-								}
-							}
-							
+							selectPreset(__asAPreset);
 						}
 						  
 					  
@@ -2644,7 +2642,60 @@ MuseScore {
 		return "NONE.png";
 	}
 
+	function selectPreset(preset, strict) {
 
+		if (strict === undefined)
+			strict = true;
+
+		var filtered = lstPresets.model.slice();
+
+                console.log("Selecting ("+strict+")");
+                debugO(level_DEBUG,"preset",preset);
+                console.log("Among "+filtered.length);
+
+		for (var i = 0; i < filtered.length; i++) {
+			filtered[i].index = i;
+		}
+
+		var stricts,
+		weaks;
+
+		if (strict) {
+			stricts = ["category", "representation", "note", "accidental", "head", "label"];
+			weaks = [];
+		} else {
+			stricts = ["category", "representation"];
+			weaks = ["note", "accidental", "head", "label"];
+		}
+
+		var best = -1;
+		for (var i=0;i<stricts.length;i++) {
+			var f=stricts[i];
+			filtered = filtered.filter(function (p) {
+					return (p[f] === preset[f]);
+				});
+                        console.log("Preset selection: after '"+f+"': "+filtered.length);
+			if (filtered.length === 0) {
+				break;
+                        }
+		}
+		if (filtered.length  > 0) { // les filtres stricts ont retenus au minimum 1 élément
+			best = filtered[0].index;
+			for (var i=0;i<weaks.length;i++) {
+				var f=weaks[i];
+				filtered = filtered.filter(function (p1) {
+						return (p1[f] === "--" || preset[f] === "--" || p1[f] === undefined || preset[f] === undefined || p1[f] === preset[f]);
+					});
+				if (filtered.length === 0)
+					break;
+				else
+					best = filtered[0].index;
+			}
+		}
+
+                console.log("best: "+best);
+		lstPresets.currentIndex = best;
+	}
 	// -----------------------------------------------------------------------
 	// --- Property File -----------------------------------------------------
 	// -----------------------------------------------------------------------
@@ -2869,7 +2920,7 @@ MuseScore {
 				}
 			}
 		}
-                
+
 	}
 	
 	function readLibrary() {
