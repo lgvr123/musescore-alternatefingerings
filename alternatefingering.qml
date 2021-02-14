@@ -10,7 +10,7 @@ import FileIO 3.0
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
-	version : "1.3.1"
+	version : "2.0.0"
 	pluginType : "dialog"
 	//dockArea: "right"
 	requiresScore : true
@@ -103,11 +103,11 @@ MuseScore {
 		var warnMultipleFingerings = false;
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
-			notes = getNotesFromCursor(true);
+			notes = getNotesRestsFromCursor(true);
 			if (notes && (notes.length > 0)) {
 				debug(level_DEBUG, "NOTES FOUND FROM CURSOR");
 			} else {
-				notes = getNotesFromSelection();
+				notes = getNotesRestsFromSelection();
 				if (notes && (notes.length > 0)) {
 					debug(level_DEBUG, "NOTES FOUND FROM SELECTION");
 				} else {
@@ -125,14 +125,15 @@ MuseScore {
 						fingering = fingerings[0];
 					} else {
 						debug(level_DEBUG, "NO NOTES FOUND");
-						invalidSelectionDialog.open();
-						return;
+						notes=[];
+						//invalidSelectionDialog.open(); // v2 Autorisé
+						//return;
 					}
 				}
 			}
 
-			if (notes) {
-
+			if (notes && (notes.length>0)) {
+				// Notes and Rests
 				var prevNote;
 				var prevInstru;
 				for (var i = 0; i < notes.length; i++) {
@@ -164,7 +165,7 @@ MuseScore {
 
 					prevInstru = (instru) ? instru.instrument : "unknown";
 					// Read the first fingering
-					if (isValidNote) {
+					if (isValidNote) { // On enrichit tout: Note comme Rest.
 						var fingerings = getFingerings(note);
 						enrichNote(note); // add note name, accidental name, ...
 
@@ -203,9 +204,11 @@ MuseScore {
 		debugV(level_INFO, ">>", "warnings", warnings);
 		// INVALID INSTRUMENT
 		if (!instrument && !category) {
-			// TODO: Pass the error message
-			unkownInstrumentDialog.open();
-			return;
+			//unkownInstrumentDialog.open(); // v2: autorisé
+			//return;
+			notes=[];
+			category="";
+			instrument="";
 		}
 
 		// CORRECT INSTRUMENT
@@ -215,18 +218,30 @@ MuseScore {
 		// On fabrique le modèle pour le ComboBox
 		pushFingering(fingering ? fingering.text : undefined)
 
-		// on sélectionne la config dans la liste des presets
-		selectPreset(
-			new presetClass(__category, "", note.extname.name, note.accidentalData.name, fingering ? fingering.text : undefined, note.headData.name), false);
-		if (lstPresets.currentIndex >= 0) {
-			currentPreset = lstPresets.model[lstPresets.currentIndex];
-			debugO(level_DEBUG, "Matching startup preset", currentPreset);
-		} else {
-			debug(level_DEBUG, "Matching startup preset - none");
-		}
-
-		ready = true;
-	}
+		// on sélectionne la 1ère note dans la liste des presets
+		if (notes.length > 0) {
+			var note1=undefined;
+			for (var i=0;i<notes.length;i++) {
+				if (notes[i].type===Element.NOTE) {
+					note1=notes[i];
+					break;
+				}
+			}
+			
+			if (note1) {
+				selectPreset(
+					new presetClass(__category, "", note1.extname.name, note1.accidentalData.name, fingering ? fingering.text : undefined, note1.headData.name), false);
+				if (lstPresets.currentIndex >= 0) {
+					currentPreset = lstPresets.model[lstPresets.currentIndex];
+					debugO(level_DEBUG, "Matching startup preset", currentPreset);
+				} else {
+					currentPreset = undefined;
+					debug(level_DEBUG, "Matching startup preset - none");
+				}
+			}
+			}
+			ready = true;
+			}
 
 	function pushFingering(ff) {
 		ready = false;
@@ -560,7 +575,7 @@ MuseScore {
 	// -----------------------------------------------------------------------
 	/**
 	 * Get all the selected notes from the selection
-	 * @return Note[] : each returned {@link Note} has
+	 * @return Note[] : each returned {@link Note}  has the following properties:
 	 *      - element.type==Element.NOTE
 	 */
 	function getNotesFromSelection() {
@@ -573,25 +588,62 @@ MuseScore {
 			if (element.type == Element.NOTE) {
 				notes[n++] = element;
 			}
+
 		}
 		return notes;
 	}
 
 	/**
+	 * Get all the selected rest from the selection
+	 * @return Note[] : each returned {@link Rest}  has the following properties:
+	 *      - element.type==Element.REST
+	 */
+	function getRestsFromSelection() {
+		var selection = curScore.selection;
+		var el = selection.elements;
+		var rests = [];
+		for (var i = 0; i < el.length; i++) {
+			var element = el[i];
+			if (element.type == Element.REST) {
+				rests.push(element);
+			}
+
+		}
+		return rests;
+	}
+
+	/**
+	 * Get all the selected notes and rests from the selection
+	 * @return Note[] : each returned {@link Rest}  has the following properties:
+	 *      - element.type==Element.REST or Element.NOTE
+	 */
+	function getNotesRestsFromSelection() {
+		var selection = curScore.selection;
+		var el = selection.elements;
+		var rests = [];
+		for (var i = 0; i < el.length; i++) {
+			var element = el[i];
+			if ((element.type == Element.REST) || (element.type == Element.NOTE)) {
+				rests.push(element);
+			}
+
+		}
+		return rests;
+	}
+	/**
 	 * Get all the selected chords from the selection
-	 * @return Chord[] : each returned {@link Chord} has
+	 * @return Chord[] : each returned {@link Chord}  has the following properties:
 	 *      - element.type==Element.CHORD
 	 */
 	function getChordsFromSelection() {
 		var notes = getNotesFromSelection();
 		var chords = [];
-		var c = 0;
 		var prevChord;
 		for (var i = 0; i < notes.length; i++) {
 			var element = notes[i];
 			var chord = element.parent;
 			if (prevChord && !prevChord.is(chord)) {
-				chords[c++] = chord;
+				chords.push(chord);
 			}
 			prevChord = chord;
 		}
@@ -600,37 +652,50 @@ MuseScore {
 
 	/**
 	 * Get all the selected segments from the selection
-	 * @return Segment[] : each returned {@link Segment} has
+	 * @return Segment[] : each returned {@link Segment}  has the following properties:
 	 *      - element.type==Element.SEGMENT
 	 */
 	function getSegmentsFromSelection() {
+		// Les segments sur base des notes et accords
 		var chords = getChordsFromSelection();
 		var segments = [];
-		var s = 0;
 		var prevSeg;
 		for (var i = 0; i < chords.length; i++) {
 			var element = chords[i];
 			var seg = element.parent;
 			if (prevSeg && !prevSeg.is(seg)) {
-				segments[s++] = seg;
+				segments.push(seg);
 			}
 			prevChord = seg;
 		}
+
+		// Les segments sur base des accords
+		var rests = getRestsFromSelection();
+		for (var i = 0; i < rests.length; i++) {
+			var element = rests[i];
+			var seg = element.parent;
+			
+			if (segments.indexOf(seg)===-1)  {
+				segments.push(seg);
+			}
+		}
+
 		return segments;
 	}
 
 	/**
 	 * Reourne les fingerings sélectionnés
+	 * @return Fingering[] : each returned {@link Fingering}  has the following properties:
+	 *      - element.type==Element.FINGERING
 	 */
 	function getFingeringsFromSelection() {
 		var selection = curScore.selection;
 		var el = selection.elements;
 		var fingerings = [];
-		var n = 0;
 		for (var i = 0; i < el.length; i++) {
 			var element = el[i];
 			if (element.type == Element.FINGERING) {
-				fingerings[n++] = element;
+				fingerings.push(element);
 			}
 		}
 		return fingerings;
@@ -640,7 +705,7 @@ MuseScore {
 	 * Get all the selected notes based on the cursor.
 	 * Rem: This does not any result in case of the notes are selected inidvidually.
 	 * @param oneNoteBySegment : boolean. If true, only one note by segment will be returned.
-	 * @return Note[] : each returned {@link Note} has
+	 * @return Note[] : each returned {@link Note}  has the following properties:
 	 *      - element.type==Element.NOTE
 	 *
 	 */
@@ -663,7 +728,7 @@ MuseScore {
 	/**
 	 * Get all the selected chords based on the cursor.
 	 * Rem: This does not any result in case of the notes are selected inidvidually.
-	 * @return Chord[] : each returned {@link Note} has
+	 * @return Chord[] : each returned {@link Note} has the following properties:
 	 *      - element.type==Element.CHORD
 	 *
 	 */
@@ -713,8 +778,112 @@ MuseScore {
 	}
 
 	/**
+	 * Get all the selected rests based on the cursor.
+	 * Rem: This does not any result in case of the rests and notes are selected inidvidually.
+	 * @return Rest[] : each returned {@link Note} has the following properties:
+	 *      - element.type==Element.REST
+	 *
+	 */
+	function getRestsFromCursor() {
+		var score = curScore;
+		var cursor = curScore.newCursor()
+			var firstTick,
+		firstStaff,
+		lastTick,
+		lastStaff;
+		// start
+		cursor.rewind(Cursor.SELECTION_START);
+		firstTick = cursor.tick;
+		firstStaff = cursor.track;
+		// end
+		cursor.rewind(Cursor.SELECTION_END);
+		lastTick = cursor.tick;
+		if (lastTick == 0) { // dealing with some bug when selecting to end.
+			lastTick = curScore.lastSegment.tick + 1;
+		}
+		lastStaff = cursor.track;
+		debugV(level_DEBUG, "> first", "tick", firstTick);
+		debugV(level_DEBUG, "> first", "track", firstStaff);
+		debugV(level_DEBUG, "> last", "tick", lastTick);
+		debugV(level_DEBUG, "> last", "track", lastStaff);
+		var rests = [];
+		for (var track = firstStaff; track <= lastStaff; track++) {
+
+			cursor.rewind(Cursor.SELECTION_START);
+			var segment = cursor.segment;
+			while (segment && (segment.tick < lastTick)) {
+				var element;
+				element = segment.elementAt(track);
+				if (element && element.type == Element.REST) {
+					debugV(level_TRACE, "- segment -", "tick", segment.tick);
+					debugV(level_TRACE, "- segment -", "segmentType", segment.segmentType);
+					debugV(level_TRACE, "--element", "label", (element) ? element.name : "null");
+					rests.push(element);
+				}
+
+				cursor.next();
+				segment = cursor.segment;
+			}
+		}
+
+		return rests;
+	}
+
+	/**
+	 * Get all the selected notes and rests based on the cursor.
+	 * Rem: This does not any result in case of the rests and notes are selected inidvidually.
+	 * @return Rest[] : each returned {@link Note} has the following properties:
+	 *      - element.type==Element.REST or Element.NOTE
+	 *
+	 */
+	function getNotesRestsFromCursor() {
+		var score = curScore;
+		var cursor = curScore.newCursor()
+			var firstTick,
+		firstStaff,
+		lastTick,
+		lastStaff;
+		// start
+		cursor.rewind(Cursor.SELECTION_START);
+		firstTick = cursor.tick;
+		firstStaff = cursor.track;
+		// end
+		cursor.rewind(Cursor.SELECTION_END);
+		lastTick = cursor.tick;
+		if (lastTick == 0) { // dealing with some bug when selecting to end.
+			lastTick = curScore.lastSegment.tick + 1;
+		}
+		lastStaff = cursor.track;
+		debugV(level_DEBUG, "> first", "tick", firstTick);
+		debugV(level_DEBUG, "> first", "track", firstStaff);
+		debugV(level_DEBUG, "> last", "tick", lastTick);
+		debugV(level_DEBUG, "> last", "track", lastStaff);
+		var rests = [];
+		for (var track = firstStaff; track <= lastStaff; track++) {
+
+			cursor.rewind(Cursor.SELECTION_START);
+			var segment = cursor.segment;
+			while (segment && (segment.tick < lastTick)) {
+				var element;
+				element = segment.elementAt(track);
+				if (element && ((element.type == Element.REST) || (element.type == Element.NOTE))){
+					debugV(level_TRACE, "- segment -", "tick", segment.tick);
+					debugV(level_TRACE, "- segment -", "segmentType", segment.segmentType);
+					debugV(level_TRACE, "--element", "label", (element) ? element.name : "null");
+					rests.push(element);
+				}
+
+				cursor.next();
+				segment = cursor.segment;
+			}
+		}
+
+		return rests;
+	}
+
+	/**
 	 * Get all the selected segments based on the cursor.
-	 * Rem: This does not any result in case of the notes are selected inidvidually.
+	 * Rem: This does not return any result in case of the notes are selected inidvidually.
 	 * @return Segment[] : each returned {@link Note} has
 	 *      - element.type==Element.SEGMENT
 	 *
@@ -770,10 +939,10 @@ MuseScore {
 	 * Return the instrument playing that note
 	 */
 	function getInstrument(note) {
-		if (note.type != Element.NOTE) {
+		if ((note.type != Element.NOTE)  && (note.type != Element.REST)) {
 			return undefined;
 		} else {
-			var nstaff = Math.ceil(note.track / 4);
+			// var nstaff = Math.ceil(note.track / 4); // 14/2/21 pas utile ?
 			var part = note.staff.part;
 			//debugO(level_DEBUG,"part", part);
 			var instru = part.instrumentId;
@@ -807,68 +976,91 @@ MuseScore {
 
 	}
 
+	/**
+	* Enrichit Note et Rest d'une même manière (point de vue propriété de l'objet)
+	*/
 	function enrichNote(note) {
-		// accidental
-		var id = note.accidentalType;
-		note.accidentalData = {
-			name : "UNKOWN",
-			image : "NONE.png"
-		};
-		for (var i = 1; i < accidentals.length; i++) { // starting at 1 because 0 is the generic one ("--")
-			var acc = accidentals[i];
-			if (id == eval("Accidental." + acc.name)) {
-				note.accidentalData = acc;
-				break;
-			}
-		}
 
-		// note name and octave
-		var tpc = {
-			'tpc' : 0,
-			'name' : '?',
-			'raw' : '?'
-		};
-		var pitch = note.pitch;
-		var pitchnote = pitchnotes[pitch % 12];
-		var noteOctave = Math.floor(pitch / 12) - 1;
-
-		for (var i = 0; i < tpcs.length; i++) {
-			var t = tpcs[i];
-			if (note.tpc == t.tpc) {
-				tpc = t;
-				break;
-			}
-		}
-
-		if (pitchnote == "B" && tpc.raw == "C") {
-			noteOctave++;
-		} else if (pitchnote == "C" && tpc.raw == "B") {
-			noteOctave--;
-		}
-
-		note.extname = {
-			"fullname" : tpc.name + noteOctave,
-			"name" : tpc.raw + noteOctave,
-			"raw" : tpc.raw,
-			"octave" : noteOctave
-		};
-
-		// head
-		var grp = note.headGroup ? note.headGroup : 0;
+		// Par défaut:
 		note.headData = {
 			name : "UNKOWN",
 			image : "NONE.png"
 		};
-		for (var i = 1; i < heads.length; i++) { // starting at 1 because 0 is the generic one ("--")
-			var head = heads[i];
-			if (grp == eval("NoteHeadGroup." + head.name)) {
-				note.headData = head;
-				break;
+
+		note.accidentalData = {
+			name : "UNKOWN",
+			image : "NONE.png"
+		};
+
+		note.extname = {
+			"fullname" : "",
+			"name" : "",
+			"raw" : "",
+			"octave" : ""
+		};
+
+		if (note.type === Element.NOTE) {
+			// accidental
+			var id = note.accidentalType;
+			for (var i = 1; i < accidentals.length; i++) { // starting at 1 because 0 is the generic one ("--")
+				var acc = accidentals[i];
+				if (id == eval("Accidental." + acc.name)) {
+					note.accidentalData = acc;
+					break;
+				}
 			}
+
+			// note name and octave
+			var tpc = {
+				'tpc' : 0,
+				'name' : '?',
+				'raw' : '?'
+			};
+			var pitch = note.pitch;
+			var pitchnote = pitchnotes[pitch % 12];
+			var noteOctave = Math.floor(pitch / 12) - 1;
+
+			for (var i = 0; i < tpcs.length; i++) {
+				var t = tpcs[i];
+				if (note.tpc == t.tpc) {
+					tpc = t;
+					break;
+				}
+			}
+
+			if (pitchnote == "B" && tpc.raw == "C") {
+				noteOctave++;
+			} else if (pitchnote == "C" && tpc.raw == "B") {
+				noteOctave--;
+			}
+
+			note.extname = {
+				"fullname" : tpc.name + noteOctave,
+				"name" : tpc.raw + noteOctave,
+				"raw" : tpc.raw,
+				"octave" : noteOctave
+			};
+
+			// head
+			var grp = note.headGroup ? note.headGroup : 0;
+			for (var i = 1; i < heads.length; i++) { // starting at 1 because 0 is the generic one ("--")
+				var head = heads[i];
+				if (grp == eval("NoteHeadGroup." + head.name)) {
+					note.headData = head;
+					break;
+				}
+			}
+
+		} else if (note.type === Element.REST) {
+			note.extname = {
+				"fullname" : "Rest",
+				"name" : "--",
+				"raw" : "",
+				"octave" : ""
+			};
+
 		}
-
 		return note;
-
 	}
 	// -----------------------------------------------------------------------
 	// --- String extractors -------------------------------------------------
@@ -968,26 +1160,6 @@ MuseScore {
 					sourceComponent : (__modelInstruments.length <= 1) ? txtInstruCompo : lstInstruCompo
 				}
 
-				Text {
-					text : "Instrument config"
-					horizontalAlignment : Qt.AlignRight
-					rightPadding : 10
-				}
-
-				Loader {
-					id : configOpenBtn
-					Binding {
-						target : configOpenBtn.item
-						property : "panel"
-						value : panConfig // should be a valid id
-					}
-					Binding {
-						target : configOpenBtn.item
-						property : "visible"
-						value : (__config && __config.length > 0)
-					}
-					sourceComponent : openPanelComponent
-				}
 			}
 		} //panInstrument
 
@@ -999,45 +1171,6 @@ MuseScore {
 			Layout.rowSpan : 4
 			Layout.fillHeight : true
 			Layout.fillWidth : true
-
-			Rectangle { // panConfig
-
-				id : panConfig
-				visible : false
-				color : "#F0F0F0"
-				//Layout.preferredWidth : layConfig.implicitWidth + 10
-				Layout.fillWidth : true
-				Layout.preferredHeight : layConfig.implicitHeight + 10
-				anchors.margins : 20
-				Grid {
-					id : layConfig
-
-					columns : 3
-					columnSpacing : 5
-					rowSpacing : 5
-
-					Repeater {
-						model : ready ? __config : []
-						delegate : CheckBox {
-							id : chkConfig
-							property var __mode : __config[model.index]
-							Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
-							text : __mode.name
-							checked : __mode.activated // init only
-							onClicked : {
-								debug(level_TRACE, "onClik " + __mode.name);
-								var before = __mode.activated;
-								__mode.activated = !__mode.activated;
-								buildConfigNotes();
-								refreshed = false; // awful trick to force the refresh
-								refreshed = true;
-							}
-						}
-
-					}
-				}
-			} //panConfig
-
 
 			Rectangle { // panKeys
 				id : panKeys
@@ -1127,6 +1260,22 @@ MuseScore {
 						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
 						Layout.rightMargin : 5
 						Layout.leftMargin : 5
+						indicator : Rectangle {
+							implicitWidth : 12
+							implicitHeight : implicitWidth
+							x : chkForceAccidental.leftPadding + 2
+							y : parent.height / 2 - height / 2
+							border.color : "grey"
+
+							Rectangle {
+								width : parent.implicitWidth / 2
+								height : parent.implicitWidth / 2
+								x : parent.implicitWidth / 4
+								y : parent.implicitWidth / 4
+								color : "grey"
+								visible : chkForceAccidental.checked
+							}
+						}
 					}
 
 					CheckBox {
@@ -1135,6 +1284,8 @@ MuseScore {
 						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
 						Layout.rightMargin : 5
 						Layout.leftMargin : 5
+						indicator.width : 16
+						indicator.height : 16
 					}
 
 				}
@@ -1891,8 +2042,8 @@ MuseScore {
 		id : txtInstruCompo
 		Text {
 			id : txtInstru
-			text : __modelInstruments[0]
-			font.pointSize : titlePointSize
+			text : (__category==="")?"Non supported instrument":__modelInstruments[0]
+			font.pointSize : (__category==="")?9:titlePointSize
 			anchors {
 				//top : parent.top
 				fill : parent
@@ -2037,13 +2188,65 @@ MuseScore {
 			}
 
 			Rectangle {
+				Layout.preferredHeight : txtCfgInstr.implicitHeight + 4 // 4 pour les marges
+				Layout.fillWidth : true
+				visible: (__category!=="")
+				color : "#C0C0C0"
+
+				Text {
+					id : txtCfgInstr
+					text : "Instrument configuration ("+__modelInstruments[0]+")"
+					Layout.fillWidth : true
+					rightPadding : 5
+					leftPadding : 5
+					horizontalAlignment : Qt.AlignLeft
+				}
+			}
+			
+			Rectangle { // panConfig
+
+				visible: (__category!=="")
+
+				id : panConfig
+				color : "#F0F0F0"
+				//Layout.preferredWidth : layConfig.implicitWidth + 10
+				Layout.fillWidth : true
+				Layout.preferredHeight : layConfig.implicitHeight + 10
+				anchors.margins : 20
+				Flow {
+					id : layConfig
+
+					Repeater {
+						model : ready ? __config : []
+						delegate : CheckBox {
+							id : chkConfig
+							property var __mode : __config[model.index]
+							Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
+							text : __mode.name
+							checked : __mode.activated // init only
+							onClicked : {
+								debug(level_TRACE, "onClik " + __mode.name);
+								var before = __mode.activated;
+								__mode.activated = !__mode.activated;
+								buildConfigNotes();
+								refreshed = false; // awful trick to force the refresh
+								refreshed = true;
+							}
+						}
+
+					}
+				}
+			} //panConfig
+
+
+			Rectangle {
 				Layout.preferredHeight : txtOptFing.implicitHeight + 4 // 4 pour les marges
 				Layout.fillWidth : true
 				color : "#C0C0C0"
 
 				Text {
 					id : txtOptFing
-					text : "Fingering optionss"
+					text : "Fingering options"
 					Layout.fillWidth : true
 					rightPadding : 5
 					leftPadding : 5
@@ -2594,8 +2797,8 @@ MuseScore {
 		__confignotes = notes;
 	}
 
-	property var keysorder : ['B','A','G','F','E','D','C']
-	
+	property var keysorder : ['B', 'A', 'G', 'F', 'E', 'D', 'C']
+
 	function getPresetsLibrary(refresh) { // refresh is just meant for the "awful hack" ;-)
 		var note = __notes[0];
 
@@ -2612,11 +2815,10 @@ MuseScore {
 				return kA - kB;
 			});
 
-
 		if (chkFilterPreset.checkState === Qt.Unchecked) {
 			// everything
 			return sorted;
-			
+
 		} else if (chkFilterPreset.checkState === Qt.Checked) {
 			// strong filter (on note and accidental)
 			var useEquiv = chkEquivAccidental.checked;
@@ -2688,7 +2890,10 @@ MuseScore {
 	}
 
 	function selectPreset(preset, strict) {
-
+		
+		if (preset === undeifined) 
+			return;
+	
 		if (strict === undefined)
 			strict = true;
 
