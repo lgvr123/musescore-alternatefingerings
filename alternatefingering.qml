@@ -1,5 +1,5 @@
 import QtQuick 2.9
-import QtQuick.Controls 2.2 
+import QtQuick.Controls 2.2
 import MuseScore 3.0
 import QtQuick.Window 2.2
 import QtQuick.Dialogs 1.2
@@ -10,20 +10,23 @@ import FileIO 3.0
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
-	version : "1.3.0"
+	version : "1.3.1"
 	pluginType : "dialog"
 	//dockArea: "right"
 	requiresScore : true
-	width: 600
-	height: 600
-	
-	id: mainWindow
-        
+	width : 600
+	height : 600
+
+	id : mainWindow
+
 	/** category of instrument :"flute","clarinet", ... */
 	property string __category : ""
 	/** alias to the different keys schemas for a the current category. */
 	property var __instruments : categories[__category]["instruments"]
-	property var __modelInstruments : {{Object.keys(__instruments)}}
+	property var __modelInstruments : { {
+			Object.keys(__instruments)
+		}
+	}
 
 	/** alias to the different config options in the current category. */
 	property var __config : categories[__category]["config"];
@@ -34,7 +37,7 @@ MuseScore {
 
 	// hack
 	property bool refreshed : true;
-	property bool presetsRefreshed: true
+	property bool presetsRefreshed : true
 	property var ready : false;
 
 	/** the notes to which the fingering must be made. */
@@ -46,7 +49,7 @@ MuseScore {
 
 	// work variables
 	property var lastoptions;
-	property string currentInstrument: ""
+	property string currentInstrument : ""
 	property var currentPreset : undefined
 	property var __asAPreset : new presetClass()
 
@@ -63,16 +66,15 @@ MuseScore {
 	//property var usedstates : basestates;
 	property var usedstates : basestates.concat(thrillstates);
 
-	readonly property int titlePointSize: 12
-	readonly property int tooltipShow: 500
-	readonly property int tooltipHide: 5000
-	
+	readonly property int titlePointSize : 12
+	readonly property int tooltipShow : 500
+	readonly property int tooltipHide : 5000
+
 	readonly property int level_NONE : 0;
 	readonly property int level_INFO : 10;
 	readonly property int level_DEBUG : 20;
 	readonly property int level_TRACE : 30;
 	readonly property int level_ALL : 999;
-
 
 	// -----------------------------------------------------------------------
 	// --- Read the score ----------------------------------------------------
@@ -84,12 +86,12 @@ MuseScore {
 			return;
 		}
 
-                // lecture des options
-                readOptions();
-                readLibrary();
-                
+		// lecture des options
+		readOptions();
+		readLibrary();
+
 		// preliminary check of the usedstates
-                displayUsedStates();
+		displayUsedStates();
 
 		var instrument;
 		var category;
@@ -211,23 +213,23 @@ MuseScore {
 		__category = category;
 
 		// On fabrique le modèle pour le ComboBox
-		pushFingering(fingering?fingering.text:undefined)
-		
+		pushFingering(fingering ? fingering.text : undefined)
+
 		// on sélectionne la config dans la liste des presets
 		selectPreset(
 			new presetClass(__category, "", note.extname.name, note.accidentalData.name, fingering ? fingering.text : undefined, note.headData.name), false);
-                if (lstPresets.currentIndex>=0) {
-                        currentPreset=lstPresets.model[lstPresets.currentIndex];
-                        debugO(level_DEBUG, "Matching startup preset",currentPreset);
-                } else {
-                        debug(level_DEBUG,"Matching startup preset - none");
-                }
+		if (lstPresets.currentIndex >= 0) {
+			currentPreset = lstPresets.model[lstPresets.currentIndex];
+			debugO(level_DEBUG, "Matching startup preset", currentPreset);
+		} else {
+			debug(level_DEBUG, "Matching startup preset - none");
+		}
 
 		ready = true;
-		}
-           
-      function pushFingering(ff) {                
-		ready=false;
+	}
+
+	function pushFingering(ff) {
+		ready = false;
 
 		// Basé sur la sélection, on récupère le doigté déjà saisi
 		var sFingering;
@@ -304,11 +306,9 @@ MuseScore {
 		}
 
 		// On sélectionne le bon instrument
-		currentInstrument=instrument_type;
+		currentInstrument = instrument_type;
 		refreshed = false; // awful trick to force the refresh
 		refreshed = true;
-
-
 
 		// On consruit la liste des notes dépendants des configurations actuellement sélectionnées.
 		// Je voudrais faire ça par binding mais le javascript de QML ne supporte pas flatMap() => je dois le faire manuellement
@@ -322,9 +322,9 @@ MuseScore {
 	function writeFingering() {
 
 		var sFingering = buildFingeringRepresentation();
-		
+
 		debugV(level_INFO, "Fingering", "as string", sFingering);
-		
+
 		curScore.startCmd();
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
@@ -423,40 +423,34 @@ MuseScore {
 	}
 
 	/**
-	* Analyze the alignement needs (accidental and/or heads). If the alignement strategy is "Ask each time" and 
-	* if there is a need in alignement, then ask what to do. Otherwise (depending on the strategy), either align
-	* without further questions or leave.
-	*/
+	 * Analyze the alignement needs (accidental and/or heads). If the alignement strategy is "Ask each time" and
+	 * if there is a need in alignement, then ask what to do. Otherwise (depending on the strategy), either align
+	 * without further questions or leave.
+	 */
 	function alignToPreset() {
 
 		// no preset ? no alignement needed
-		if (currentPreset===undefined) {
+		if (currentPreset === undefined) {
 			// console.log("--No preset => no alignement");
 			alignToPreset_after();
 			return;
-			}
-			
-			
-		var forceAcc=(lstForceAccidental.currentIndex>=0)?lstForceAccidental.model.get(lstForceAccidental.currentIndex).value:-1;
-		var forceHead=(lstForceHead.currentIndex>=0)?lstForceHead.model.get(lstForceHead.currentIndex).value:-1;
-		//console.log("--Default forceAcc="+forceAcc);		
-		//console.log("--Default forceHead="+forceHead);		
+		}
+
+		var forceAcc = (chkForceAccidental.checkState === Qt.Checked);
+		var forceHead = (chkForceHead.checkState === Qt.Checked);
+		//console.log("--Default forceAcc="+forceAcc);
+		//console.log("--Default forceHead="+forceHead);
 
 		// both default behaviours set to "Never Align" ? no alignement needed
-		if (forceAcc==0 && forceHead==0)  {
-			//console.log("-- => no alignement");		
+		if (!forceAcc && !forceHead) {
+			//console.log("-- => no alignement");
 			alignToPreset_after();
 			return;
-			}
-		
-		// otherwise, collect the notes and check if some confirmation is needed
-		var needAskAcc=false;
-		var needAskHead=false;
+		}
 
-		var allnotes=[];
-		
+		var allnotes = [];
+
 		if (atFingeringLevel) {
-		
 			// Managing fingering in the Fingering element (note.elements)
 			var prevNote;
 			var firstNote;
@@ -466,60 +460,30 @@ MuseScore {
 					// first note of chord. Going to treat the chord as once
 					debug(level_TRACE, "dealing with first note");
 					var chordnotes = note.parent.notes;
-					
 
-						for (var j = 0; j < chordnotes.length; j++) {
-							var nt = enrichNote(chordnotes[j]);
-                                                      allnotes.push(nt);
-							// accidental
-							if (currentPreset.accidental!==generic_preset && currentPreset.accidental!==nt.accidentalData.name && forceAcc===-1) {
-								needAskAcc=true;
-							}
-							// head
-							if (currentPreset.head!==generic_preset && currentPreset.head!==nt.headData.name && forceHead===-1) {
-								needAskHead=true;
-							}
-							
-						
+					for (var j = 0; j < chordnotes.length; j++) {
+						var nt = enrichNote(chordnotes[j]);
+						allnotes.push(nt);
 					}
-				} 
+				}
 				prevNote = note;
 			}
-
 		}
-		
-		// no default behaviour but no notes with a different head/accidental ? we consider this as no aligneement
-		if (forceAcc===-1 && !needAskAcc) forceAcc=0;
-		if (forceHead===-1 && !needAskHead) forceHead=0;
 
-		// console.log("--Now forceAcc="+forceAcc);		
-		// console.log("--Now forceHead="+forceHead);		
-		
-		if ((forceAcc===-1 && needAskAcc) || (forceHead===-1 && needAskHead)) {
-			confirmPushToNoteDialog.notes=allnotes;
-			confirmPushToNoteDialog.forceHead=forceHead;
-			confirmPushToNoteDialog.forceAcc=forceAcc;
-			confirmPushToNoteDialog.open();
-			// console.log("-- => need to ask");		
-		} else if (forceAcc==1 || forceHead==1) {
-			// console.log("-- => can align without asking");		
-			alignToPreset_do(allnotes,forceAcc,forceHead);
-		} else {
-			// console.log("-- => no alignment");		
-			alignToPreset_after();
-		}
+		// console.log("-- => alignement required");
+		alignToPreset_do(allnotes, forceAcc, forceHead);
 	}
 
 	/**
-	* Execute the alignement. An alignement strategy set as "Ask" is considered here as "Never align"
-	*/
+	 * Execute the alignement. An alignement strategy set as "Ask" is considered here as "Never align"
+	 */
 	function alignToPreset_do(allnotes, forceAcc, forceHead) {
 
-		// console.log("--Aligning with forceAcc="+forceAcc);		
-		// console.log("--Aligning with forceHead="+forceHead);		
+		// console.log("--Aligning with forceAcc="+forceAcc);
+		// console.log("--Aligning with forceHead="+forceHead);
 		// both default behaviours set to "Never Align" ? no alignement needed
-		if (forceAcc == 0 && forceHead == 0) {
-			// console.log("-- => no alignment");		
+		if (!forceAcc && !forceHead) {
+			// console.log("-- => no alignment");
 			alignToPreset_after();
 			return;
 		}
@@ -532,14 +496,14 @@ MuseScore {
 			// accidental
 			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
 				// we must align the head
-				if (forceAcc == 1) {
+				if (forceAcc) {
 					nt.accidentalType = eval("Accidental." + currentPreset.accidental);
 				}
 			}
 			// head
 			if (currentPreset.head !== generic_preset && currentPreset.head !== nt.headData.name) {
 				// we must align the head
-				if (forceHead == 1) {
+				if (forceHead) {
 					nt.headGroup = eval("NoteHeadGroup." + currentPreset.head);
 				}
 			}
@@ -548,19 +512,18 @@ MuseScore {
 
 		alignToPreset_after();
 	}
-	
+
 	function alignToPreset_after() {
 		//console.log("===AFTER ALIGNEMENT TO PRESET==");
 		Qt.quit()
 	}
 
-	
 	function removeAllFingerings() {
 
-		var nbNotes=__notes.length;
-		var nbFing=0
-		
-		curScore.startCmd();
+		var nbNotes = __notes.length;
+		var nbFing = 0
+
+			curScore.startCmd();
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
 			for (var i = 0; i < __notes.length; i++) {
@@ -570,12 +533,12 @@ MuseScore {
 				var chordnotes = note.parent.notes;
 				debug(level_TRACE, "with" + chordnotes.length + "notes in the chord");
 				var f = undefined;
-				// We delete all the fingering found and 
+				// We delete all the fingering found and
 				for (var j = 0; j < chordnotes.length; j++) {
 					var nt = chordnotes[j];
 					var fgs = getFingerings(nt);
 					if (fgs && fgs.length > 0) {
-						for (var k =  0 ; k < fgs.length; k++) {
+						for (var k = 0; k < fgs.length; k++) {
 							nbFing++;
 							nt.remove(fgs[k]);
 							debug(level_TRACE, "removing unneeded fingering");
@@ -586,7 +549,10 @@ MuseScore {
 		}
 
 		curScore.endCmd(false);
-		return {'nbnotes': nbNotes, 'nbdeleted': nbFing};
+		return {
+			'nbnotes' : nbNotes,
+			'nbdeleted' : nbFing
+		};
 	}
 
 	// -----------------------------------------------------------------------
@@ -844,7 +810,10 @@ MuseScore {
 	function enrichNote(note) {
 		// accidental
 		var id = note.accidentalType;
-		note.accidentalData = {name: "UNKOWN", image: "NONE.png"};
+		note.accidentalData = {
+			name : "UNKOWN",
+			image : "NONE.png"
+		};
 		for (var i = 1; i < accidentals.length; i++) { // starting at 1 because 0 is the generic one ("--")
 			var acc = accidentals[i];
 			if (id == eval("Accidental." + acc.name)) {
@@ -852,32 +821,44 @@ MuseScore {
 				break;
 			}
 		}
-		
+
 		// note name and octave
-		var tpc={'tpc' : 0, 'name' : '?', 'raw' : '?'};
-		var pitch=note.pitch;
-		var pitchnote=pitchnotes[pitch % 12];
-		var noteOctave=Math.floor(pitch/12)-1;
+		var tpc = {
+			'tpc' : 0,
+			'name' : '?',
+			'raw' : '?'
+		};
+		var pitch = note.pitch;
+		var pitchnote = pitchnotes[pitch % 12];
+		var noteOctave = Math.floor(pitch / 12) - 1;
 
 		for (var i = 0; i < tpcs.length; i++) {
 			var t = tpcs[i];
-			if (note.tpc==t.tpc) {
-				tpc=t;
+			if (note.tpc == t.tpc) {
+				tpc = t;
 				break;
 			}
-		}			
+		}
 
 		if (pitchnote == "B" && tpc.raw == "C") {
 			noteOctave++;
 		} else if (pitchnote == "C" && tpc.raw == "B") {
 			noteOctave--;
 		}
-		
-		note.extname={"fullname": tpc.name+noteOctave, "name": tpc.raw+noteOctave, "raw": tpc.raw, "octave": noteOctave};
-		
+
+		note.extname = {
+			"fullname" : tpc.name + noteOctave,
+			"name" : tpc.raw + noteOctave,
+			"raw" : tpc.raw,
+			"octave" : noteOctave
+		};
+
 		// head
-		var grp = note.headGroup?note.headGroup:0;
-		note.headData = {name: "UNKOWN", image: "NONE.png"};
+		var grp = note.headGroup ? note.headGroup : 0;
+		note.headData = {
+			name : "UNKOWN",
+			image : "NONE.png"
+		};
 		for (var i = 1; i < heads.length; i++) { // starting at 1 because 0 is the generic one ("--")
 			var head = heads[i];
 			if (grp == eval("NoteHeadGroup." + head.name)) {
@@ -885,8 +866,7 @@ MuseScore {
 				break;
 			}
 		}
-		
-		
+
 		return note;
 
 	}
@@ -896,7 +876,7 @@ MuseScore {
 	function extractInstrument(category, sKeys) {
 		var splt = sKeys.split('');
 		var found;
-		var instruments=categories[category]["instruments"];
+		var instruments = categories[category]["instruments"];
 		// on trie pour avoir les plus grand clés en 1er
 		var sorted = Object.keys(instruments);
 		sorted = sorted.sort(function (a, b) {
@@ -977,21 +957,21 @@ MuseScore {
 
 				Label {
 					text : "Instrument :"
-					font.pointSize: titlePointSize
-					leftPadding: 10
-					rightPadding: 10
+					font.pointSize : titlePointSize
+					leftPadding : 10
+					rightPadding : 10
 				}
 
 				Loader {
-					id: loadInstru
-						Layout.fillWidth : true
-						sourceComponent: (__modelInstruments.length<=1)?txtInstruCompo:lstInstruCompo
-					}
-				
+					id : loadInstru
+					Layout.fillWidth : true
+					sourceComponent : (__modelInstruments.length <= 1) ? txtInstruCompo : lstInstruCompo
+				}
+
 				Text {
 					text : "Instrument config"
 					horizontalAlignment : Qt.AlignRight
-					rightPadding: 10
+					rightPadding : 10
 				}
 
 				Loader {
@@ -1020,7 +1000,7 @@ MuseScore {
 			Layout.fillHeight : true
 			Layout.fillWidth : true
 
-			Rectangle {
+			Rectangle { // panConfig
 
 				id : panConfig
 				visible : false
@@ -1059,14 +1039,14 @@ MuseScore {
 			} //panConfig
 
 
-			Rectangle { 
+			Rectangle { // panKeys
 				id : panKeys
 
 				Layout.fillHeight : true
 				Layout.fillWidth : true
 
 				color : "#F0F0F0"
-				clip: true
+				clip : true
 
 				Item { // un small element within the fullWidth/fullHeight where we paint the repeater
 					anchors.horizontalCenter : parent.horizontalCenter
@@ -1108,7 +1088,58 @@ MuseScore {
 					}
 				}
 			} //panKeys
-			
+
+			Rectangle {
+				Layout.preferredHeight : txtOptAlign.implicitHeight + 4 // 4 pour les marges
+				Layout.fillWidth : true
+				color : "#C0C0C0"
+
+				Text {
+					id : txtOptAlign
+					text : "Align slected notes on preset..."
+					Layout.fillWidth : true
+					rightPadding : 5
+					leftPadding : 5
+					horizontalAlignment : Qt.AlignLeft
+				}
+			}
+
+			Rectangle {
+
+				id : panOptions
+				visible : true
+				color : "#F0F0F0"
+				Layout.preferredWidth : layOptions.implicitWidth + 10
+				Layout.fillWidth : true
+				Layout.preferredHeight : layOptions.implicitHeight + 10
+				anchors.margins : 20
+
+				Grid {
+					id : layOptions
+
+					columns : 1
+					columnSpacing : 5
+					rowSpacing : 5
+
+					CheckBox {
+						id : chkForceAccidental
+						text : "Accidentals"
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
+						Layout.rightMargin : 5
+						Layout.leftMargin : 5
+					}
+
+					CheckBox {
+						id : chkForceHead
+						text : "Notes heads"
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
+						Layout.rightMargin : 5
+						Layout.leftMargin : 5
+					}
+
+				}
+			}
+
 		} // right column
 
 		Item { // buttons row // DEBUG was Item
@@ -1125,8 +1156,8 @@ MuseScore {
 				//Layout.alignment : Qt.AlignRight
 				//Layout.fillWidth : true
 				//anchors { left: parent.left; right: parent.right }
-				anchors.fill: parent
-				
+				anchors.fill : parent
+
 				Button {
 					implicitHeight : buttonBox.contentItem.height
 					implicitWidth : buttonBox.contentItem.height
@@ -1140,13 +1171,12 @@ MuseScore {
 						anchors.centerIn : parent
 					}
 					onClicked : saveOptions()
-					
-					
+
 					ToolTip.text : "Save the options"
-					hoverEnabled: true
-					ToolTip.delay: tooltipShow
-					ToolTip.timeout: tooltipHide
-					ToolTip.visible: hovered				
+					hoverEnabled : true
+					ToolTip.delay : tooltipShow
+					ToolTip.timeout : tooltipHide
+					ToolTip.visible : hovered
 				}
 
 				Button {
@@ -1163,47 +1193,47 @@ MuseScore {
 					}
 					onClicked : optionsWindow.show()
 					ToolTip.text : "Settings..."
-					hoverEnabled: true
-					ToolTip.delay: tooltipShow
-					ToolTip.timeout: tooltipHide
-					ToolTip.visible: hovered
+					hoverEnabled : true
+					ToolTip.delay : tooltipShow
+					ToolTip.timeout : tooltipHide
+					ToolTip.visible : hovered
 				}
 
 				Item { // spacer // DEBUG Item/Rectangle
-					id: spacer
+					id : spacer
 					implicitHeight : 10
 					Layout.fillWidth : true
 				}
 
 				Button {
-					text: "Remove fingerings..."
+					text : "Remove fingerings..."
 					implicitHeight : buttonBox.contentItem.height
 					//implicitWidth : buttonBox.contentChildren[0].width
-					onClicked: 
-						confirmRemoveMissingDialog.open()
+					onClicked :
+					confirmRemoveMissingDialog.open()
 				}
 
 				DialogButtonBox {
 					standardButtons : DialogButtonBox.Close
 					id : buttonBox
 
-					background.opacity: 0 // hide default white background
+					background.opacity : 0 // hide default white background
 
 					Button {
-						text: "Add"
-						DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
-						}
+						text : "Apply"
+						DialogButtonBox.buttonRole : DialogButtonBox.AcceptRole
+					}
 
 					onAccepted : {
 						writeFingering();
 						alignToPreset();
-						}
+					}
 					onRejected : Qt.quit()
 
 				}
 			}
-		} // button rows 
-		
+		} // button rows
+
 		Item { // status bar
 			Layout.row : 7
 			Layout.column : 1
@@ -1211,7 +1241,7 @@ MuseScore {
 			Layout.rowSpan : 1
 			Layout.fillWidth : true
 			Layout.preferredHeight : txtNote.implicitHeight
-                        //color: "#F0F0F0"
+			//color: "#F0F0F0"
 
 			id : panStatusBar
 
@@ -1221,8 +1251,8 @@ MuseScore {
 				wrapMode : Text.NoWrap
 				elide : Text.ElideRight
 				maximumLineCount : 1
-				anchors.left: parent.left
-				anchors.right: txtCurPNote.left
+				anchors.left : parent.left
+				anchors.right : txtCurPNote.left
 			}
 
 			Item {
@@ -1234,7 +1264,7 @@ MuseScore {
 					text : (currentPreset) ? currentPreset.note : "--"
 					leftPadding : 5
 					rightPadding : 5
-					anchors.centerIn : parent			
+					anchors.centerIn : parent
 				}
 				// dummy left border
 				Rectangle {
@@ -1253,14 +1283,14 @@ MuseScore {
 				implicitHeight : i_pna.height
 				implicitWidth : i_pna.width
 				Image {
-					id: i_pna
+					id : i_pna
 					source : "./alternatefingering/" + ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
 					fillMode : Image.PreserveAspectFit
 					anchors.centerIn : parent
 					height : 20
 					width : 20
 				}
-				
+
 				// dummy left border
 				Rectangle {
 					width : 2
@@ -1279,14 +1309,14 @@ MuseScore {
 				implicitWidth : i_pnh.width
 
 				Image {
-					id: i_pnh
+					id : i_pnh
 					source : "./alternatefingering/" + ((currentPreset) ? getHeadImage(currentPreset.head) : "NONE.png")
 					fillMode : Image.PreserveAspectFit
 					anchors.centerIn : parent
 					height : 20
 					width : 20
 				}
-				
+
 				// dummy left border
 				Rectangle {
 					width : 2
@@ -1303,16 +1333,16 @@ MuseScore {
 				implicitWidth : 24
 				// anchors.leftMargin : 5
 
-				color: (currentPreset && (__notes.length > 0) && (currentPreset.note!=__notes[0].extname.name))?"lightpink":"transparent"
-				
+				color : (currentPreset && (__notes.length > 0) && (currentPreset.note != __notes[0].extname.name)) ? "lightpink" : "transparent"
+
 				Text {
-					id: i_tn
+					id : i_tn
 					text : (__notes.length > 0) ? __notes[0].extname.name : "--"
-					anchors.centerIn : parent			
-					leftPadding: 5
-					rightPadding: 5
+					anchors.centerIn : parent
+					leftPadding : 5
+					rightPadding : 5
 				}
-				
+
 				// dummy left border
 				Rectangle {
 					width : 2
@@ -1321,7 +1351,7 @@ MuseScore {
 					implicitHeight : 18
 					anchors.verticalCenter : parent.verticalCenter
 				}
-				
+
 			}
 
 			Rectangle {
@@ -1330,11 +1360,11 @@ MuseScore {
 				anchors.leftMargin : 5
 				implicitHeight : i_tna.height
 				implicitWidth : i_tna.width
-				
-				color: (currentPreset && (__notes.length > 0) && (currentPreset.accidental!=generic_preset) && (currentPreset.accidental!=__notes[0].accidentalData.name))?"lightpink":"transparent"
+
+				color : (currentPreset && (__notes.length > 0) && (currentPreset.accidental != generic_preset) && (currentPreset.accidental != __notes[0].accidentalData.name)) ? "lightpink" : "transparent"
 
 				Image {
-					id: i_tna
+					id : i_tna
 					source : "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].accidentalData.image : "NONE.png")
 					fillMode : Image.PreserveAspectFit
 					anchors.centerIn : parent
@@ -1357,13 +1387,13 @@ MuseScore {
 				anchors.leftMargin : 5
 				implicitHeight : i_tnh.height
 				implicitWidth : i_tnh.width
-				
-				color: (currentPreset && (__notes.length > 0) && (currentPreset.head!=generic_preset)  && (currentPreset.head!=__notes[0].headData.name))?"lightpink":"transparent"
+
+				color : (currentPreset && (__notes.length > 0) && (currentPreset.head != generic_preset) && (currentPreset.head != __notes[0].headData.name)) ? "lightpink" : "transparent"
 
 				Image {
-					id: i_tnh
-				source : "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].headData.image : "NONE.png")
-				fillMode : Image.PreserveAspectFit
+					id : i_tnh
+					source : "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].headData.image : "NONE.png")
+					fillMode : Image.PreserveAspectFit
 					anchors.centerIn : parent
 					height : 20
 					width : 20
@@ -1377,25 +1407,25 @@ MuseScore {
 					anchors.verticalCenter : parent.verticalCenter
 				}
 
-			}			
+			}
 		} // status bar
-		GroupBox {  
-			title: "Favorites"+(chkFilterPreset.checkState  === Qt.Checked ? " (strict)" : chkFilterPreset.checkState  === Qt.PartiallyChecked ? " (similar)" : "")
+		GroupBox {
+			title : "Favorites" + (chkFilterPreset.checkState === Qt.Checked ? " (strict)" : chkFilterPreset.checkState === Qt.PartiallyChecked ? " (similar)" : "")
 			Layout.row : 2
 			Layout.column : 1
 			Layout.columnSpan : 1
 			Layout.rowSpan : 4
 
 			Layout.fillHeight : true
-			
-			anchors.rightMargin: 5
-			anchors.topMargin: 10
-			anchors.bottomMargin: 10
+
+			anchors.rightMargin : 5
+			anchors.topMargin : 10
+			anchors.bottomMargin : 10
 			//topPadding: 10
 
 			ColumnLayout { // left column
-				anchors.fill: parent
-				spacing:10
+				anchors.fill : parent
+				spacing : 10
 
 				ListView { // Presets
 					Layout.fillHeight : true
@@ -1408,10 +1438,10 @@ MuseScore {
 					delegate : presetComponent
 					clip : true
 					focus : true
-					
+
 					highlightMoveDuration : 250 // 250 pour changer la sélection
 					highlightMoveVelocity : 2000 // ou 2000px/sec
-					
+
 
 					// scrollbar
 					flickableDirection : Flickable.VerticalFlick
@@ -1438,8 +1468,8 @@ MuseScore {
 						CheckBox {
 
 							id : chkFilterPreset
-							
-							tristate: true
+
+							tristate : true
 
 							padding : 0
 							spacing : 0
@@ -1447,13 +1477,13 @@ MuseScore {
 							indicator : Rectangle {
 								implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
 								implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
-								color : chkFilterPreset.pressed ? "#C0C0C0" : 
-									chkFilterPreset.checkState  === Qt.Checked ? "#C0C0C0" : chkFilterPreset.checkState  === Qt.PartiallyChecked ? "#D0D0D0" : "#E0E0E0"
+								color : chkFilterPreset.pressed ? "#C0C0C0" :
+								chkFilterPreset.checkState === Qt.Checked ? "#C0C0C0" : chkFilterPreset.checkState === Qt.PartiallyChecked ? "#D0D0D0" : "#E0E0E0"
 								anchors.centerIn : parent
 								Image {
 									id : imgFilter
 									mipmap : true // smoothing
-									width : 21  // 23, a little bit smaller
+									width : 21 // 23, a little bit smaller
 									source : "alternatefingering/filter.svg"
 									fillMode : Image.PreserveAspectFit // ensure it fits
 									anchors.centerIn : parent
@@ -1465,11 +1495,11 @@ MuseScore {
 							}
 
 							ToolTip.text : "Show only the current note's favorites"
-							hoverEnabled: true
-							ToolTip.delay: tooltipShow
-							ToolTip.timeout: tooltipHide
-							ToolTip.visible: hovered				
-							
+							hoverEnabled : true
+							ToolTip.delay : tooltipShow
+							ToolTip.timeout : tooltipHide
+							ToolTip.visible : hovered
+
 						}
 
 						Button {
@@ -1489,22 +1519,22 @@ MuseScore {
 								__asAPreset = new presetClass(__category, "", note.extname.name, note.accidentalData.name, buildFingeringRepresentation(), note.headData.name);
 								debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "add"
-								addPresetWindow.show()
+									addPresetWindow.show()
 							}
 							ToolTip.text : "Add current keys combination as new favorite"
-							hoverEnabled: true
-							ToolTip.delay: tooltipShow
-							ToolTip.timeout: tooltipHide
-							ToolTip.visible: hovered				
+							hoverEnabled : true
+							ToolTip.delay : tooltipShow
+							ToolTip.timeout : tooltipHide
+							ToolTip.visible : hovered
 						}
 
 						Button {
 							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
 							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
 
-							 enabled: (lstPresets.currentIndex>=0)
-							
-							indicator : 
+							enabled : (lstPresets.currentIndex >= 0)
+
+							indicator :
 							Image {
 								source : "alternatefingering/edit.svg"
 								mipmap : true // smoothing
@@ -1514,25 +1544,25 @@ MuseScore {
 							}
 							onClicked : {
 								__asAPreset = lstPresets.model[lstPresets.currentIndex]
-                                                                
-								debug(level_DEBUG, JSON.stringify(__asAPreset));
+
+									debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "edit"
-								addPresetWindow.show()
+									addPresetWindow.show()
 							}
 							ToolTip.text : "Edit the selected favorite"
-							hoverEnabled: true
-							ToolTip.delay: tooltipShow
-							ToolTip.timeout: tooltipHide
-							ToolTip.visible: hovered				
+							hoverEnabled : true
+							ToolTip.delay : tooltipShow
+							ToolTip.timeout : tooltipHide
+							ToolTip.visible : hovered
 						}
-						
+
 						Button {
 							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
 							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
 
-							 enabled: (lstPresets.currentIndex>=0)
-							
-							indicator : 
+							enabled : (lstPresets.currentIndex >= 0)
+
+							indicator :
 							Image {
 								source : "alternatefingering/delete.svg"
 								mipmap : true // smoothing
@@ -1542,19 +1572,19 @@ MuseScore {
 							}
 							onClicked : {
 								__asAPreset = lstPresets.model[lstPresets.currentIndex]
-																
+
 									debug(level_DEBUG, JSON.stringify(__asAPreset));
 								addPresetWindow.state = "remove"
 									addPresetWindow.show()
 							}
 							ToolTip.text : "Remove the selected favorite"
-							hoverEnabled: true
-							ToolTip.delay: tooltipShow
-							ToolTip.timeout: tooltipHide
-							ToolTip.visible: hovered				
+							hoverEnabled : true
+							ToolTip.delay : tooltipShow
+							ToolTip.timeout : tooltipHide
+							ToolTip.visible : hovered
 						}
 					}
-				} 
+				}
 			} // left column
 		}
 	}
@@ -1669,7 +1699,7 @@ MuseScore {
 				},
 				State {
 					name : "deactivated"
-					PropertyChanges { 
+					PropertyChanges {
 						target : img;
 						source : "./alternatefingering/deactivated.svg"
 					}
@@ -1697,16 +1727,16 @@ MuseScore {
 					parent.state = states[nextIndex];
 					debugV(level_TRACE, "note", "current state", note.currentMode);
 					debugV(level_TRACE, "note", "current state", parent.state);
-					// On reset le "currentPreset" 
-					currentPreset=undefined;
+					// On reset le "currentPreset"
+					currentPreset = undefined;
 
 				}
 
 				ToolTip.text : note.name
-				hoverEnabled: true
-				ToolTip.delay: tooltipShow
-				ToolTip.timeout: tooltipHide
-				ToolTip.visible: containsMouse // "hovered" does not work for MouseArea
+				hoverEnabled : true
+				ToolTip.delay : tooltipShow
+				ToolTip.timeout : tooltipHide
+				ToolTip.visible : containsMouse // "hovered" does not work for MouseArea
 			}
 		}
 	}
@@ -1742,7 +1772,7 @@ MuseScore {
 
 				onLineLaidOut : { // hack for correct display of Fiati font
 					line.y = line.y * 0.8
-					line.height = line.height * 0.8
+						line.height = line.height * 0.8
 				}
 
 			}
@@ -1805,7 +1835,7 @@ MuseScore {
 				acceptedButtons : Qt.LeftButton
 
 				onDoubleClicked : {
-					currentPreset=__preset;
+					currentPreset = __preset;
 					pushFingering(__preset.representation);
 				}
 
@@ -1813,11 +1843,11 @@ MuseScore {
 					__lv.currentIndex = index;
 				}
 
-							ToolTip.text : __preset.label
-							hoverEnabled: true
-							ToolTip.delay: tooltipShow
-							ToolTip.timeout: tooltipHide
-							ToolTip.visible: containsMouse && __preset.label && __preset.label !== ""// "hovered" does not work for MouseArea
+				ToolTip.text : __preset.label
+				hoverEnabled : true
+				ToolTip.delay : tooltipShow
+				ToolTip.timeout : tooltipHide
+				ToolTip.visible : containsMouse && __preset.label && __preset.label !== "" // "hovered" does not work for MouseArea
 
 			}
 		}
@@ -1828,8 +1858,11 @@ MuseScore {
 		id : lstInstruCompo
 		ComboBox {
 			id : lstInstru
-			model : __modelInstruments 
-			currentIndex : { { __modelInstruments.indexOf(currentInstrument) } } 
+			model : __modelInstruments
+			currentIndex : { {
+					__modelInstruments.indexOf(currentInstrument)
+				}
+			}
 			clip : true
 			focus : true
 			width : parent.width
@@ -1840,9 +1873,9 @@ MuseScore {
 				fill : parent
 			}
 			contentItem : Text {
-				text: (__modelInstruments[currentIndex])?__modelInstruments[currentIndex]:"--"
-				font.pointSize: titlePointSize
-				verticalAlignment: Qt.AlignVCenter
+				text : (__modelInstruments[currentIndex]) ? __modelInstruments[currentIndex] : "--"
+				font.pointSize : titlePointSize
+				verticalAlignment : Qt.AlignVCenter
 			}
 
 			onCurrentIndexChanged : {
@@ -1859,7 +1892,7 @@ MuseScore {
 		Text {
 			id : txtInstru
 			text : __modelInstruments[0]
-			font.pointSize: titlePointSize
+			font.pointSize : titlePointSize
 			anchors {
 				//top : parent.top
 				fill : parent
@@ -1913,54 +1946,60 @@ MuseScore {
 		icon : StandardIcon.Warning
 		standardButtons : StandardButton.Yes | StandardButton.No
 		title : 'Confirm '
-		text : 'Do you confirm the deletion of the fingerings of the '+__notes.length+' selected note'+(__notes.length>1?'s':'')+' ?'
+		text : 'Do you confirm the deletion of the fingerings of the ' + __notes.length + ' selected note' + (__notes.length > 1 ? 's' : '') + ' ?'
 		onYes : {
-			var res=removeAllFingerings();
-			if (res.nbdeleted>0) txtStatus.text=res.nbnotes+" note"+(res.nbnotes>1?"s":"")+" treated; "+res.nbdeleted+" fingering"+(res.deleted>1?"s":"")+" deleted";
-			else txtStatus.text="No fingerings deleted";
+			var res = removeAllFingerings();
+			if (res.nbdeleted > 0)
+				txtStatus.text = res.nbnotes + " note" + (res.nbnotes > 1 ? "s" : "") + " treated; " + res.nbdeleted + " fingering" + (res.deleted > 1 ? "s" : "") + " deleted";
+			else
+				txtStatus.text = "No fingerings deleted";
 			confirmRemoveMissingDialog.close();
-			
+
 		}
-		onNo: confirmRemoveMissingDialog.close();
+		onNo : confirmRemoveMissingDialog.close();
 	}
 
 	MessageDialog {
 		id : confirmPushToNoteDialog
 		icon : StandardIcon.Question
-		property var notes: []
-		property int forceAcc: 0
-		property int forceHead: 0
-		
+		property var notes : []
+		property int forceAcc : 0
+		property int forceHead : 0
+
 		standardButtons : StandardButton.Yes | StandardButton.No
 		title : 'Align notes to preset'
-		text : 'Some of the selected notes have a different accidental and/or head than the chosen preset.<br/>'+
-			'Do want to align the notes '+			
-			((forceAcc==-1)?'<b>accidentals</b>':'') + 
-			((forceAcc==-1 && forceHead==-1)?' and ':'') + 
-			((forceHead==-1)?'<b>heads</b>':'') + 
-			' on the preset ?<br/>'
-			
-		informativeText  : 'Your choice will apply to all the selected notes.<br/><br/>'
-		detailedText : 
-			((forceAcc==1)?'Accidentals will always be aligned if different.\n':
-				((forceAcc==0)?'Accidentals will never be aligned.\n':
-				'Accidentals will be aligned depending on your choice.\n'))+			
-			((forceHead==1)?'Heads will always be aligned if different.\n':
-				((forceHead==0)?'Heads will never be aligned.\n':
-				'Heads will be aligned depending on your choice.\n'))+
-				'\nThose behaviours can be changed in the options.'
+		text : 'Some of the selected notes have a different accidental and/or head than the chosen preset.<br/>' +
+		'Do want to align the notes ' +
+		((forceAcc == -1) ? '<b>accidentals</b>' : '') +
+		((forceAcc == -1 && forceHead == -1) ? ' and ' : '') +
+		((forceHead == -1) ? '<b>heads</b>' : '') +
+		' on the preset ?<br/>'
+
+		informativeText : 'Your choice will apply to all the selected notes.<br/><br/>'
+		detailedText :
+		((forceAcc == 1) ? 'Accidentals will always be aligned if different.\n' :
+			((forceAcc == 0) ? 'Accidentals will never be aligned.\n' :
+				'Accidentals will be aligned depending on your choice.\n')) +
+		((forceHead == 1) ? 'Heads will always be aligned if different.\n' :
+			((forceHead == 0) ? 'Heads will never be aligned.\n' :
+				'Heads will be aligned depending on your choice.\n')) +
+		'\nThose behaviours can be changed in the options.'
 		onYes : {
-			if (forceAcc==-1) forceAcc=1;
-			if (forceHead==-1) forceHead=1;
+			if (forceAcc == -1)
+				forceAcc = 1;
+			if (forceHead == -1)
+				forceHead = 1;
 			confirmPushToNoteDialog.close();
-			alignToPreset_do(notes,forceAcc,forceHead);
+			alignToPreset_do(notes, forceAcc, forceHead);
 		}
-		onNo: {
-			if (forceAcc==-1) forceAcc=0;
-			if (forceHead==-1) forceHead=0;
+		onNo : {
+			if (forceAcc == -1)
+				forceAcc = 0;
+			if (forceHead == -1)
+				forceHead = 0;
 			confirmPushToNoteDialog.close();
-			alignToPreset_do(notes,forceAcc,forceHead);
-			}
+			alignToPreset_do(notes, forceAcc, forceHead);
+		}
 	}
 
 	Window {
@@ -1979,53 +2018,52 @@ MuseScore {
 			anchors.margins : 5
 
 			Text {
-				Layout.fillWidth: true
+				Layout.fillWidth : true
 				verticalAlignment : Text.AlignVCenter
 				horizontalAlignment : Text.AlignHCenter
-				font.pointSize: 12
-				text : 'Alternate Fingerings '+version
+				font.pointSize : 12
+				text : 'Alternate Fingerings ' + version
 			}
 
 			Text {
-				Layout.fillWidth: true
+				Layout.fillWidth : true
 				verticalAlignment : Text.AlignVCenter
 				horizontalAlignment : Text.AlignHCenter
-				font.pointSize: 9
-				topPadding: -5
-				bottomPadding: 15
+				font.pointSize : 9
+				topPadding : -5
+				bottomPadding : 15
 				text : 'by <a href="https://www.laurentvanroy.be/" title="Laurent van Roy">Laurent van Roy</a>'
-				onLinkActivated: Qt.openUrlExternally(link)
+				onLinkActivated : Qt.openUrlExternally(link)
 			}
-			
-			
+
 			Rectangle {
 				Layout.preferredHeight : txtOptFing.implicitHeight + 4 // 4 pour les marges
 				Layout.fillWidth : true
-				color: "#C0C0C0"
-				
+				color : "#C0C0C0"
+
 				Text {
 					id : txtOptFing
 					text : "Fingering optionss"
 					Layout.fillWidth : true
-					rightPadding: 5
-					leftPadding: 5
+					rightPadding : 5
+					leftPadding : 5
 					horizontalAlignment : Qt.AlignLeft
 				}
-				
 			}
-			Rectangle { 
-				Layout.preferredHeight : layFO.height + anchors.margins*2
+
+			Rectangle {
+				Layout.preferredHeight : layFO.height + anchors.margins * 2
 				Layout.fillWidth : true
 				//Layout.fillHeight: true
-				
+
 				//anchors.margins : 20
 				color : "#F0F0F0"
-				
+
 				Flow {
-					id: layFO
+					id : layFO
 					//anchors.fill: parent
-					anchors.left: parent.left;
-					anchors.right: parent.right
+					anchors.left : parent.left;
+					anchors.right : parent.right
 
 					CheckBox {
 						id : chkTechnicHalf
@@ -2056,141 +2094,92 @@ MuseScore {
 						checked : true;
 					}
 				}
-			} 
-	
+			}
+
 			Rectangle {
 				Layout.preferredHeight : txtOptMisc.implicitHeight + 4 // 4 pour les marges
 				Layout.fillWidth : true
-				color: "#C0C0C0"
-				
+				color : "#C0C0C0"
+
 				Text {
 					id : txtOptMisc
 					text : "Misc. options"
 					Layout.fillWidth : true
 					horizontalAlignment : Qt.AlignLeft
-					rightPadding: 5
-					leftPadding: 5
+					rightPadding : 5
+					leftPadding : 5
 				}
-				
+
 			}
-			Rectangle { 
+			Rectangle {
 				color : "#F0F0F0"
 				//anchors.margins : 20
-				Layout.preferredHeight : layMO.height + anchors.margins*2 +10
+				Layout.preferredHeight : layMO.height + anchors.margins * 2 + 10
 				Layout.fillWidth : true
 
 				GridLayout {
-                    id: layMO
+					id : layMO
 
 					//implicitHeight: childrenRect.height + anchors.margins*2 + 15
-					implicitWidth: childrenRect.width + anchors.margins*2
-					
+					implicitWidth : childrenRect.width + anchors.margins * 2
+
 					rowSpacing : 5
 					columnSpacing : 2
-					
-					columns: 2
-					rows: 2
+
+					columns : 2
+					rows : 2
 					CheckBox {
 						id : chkEquivAccidental
-						Layout.columnSpan: 2
+						Layout.columnSpan : 2
 						Layout.alignment : Qt.AlignLeft | Qt.QtAlignBottom
 						text : "Accidental equivalence in presets "
-						onClicked : { presetsRefreshed=false; presetsRefreshed=true; } // awfull hack 
+						onClicked : {
+							presetsRefreshed = false;
+							presetsRefreshed = true;
+						} // awfull hack
 						checked : true;
 					}
-					
-					Text {
-						text: "Align the notes accidentals on the preset"
-						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
-						Layout.rightMargin: 5
-						Layout.leftMargin: 5
-					}
-					ComboBox {
-						id : lstForceAccidental
-						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft							
-						textRole : "text"
-						model : ListModel {
-							ListElement {
-								text : "Ask each time"
-								value : -1
-							}
-							ListElement {
-								text : "Never align"
-								value : 0
-							}
-							ListElement {
-								text : "Always align"
-								value : 1
-							}
-						}
-					}
-				
-					Text {
-						text: "Align the notes heads on the preset"
-						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
-						Layout.rightMargin: 5
-						Layout.leftMargin: 5
-					}
 
-					ComboBox {
-						id : lstForceHead
-						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft							
-						textRole : "text"
-						model : ListModel {
-							ListElement {
-								text : "Ask each time"
-								value : -1
-							}
-							ListElement {
-								text : "Never align"
-								value : 0
-							}
-							ListElement {
-								text : "Always align"
-								value : 1
-							}
-						}
-					}
-					
 				}
-			} 
+			}
 
-					Item {
-						// spacer
-						Layout.fillHeight: true;
-						Layout.fillWidth: true;
-						//Layout.columnSpan: 2
-					}
-	
+			Item {
+				// spacer
+				Layout.fillHeight : true;
+				Layout.fillWidth : true;
+				//Layout.columnSpan: 2
+			}
 
 			DialogButtonBox {
-				id: opionsButtonBox
+				id : opionsButtonBox
 				Layout.alignment : Qt.AlignHCenter
 				Layout.fillWidth : true
 				background.opacity : 0 // hide default white background
 				standardButtons : DialogButtonBox.Close //| DialogButtonBox.Save
 				onRejected : optionsWindow.hide()
-				onAccepted: { saveOptions(); optionsWindow.hide() }
+				onAccepted : {
+					saveOptions();
+					optionsWindow.hide()
+				}
 			}
-			
+
 			Text {
-				Layout.fillWidth: true
+				Layout.fillWidth : true
 				verticalAlignment : Text.AlignVCenter
 				horizontalAlignment : Text.AlignHCenter
-				font.pointSize: 10
+				font.pointSize : 10
 
 				text : 'Icons made by <a href="https://www.flaticon.com/authors/hirschwolf" title="hirschwolf">hirschwolf</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>'
-				
-				wrapMode: Text.Wrap
-				
-				onLinkActivated: Qt.openUrlExternally(link)
+
+				wrapMode : Text.Wrap
+
+				onLinkActivated : Qt.openUrlExternally(link)
 
 			}
-			
 
 		}
 	}
-      
+
 	Window {
 		id : addPresetWindow
 		title : "Manage Library..."
@@ -2198,44 +2187,89 @@ MuseScore {
 		height : 350
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
-		
-		property string state: "add"
+
+		property string state : "add"
 
 		Item {
-			anchors.fill: parent
+			anchors.fill : parent
 
-			state: addPresetWindow.state
-			
+			state : addPresetWindow.state
+
 			states : [
 				State {
 					name : "remove";
-					PropertyChanges { target : btnEpAdd; text : "Remove" }
-					PropertyChanges { target : labEpCat; text : "Delete the following " + __asAPreset.category + " preset ?" }
-					PropertyChanges { target : labEpLabVal; readOnly : true }
-					PropertyChanges { target : labEpNoteVal; readOnly : true }
-					PropertyChanges { target : lstEpAcc; enabled : false }
-					
+					PropertyChanges {
+						target : btnEpAdd;
+						text : "Remove"
+					}
+					PropertyChanges {
+						target : labEpCat;
+						text : "Delete the following " + __asAPreset.category + " preset ?"
+					}
+					PropertyChanges {
+						target : labEpLabVal;
+						readOnly : true
+					}
+					PropertyChanges {
+						target : labEpNoteVal;
+						readOnly : true
+					}
+					PropertyChanges {
+						target : lstEpAcc;
+						enabled : false
+					}
+
 				},
 				State {
 					name : "add";
-					PropertyChanges { target : btnEpAdd; text : "Add" }
-					PropertyChanges { target : labEpCat; text : "Add the new " + __asAPreset.category + " preset : " }
-					PropertyChanges { target : labEpLabVal; readOnly : false }
-					PropertyChanges { target : labEpNoteVal; readOnly : false }
-					PropertyChanges { target : lstEpAcc; enabled : true }
+					PropertyChanges {
+						target : btnEpAdd;
+						text : "Add"
+					}
+					PropertyChanges {
+						target : labEpCat;
+						text : "Add the new " + __asAPreset.category + " preset : "
+					}
+					PropertyChanges {
+						target : labEpLabVal;
+						readOnly : false
+					}
+					PropertyChanges {
+						target : labEpNoteVal;
+						readOnly : false
+					}
+					PropertyChanges {
+						target : lstEpAcc;
+						enabled : true
+					}
 				},
 				State {
 					name : "edit";
-					PropertyChanges { target : btnEpAdd; text : "Save" }
-					PropertyChanges { target : labEpCat; text : "Edit the " + __asAPreset.category + " preset : " }
-					PropertyChanges { target : labEpLabVal; readOnly : false }
-					PropertyChanges { target : labEpNoteVal; readOnly : false }
-					PropertyChanges { target : lstEpAcc; enabled : true }
+					PropertyChanges {
+						target : btnEpAdd;
+						text : "Save"
+					}
+					PropertyChanges {
+						target : labEpCat;
+						text : "Edit the " + __asAPreset.category + " preset : "
+					}
+					PropertyChanges {
+						target : labEpLabVal;
+						readOnly : false
+					}
+					PropertyChanges {
+						target : labEpNoteVal;
+						readOnly : false
+					}
+					PropertyChanges {
+						target : lstEpAcc;
+						enabled : true
+					}
 				}
 			]
-			
+
 			GridLayout {
-				columns: 2
+				columns : 2
 				rows : 5
 
 				anchors.fill : parent
@@ -2244,10 +2278,10 @@ MuseScore {
 				anchors.margins : 10
 
 				Text {
-					Layout.row: 1
-					Layout.column: 1
-					Layout.columnSpan: 2
-					Layout.rowSpan: 1
+					Layout.row : 1
+					Layout.column : 1
+					Layout.columnSpan : 2
+					Layout.rowSpan : 1
 
 					id : labEpCat
 
@@ -2259,48 +2293,47 @@ MuseScore {
 					font.weight : Font.DemiBold
 					verticalAlignment : Text.AlignVCenter
 					horizontalAlignment : Text.AlignLeft
-					font.pointSize: 11
+					font.pointSize : 11
 
 				}
 
 				Rectangle { // se passer du rectangle ???
-					Layout.row: 2
-					Layout.column: 1
-					Layout.columnSpan: 2
-					Layout.rowSpan: 1
+					Layout.row : 2
+					Layout.column : 1
+					Layout.columnSpan : 2
+					Layout.rowSpan : 1
 
 					Layout.fillWidth : true
 					Layout.fillHeight : true
 
 					Text {
-						anchors.fill: parent            
+						anchors.fill : parent
 						id : labEpRep
 
 						text : __asAPreset.representation
 
 						font.family : "fiati"
-											font.pixelSize : 100
+						font.pixelSize : 100
 
 						renderType : Text.NativeRendering
 						font.hintingPreference : Font.PreferVerticalHinting
 						verticalAlignment : Text.AlignTop
 						horizontalAlignment : Text.AlignHCenter
 
-						onLineLaidOut: { // hack for correct display of Fiati font
+						onLineLaidOut : { // hack for correct display of Fiati font
 							line.y = line.y * 0.8
-							line.height = line.height * 0.8
-							line.x = line.x - 7
-							line.width = line.width - 7
+								line.height = line.height * 0.8
+								line.x = line.x - 7
+								line.width = line.width - 7
 						}
 					}
 				}
 
-
 				Label {
-					Layout.row: 3
-					Layout.column: 1
-					Layout.columnSpan: 1
-					Layout.rowSpan: 1
+					Layout.row : 3
+					Layout.column : 1
+					Layout.columnSpan : 1
+					Layout.rowSpan : 1
 
 					id : labEpLab
 
@@ -2311,28 +2344,27 @@ MuseScore {
 				}
 
 				TextField {
-					Layout.row: 3
-					Layout.column: 2
-					Layout.columnSpan: 1
-					Layout.rowSpan: 1
+					Layout.row : 3
+					Layout.column : 2
+					Layout.columnSpan : 1
+					Layout.rowSpan : 1
 
 					id : labEpLabVal
 
 					text : __asAPreset.label
 
 					Layout.preferredHeight : 30
-										Layout.fillWidth: true  
-										placeholderText : "label text (optional)" 
-										maximumLength : 255 
+					Layout.fillWidth : true
+					placeholderText : "label text (optional)"
+					maximumLength : 255
 
 				}
 
-
 				Label {
-					Layout.row: 4
-					Layout.column: 1
-					Layout.columnSpan: 1
-					Layout.rowSpan: 1
+					Layout.row : 4
+					Layout.column : 1
+					Layout.columnSpan : 1
+					Layout.rowSpan : 1
 
 					id : labEpKey
 
@@ -2340,16 +2372,15 @@ MuseScore {
 
 					Layout.preferredHeight : 20
 
-
 				}
-			
+
 				RowLayout {
 					Layout.row : 4
 					Layout.column : 2
 					Layout.columnSpan : 1
 					Layout.rowSpan : 1
 
-//					Layout.preferredHeight : 20
+					//					Layout.preferredHeight : 20
 					Layout.fillWidth : false
 
 					TextField {
@@ -2359,11 +2390,13 @@ MuseScore {
 						text : __asAPreset.note
 
 						//inputMask: "A9"
-						validator : RegExpValidator {regExp : /^[A-G][0-9]$/}
+						validator : RegExpValidator {
+							regExp : /^[A-G][0-9]$/
+						}
 						maximumLength : 2
 						placeholderText : "e.g. \"C4\""
-						Layout.preferredHeight: 30
-						Layout.preferredWidth: 40
+						Layout.preferredHeight : 30
+						Layout.preferredWidth : 40
 
 					}
 
@@ -2371,12 +2404,12 @@ MuseScore {
 						id : lstEpAcc
 						//Layout.fillWidth : true
 						model : accidentals
-						currentIndex : visible?getAccidentalModelIndex(__asAPreset.accidental):0 
+						currentIndex : visible ? getAccidentalModelIndex(__asAPreset.accidental) : 0
 
 						clip : true
 						focus : true
-						Layout.preferredHeight: 30
-						Layout.preferredWidth: 80
+						Layout.preferredHeight : 30
+						Layout.preferredWidth : 80
 
 						delegate : ItemDelegate { // requiert QuickControls 2.2
 							contentItem : Image {
@@ -2401,12 +2434,12 @@ MuseScore {
 						id : lstEpHead
 						//Layout.fillWidth : true
 						model : heads
-						currentIndex : visible?getHeadModelIndex(__asAPreset.head):0 
+						currentIndex : visible ? getHeadModelIndex(__asAPreset.head) : 0
 
 						clip : true
 						focus : true
-						Layout.preferredHeight: 30
-						Layout.preferredWidth: 80
+						Layout.preferredHeight : 30
+						Layout.preferredWidth : 80
 
 						delegate : ItemDelegate { // requiert QuickControls 2.2
 							contentItem : Image {
@@ -2434,19 +2467,19 @@ MuseScore {
 					Layout.column : 1
 					Layout.columnSpan : 2
 					Layout.rowSpan : 1
-					Layout.alignment: Qt.AlignRight
+					Layout.alignment : Qt.AlignRight
 
-					background.opacity: 0 // hide default white background
+					background.opacity : 0 // hide default white background
 
-					standardButtons: DialogButtonBox.Cancel
+					standardButtons : DialogButtonBox.Cancel
 					Button {
-						id: btnEpAdd
-						text: "--"
-						DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+						id : btnEpAdd
+						text : "--"
+						DialogButtonBox.buttonRole : DialogButtonBox.AcceptRole
 					}
 
-					onAccepted: {
-						if ("remove"===addPresetWindow.state) {
+					onAccepted : {
+						if ("remove" === addPresetWindow.state) {
 							// remove
 							for (var i = 0; i < __library.length; i++) {
 								var p = __library[i];
@@ -2461,24 +2494,20 @@ MuseScore {
 								}
 							}
 							addPresetWindow.hide();
-						}
-							
-						else if ("add"===addPresetWindow.state) {
+						} else if ("add" === addPresetWindow.state) {
 							// add
-							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation, lstEpHead.model[lstEpHead.currentIndex].name);
+							var preset = new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation, lstEpHead.model[lstEpHead.currentIndex].name);
 							__library.push(preset);
 							addPresetWindow.hide();
-							
+
 							// make added preset as current preset
-							currentPreset=preset;
-							
+							currentPreset = preset;
+
 							// set added preset as working preset
-							__asAPreset=preset;
-						}
-						
-						else if ("edit"===addPresetWindow.state) {
+							__asAPreset = preset;
+						} else if ("edit" === addPresetWindow.state) {
 							// edit
-							var preset=new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation, lstEpHead.model[lstEpHead.currentIndex].name);
+							var preset = new presetClass(__asAPreset.category, labEpLabVal.text, labEpNoteVal.text, lstEpAcc.model[lstEpAcc.currentIndex].name, __asAPreset.representation, lstEpHead.model[lstEpHead.currentIndex].name);
 
 							for (var i = 0; i < __library.length; i++) {
 								var p = __library[i];
@@ -2488,7 +2517,7 @@ MuseScore {
 									(p.accidental === __asAPreset.accidental) &&
 									(p.head === __asAPreset.head) &&
 									(p.representation === __asAPreset.representation)) {
-									__library[i]=preset;
+									__library[i] = preset;
 									break;
 								}
 							}
@@ -2496,22 +2525,20 @@ MuseScore {
 							addPresetWindow.hide();
 
 							// set edited preset as working preset
-							__asAPreset=preset;
+							__asAPreset = preset;
 						}
-						
-						presetsRefreshed=false; // awfull hack
-						presetsRefreshed=true;
+
+						presetsRefreshed = false; // awfull hack
+						presetsRefreshed = true;
 
 						// Select the added/edited preset in the list view
-						if ("remove"!==addPresetWindow.state) {
+						if ("remove" !== addPresetWindow.state) {
 							selectPreset(__asAPreset);
 						}
-						  
-					  
-					  
-					  saveLibrary();
+
+						saveLibrary();
 					}
-					onRejected: addPresetWindow.hide()
+					onRejected : addPresetWindow.hide()
 
 				}
 			}
@@ -2567,78 +2594,96 @@ MuseScore {
 		__confignotes = notes;
 	}
 
+	property var keysorder : ['B','A','G','F','E','D','C']
+	
 	function getPresetsLibrary(refresh) { // refresh is just meant for the "awful hack" ;-)
-		var note=__notes[0];
+		var note = __notes[0];
+
+		var sorted = __library.sort(function (a, b) {
+				var kA = keysorder.indexOf(a.note.substr(0, 1));
+				var kB = keysorder.indexOf(b.note.substr(0, 1));
+				var nA = parseInt(a.note.substring(1, 2), 10);
+				var nB = parseInt(b.note.substring(1, 2), 10);
+				// console.log(a.note+" = ["+kA+","+nA+"] -- "+b.note+" = ["+kB+","+nB+"]");
+				// console.log((nB - nA)+" / "+(kA - kB));
+				var res = (nB - nA);
+				if (res !== 0)
+					return res;
+				return kA - kB;
+			});
+
+
 		if (chkFilterPreset.checkState === Qt.Unchecked) {
 			// everything
-			  return __library;
+			return sorted;
+			
 		} else if (chkFilterPreset.checkState === Qt.Checked) {
 			// strong filter (on note and accidental)
-			  var useEquiv=chkEquivAccidental.checked;
-			  var lib=[];
-			  for(var i=0;i<__library.length;i++) {
-					var preset=__library[i];
-					debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
-					if ((note.extname.name===preset.note && (note.accidentalData.name===preset.accidental || (useEquiv && isEquivAccidental(note.accidentalData.name,preset.accidental))))
-					|| (""===preset.note && "NONE"===preset.accidental)) {
-						  lib.push(preset);
-					} 
-			  }
-			  return lib;
-		} else  {
-			// loose filter (on note only)
-			  var lib=[];
-			  for(var i=0;i<__library.length;i++) {
-					var preset=__library[i];
-					debug(level_TRACE, preset.label+note.extname.name+";"+preset.note+";"+note.accidentalData.name+";"+preset.accidental);
-					if ((note.extname.name===preset.note)
-					|| (""===preset.note && "NONE"===preset.accidental)) {
-						  lib.push(preset);
-					} 
-			  }
-			  return lib;
-		}
-	}
-        
-	function getAccidentalModelIndex(accidentalName) {
-		for(var i=0;i<accidentals.length;i++) {
-			if (accidentalName===accidentals[i].name) {
-				return i;
+			var useEquiv = chkEquivAccidental.checked;
+			var lib = [];
+			for (var i = 0; i < sorted.length; i++) {
+				var preset = sorted[i];
+				debug(level_TRACE, preset.label + note.extname.name + ";" + preset.note + ";" + note.accidentalData.name + ";" + preset.accidental);
+				if ((note.extname.name === preset.note && (note.accidentalData.name === preset.accidental || (useEquiv && isEquivAccidental(note.accidentalData.name, preset.accidental))))
+					 || ("" === preset.note && "NONE" === preset.accidental)) {
+					lib.push(preset);
 				}
 			}
+			return lib;
+		} else {
+			// loose filter (on note only)
+			var lib = [];
+			for (var i = 0; i < __library.length; i++) {
+				var preset = __library[i];
+				debug(level_TRACE, preset.label + note.extname.name + ";" + preset.note + ";" + note.accidentalData.name + ";" + preset.accidental);
+				if ((note.extname.name === preset.note)
+					 || ("" === preset.note && "NONE" === preset.accidental)) {
+					lib.push(preset);
+				}
+			}
+			return lib;
+		}
+	}
+
+	function getAccidentalModelIndex(accidentalName) {
+		for (var i = 0; i < accidentals.length; i++) {
+			if (accidentalName === accidentals[i].name) {
+				return i;
+			}
+		}
 		return 0;
 	}
 
-    function getAccidentalImage(accidentalName) {
-		if (accidentalName==generic_preset) {
+	function getAccidentalImage(accidentalName) {
+		if (accidentalName == generic_preset) {
 			return "generic.png"
 		}
-		for(var i=0;i<accidentals.length;i++) {
-			if (accidentalName===accidentals[i].name) {
+		for (var i = 0; i < accidentals.length; i++) {
+			if (accidentalName === accidentals[i].name) {
 				return accidentals[i].image;
-				}
 			}
+		}
 		return "NONE.png";
 	}
 
 	function getHeadModelIndex(headName) {
-		for(var i=0;i<heads.length;i++) {
-			if (headName===heads[i].name) {
+		for (var i = 0; i < heads.length; i++) {
+			if (headName === heads[i].name) {
 				return i;
-				}
 			}
+		}
 		return 0;
 	}
-	
+
 	function getHeadImage(headName) {
-		if (headName==generic_preset) {
+		if (headName == generic_preset) {
 			return "generic.png"
 		}
-		for(var i=0;i<heads.length;i++) {
-			if (headName===heads[i].name) {
+		for (var i = 0; i < heads.length; i++) {
+			if (headName === heads[i].name) {
 				return heads[i].image;
-				}
 			}
+		}
 		return "NONE.png";
 	}
 
@@ -2649,9 +2694,9 @@ MuseScore {
 
 		var filtered = lstPresets.model.slice();
 
-                console.log("Selecting ("+strict+")");
-                debugO(level_DEBUG,"preset",preset);
-                console.log("Among "+filtered.length);
+		console.log("Selecting (" + strict + ")");
+		debugO(level_DEBUG, "preset", preset);
+		console.log("Among " + filtered.length);
 
 		for (var i = 0; i < filtered.length; i++) {
 			filtered[i].index = i;
@@ -2669,20 +2714,20 @@ MuseScore {
 		}
 
 		var best = -1;
-		for (var i=0;i<stricts.length;i++) {
-			var f=stricts[i];
+		for (var i = 0; i < stricts.length; i++) {
+			var f = stricts[i];
 			filtered = filtered.filter(function (p) {
 					return (p[f] === preset[f]);
 				});
-                        console.log("Preset selection: after '"+f+"': "+filtered.length);
+			console.log("Preset selection: after '" + f + "': " + filtered.length);
 			if (filtered.length === 0) {
 				break;
-                        }
+			}
 		}
-		if (filtered.length  > 0) { // les filtres stricts ont retenus au minimum 1 élément
+		if (filtered.length > 0) { // les filtres stricts ont retenus au minimum 1 élément
 			best = filtered[0].index;
-			for (var i=0;i<weaks.length;i++) {
-				var f=weaks[i];
+			for (var i = 0; i < weaks.length; i++) {
+				var f = weaks[i];
 				filtered = filtered.filter(function (p1) {
 						return (p1[f] === "--" || preset[f] === "--" || p1[f] === undefined || preset[f] === undefined || p1[f] === preset[f]);
 					});
@@ -2693,35 +2738,35 @@ MuseScore {
 			}
 		}
 
-                console.log("best: "+best);
+		console.log("best: " + best);
 		lstPresets.currentIndex = best;
 	}
 	// -----------------------------------------------------------------------
 	// --- Property File -----------------------------------------------------
 	// -----------------------------------------------------------------------
-    FileIO {
-        id: settingsFile
-        source: homePath() + "/alternatefingering.properties"
-        //source: rootPath() + "/alternatefingering.properties"
-        //source: Qt.resolvedUrl("alternatefingering.properties")
-        //source: "./alternatefingering.properties"
-            
-        onError: {
+	FileIO {
+		id : settingsFile
+		source : homePath() + "/alternatefingering.properties"
+		//source: rootPath() + "/alternatefingering.properties"
+		//source: Qt.resolvedUrl("alternatefingering.properties")
+		//source: "./alternatefingering.properties"
+
+		onError : {
 			//statusBar.text=msg;
-        }
-    }
-    FileIO {
-        id: libraryFile
-        source: homePath() + "/alternatefingering.library"
-        //source: rootPath() + "/alternatefingering.properties"
-        //source: Qt.resolvedUrl("alternatefingering.properties")
-        //source: "./alternatefingering.properties"
-            
-        onError: {
+		}
+	}
+	FileIO {
+		id : libraryFile
+		source : homePath() + "/alternatefingering.library"
+		//source: rootPath() + "/alternatefingering.properties"
+		//source: Qt.resolvedUrl("alternatefingering.properties")
+		//source: "./alternatefingering.properties"
+
+		onError : {
 			//statusBar.text=msg;
-        }
-    }
-      
+		}
+	}
+
 	function saveOptions() {
 
 		if (typeof lastoptions === 'undefined') {
@@ -2730,7 +2775,7 @@ MuseScore {
 
 		// used states
 		lastoptions['states'] = usedstates;
-		
+
 		// preset filter
 		if (chkFilterPreset.checkState === Qt.Unchecked) {
 			// everything
@@ -2744,20 +2789,12 @@ MuseScore {
 		}
 
 		// accidental equivalence
-		lastoptions['equivalence'] = chkEquivAccidental.checked		
-		
-		// push to notes options
-		var idx=lstForceAccidental.currentIndex;
-		var value=-1;
-		if (idx>=-1) value=lstForceAccidental.model.get(idx).value;
-		lastoptions['pushacc']=value;
+		lastoptions['equivalence'] = (chkEquivAccidental.checkState === Qt.Checked) ? "true" : "false";
 
-		idx=lstForceHead.currentIndex;
-		value=-1;
-		if (idx>=-1) value=lstForceHead.model.get(idx).value;
-		lastoptions['pushhead']=value;
-		
-		
+		// push to notes options
+		lastoptions['pushacc'] = (chkForceAccidental.checkState === Qt.Checked) ? "true" : "false";
+		lastoptions['pushhead'] = (chkForceHead.checkState === Qt.Checked) ? "true" : "false";
+
 		// instruments config
 		if (typeof lastoptions['categories'] === 'undefined') {
 			lastoptions['categories'] = {};
@@ -2776,85 +2813,83 @@ MuseScore {
 			};
 		}
 		lastoptions['categories'][__category]['config'] = cfgs;
-		
+
 		var t = JSON.stringify(lastoptions) + "\n";
 		debug(level_DEBUG, t);
 
-		if (settingsFile.write(t)){
-			txtStatus.text="Settings saved to " + settingsFile.source;
+		if (settingsFile.write(t)) {
+			txtStatus.text = "Settings saved to " + settingsFile.source;
+		} else {
+			txtStatus.text = "Error while saving the settings";
 		}
-		else {
-			txtStatus.text="Error while saving the settings";
-		}
-				
-		
+
 	}
 
 	function saveLibrary() {
 
-		var allpresets={};
-		
-		var cats=Object.keys(categories);
-		
-		for(var c=0;c<cats.length;c++) {
-		  var cat=cats[c];
-		  allpresets[cat]=categories[cat]['library'];
-		  }
+		var allpresets = {};
+
+		var cats = Object.keys(categories);
+
+		for (var c = 0; c < cats.length; c++) {
+			var cat = cats[c];
+			allpresets[cat] = categories[cat]['library'];
+		}
 
 		var t = JSON.stringify(allpresets) + "\n";
 		debug(level_DEBUG, t);
 
-		if (libraryFile.write(t)){
+		if (libraryFile.write(t)) {
 			//txtStatus.text="Library saved to " + libraryFile.source;
-			txtStatus.text="";
+			txtStatus.text = "";
+		} else {
+			txtStatus.text = "Error while saving the library";
 		}
-		else {
-			txtStatus.text="Error while saving the library";
-		}
-				
-		
+
 	}
 
 	function readOptions() {
-	
+
 		/*try {
-                        console.log("Current "+currentPath());
-                        } catch (e) {
-                        console.log("Current "+e.message);
-                        }
+		console.log("Current "+currentPath());
+		} catch (e) {
+		console.log("Current "+e.message);
+		}
 		try {
 		console.log("Root "+rootPath());
-                        } catch (e) {
-                        console.log("Root "+e.message);
-                        }
+		} catch (e) {
+		console.log("Root "+e.message);
+		}
 		try {
 		console.log("Home "+homePath());
-                        } catch (e) {
-                        console.log("Home "+e.message);
-                        }
+		} catch (e) {
+		console.log("Home "+e.message);
+		}
 		try {
 		console.log("Temp "+tempPath());
-                        } catch (e) {
-                        console.log("Temp "+e.message);
-                        }
+		} catch (e) {
+		console.log("Temp "+e.message);
+		}
 
-                try {
+		try {
 		console.log("Settings "+settingsFile.source);
-                        } catch (e) {
-                        console.log("Settings "+e.message);
-                        }*/
-	
-		if (!settingsFile.exists()) return;
-		
+		} catch (e) {
+		console.log("Settings "+e.message);
+		}*/
+
+		if (!settingsFile.exists())
+			return;
+
 		var json = settingsFile.read();
 
-		
+		debug(level_DEBUG, json);
+
 		try {
 			lastoptions = JSON.parse(json);
 		} catch (e) {
-				console.error('while reading the option file', e.message);		
+			console.error('while reading the option file', e.message);
 		}
-		
+
 		// used states
 		usedstates = lastoptions['states'];
 		displayUsedStates();
@@ -2873,790 +2908,1053 @@ MuseScore {
 		}
 
 		// accidental equivalence
-		chkEquivAccidental.checked=(lastoptions['equivalence']==="true");	
+		chkEquivAccidental.checkState = (lastoptions['equivalence'] === "true") ? Qt.Checked : Qt.Unchecked;
 
 		// push to notes options
-		var force=lastoptions['pushacc'];
-		if (force===undefined) force=-1;
-		for (var i=0; i<lstForceAccidental.model.count;i++) {
-			if (lstForceAccidental.model.get(i).value==force) {
-				lstForceAccidental.currentIndex=i;
-				break;
-			}
-		}
-
-		force=lastoptions['pushhead'];
-		if (force===undefined) force=-1;
-		for (var i=0; i<lstForceHead.model.count;i++) {
-			if (lstForceHead.model.get(i).value==force) {
-				lstForceHead.currentIndex=i;
-				break;
-			}
-		}
-
+		chkForceAccidental.checkState = (lastoptions['pushacc'] === "true") ? Qt.Checked : Qt.Unchecked;
+		debug(level_DEBUG, "readOptions: 'pushacc' --> " + chkForceAccidental.checked + " (" + lastoptions['pushacc'] + ")");
+		chkForceHead.checkState = (lastoptions['pushhead'] === "true") ? Qt.Checked : Qt.Unchecked;
+		debug(level_DEBUG, "readOptions: 'pushhead' --> " + chkForceHead.checked + " (" + lastoptions['pushhead'] + ")");
 
 		// instruments config
 		var cats = Object.keys(lastoptions['categories']);
 		for (var j = 0; j < cats.length; j++) {
 			var cat = cats[j];
 			var desc = lastoptions['categories'][cat];
-			
+
 			// default instrument
 			categories[cat].default = desc.default;
-			debug(level_DEBUG, "readOptions: " + cat + " -- " + desc.default);
+				debug(level_DEBUG, "readOptions: " + cat + " -- " + desc.default);
 
-			// config options
-			var cfgs = desc['config'];
-			for (var k = 0; k < cfgs.length; k++) {
-				var cfg = cfgs[k];
-				debug(level_DEBUG, "readOptions: " + cfg.name + " --> " + cfg.activated);
+					// config options
+					var cfgs = desc['config'];
+					for (var k = 0; k < cfgs.length; k++) {
+						var cfg = cfgs[k];
+						debug(level_DEBUG, "readOptions: " + cfg.name + " --> " + cfg.activated);
 
-				for (var l = 0; l < categories[cat]['config'].length; l++) {
-					var c = categories[cat]['config'][l];
-					if (c.name == cfg.name) {
-						c.activated = cfg.activated;
-						debug(level_DEBUG, "readOptions: setting " + c.name + " --> " + c.activated);
+						for (var l = 0; l < categories[cat]['config'].length; l++) {
+							var c = categories[cat]['config'][l];
+							if (c.name == cfg.name) {
+								c.activated = cfg.activated;
+								debug(level_DEBUG, "readOptions: setting " + c.name + " --> " + c.activated);
+							}
+						}
+					}
+			}
+
+		}
+
+		function readLibrary() {
+
+			if (!libraryFile.exists())
+				return;
+
+			var json = libraryFile.read();
+
+			var allpresets = {};
+
+			try {
+				allpresets = JSON.parse(json);
+			} catch (e) {
+				console.error('while reading the library file', e.message);
+			}
+
+			var cats = Object.keys(categories);
+
+			for (var c = 0; c < cats.length; c++) {
+				var cat = cats[c];
+				categories[cat]['library'] = allpresets[cat];
+
+				// alignement de la librairie v1.2.0 à v1.3.0
+				for (var i = 0; i < allpresets[cat].length; i++) {
+					var p = allpresets[cat][i];
+					debugO(level_DEBUG, "readLibrary: preset:", p);
+					if (p.head == undefined) {
+						p.head = generic_preset;
 					}
 				}
+
 			}
+
 		}
 
-	}
-	
-	function readLibrary() {
-	
-		if (!libraryFile.exists()) return;
-		
-		var json = libraryFile.read();
+		function displayUsedStates() {
+			chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
+			chkTechnicQuarter.checked = doesIntersect(usedstates, quarterstates);
+			chkTechnicRing.checked = doesIntersect(usedstates, ringstates);
+			chkTechnicThrill.checked = doesIntersect(usedstates, thrillstates);
+			if (usedstates.indexOf("open") == -1)
+				usedstates.push("open");
+			if (usedstates.indexOf("closed") == -1)
+				usedstates.push("closed");
 
-		var allpresets={};      
-		
-		try {
-			allpresets = JSON.parse(json);
-		} catch (e) {
-				console.error('while reading the library file', e.message);		
 		}
+		// -----------------------------------------------------------------------
+		// --- Instruments -------------------------------------------------------
+		// -----------------------------------------------------------------------
 
-		
-		var cats=Object.keys(categories);
-		
-		for(var c=0;c<cats.length;c++) {
-		  var cat=cats[c];
-		  categories[cat]['library']=allpresets[cat];
+		property double cA : 2
+		property double cB : 3
+		property double cC : 2.1
+		property double cD : 4
+		property double cE : 3.8
+		property double cF : 1.2
+		property double cG : 4.5
+		property double cH : 1
 
-		// alignement de la librairie v1.2.0 à v1.3.0
-		for(var i=0; i < allpresets[cat].length; i++) {
-                        var p=allpresets[cat][i];
-                        debugO(level_DEBUG,"readLibrary: preset:",p);
-			if (p.head==undefined) {
-				p.head=generic_preset;
-			}
-		}
+		property var flbflat : new noteClass4("L Bb", {
+			'closed' : '\uE006',
+			'thrill' : '\uE03C'
+		}, cA, 1.5);
+		property var flb : new noteClass4("L B", {
+			'closed' : '\uE007',
+			'thrill' : '\uE03D'
+		}, cA, 2.5);
+		property var fl1 : new noteClass4("L1", {
+			'closed' : '\uE008',
+			'left' : '\uE024',
+			'right' : '\uE02A',
+			'halfleft' : '\uE030',
+			'halfright' : '\uE036',
+			'thrill' : '\uE03E'
+		}, cB, 1);
+		property var fl2 : new noteClass4("L2", {
+			'closed' : '\uE009',
+			'ring' : '\uE01F',
+			'left' : '\uE025',
+			'right' : '\uE02B',
+			'halfleft' : '\uE031',
+			'halfright' : '\uE037',
+			'thrill' : '\uE03F'
+		}, cB, 2, 1);
+		property var fl3 : new noteClass4("L3", {
+			'closed' : '\uE00A',
+			'ring' : '\uE020',
+			'left' : '\uE026',
+			'right' : '\uE02C',
+			'halfleft' : '\uE032',
+			'halfright' : '\uE038',
+			'thrill' : '\uE040'
+		}, cB, 3);
+		property var fgsharp : new noteClass4("G #", {
+			'closed' : '\uE00B',
+			'thrill' : '\uE041'
+		}, cD, 3.5);
+		property var fcsharptrill : new noteClass4("C # trill", {
+			'closed' : '\uE00C',
+			'thrill' : '\uE042'
+		}, cB, 4.2, 0.8);
+		property var frbflat : new noteClass4("Bb trill", {
+			'closed' : '\uE00D',
+			'thrill' : '\uE043'
+		}, cC, 4.5, 0.8);
+		property var fr1 : new noteClass4("R1", {
+			'closed' : '\uE00E',
+			'ring' : '\uE021',
+			'left' : '\uE027',
+			'right' : '\uE02D',
+			'halfleft' : '\uE033',
+			'halfright' : '\uE039',
+			'thrill' : '\uE044'
+		}, cB, 5);
+		property var fdtrill : new noteClass4("D trill", {
+			'closed' : '\uE00F',
+			'thrill' : '\uE045'
+		}, cC, 5.5, 0.8);
+		property var fr2 : new noteClass4("R2", {
+			'closed' : '\uE010',
+			'ring' : '\uE022',
+			'left' : '\uE028',
+			'right' : '\uE02E',
+			'halfleft' : '\uE034',
+			'halfright' : '\uE03A',
+			'thrill' : '\uE046'
+		}, cB, 6);
+		property var fdsharptrill : new noteClass4("D # trill", {
+			'closed' : '\uE011',
+			'thrill' : '\uE047'
+		}, cC, 6.5, 0.8);
+		property var fr3 : new noteClass4("R3", {
+			'closed' : '\uE012',
+			'ring' : '\uE023',
+			'left' : '\uE029',
+			'right' : '\uE02F',
+			'halfleft' : '\uE035',
+			'halfright' : '\uE03B',
+			'thrill' : '\uE048'
+		}, cB, 7);
+		property var fe : new noteClass4("Low E", {
+			'closed' : '\uE013',
+			'thrill' : '\uE049'
+		}, cA, 8);
+		property var fcsharp : new noteClass4("Low C #", {
+			'closed' : '\uE014',
+			'thrill' : '\uE04A'
+		}, cA, 9);
+		property var fc : new noteClass4("Low C", {
+			'closed' : '\uE015',
+			'thrill' : '\uE04B'
+		}, cB, 9);
+		property var fbflat : new noteClass4("Low Bb", {
+			'closed' : '\uE016',
+			'thrill' : '\uE04C'
+		}, cD, 9);
+		property var fgizmo : new noteClass4("Gizmo", {
+			"closed" : "\uE017",
+			"thrill" : "\uE04D"
+		}, cD, 10, 0.8);
 
-		  }
+		property var fKCUpLever : new noteClass4("fKCUpLever", {
+			'closed' : '\uE018',
+			'thrill' : '\uE04E'
+		}, cE, 1.5, 0.8);
+		property var fKAuxCSharpTrill : new noteClass4("fKAuxCSharpTrill", {
+			'closed' : '\uE019',
+			'thrill' : '\uE04F'
+		}, cE, 2.5, 0.8);
+		property var fKBbUpLever : new noteClass4("fKBbUpLever", {
+			'closed' : '\uE01A',
+			'thrill' : '\uE050'
+		}, cF, 1, 0.8);
+		property var fKBUpLever : new noteClass4("fKBUpLever", {
+			'closed' : '\uE01B',
+			'thrill' : '\uE051'
+		}, cF, 2, 0.8);
+		property var fKGUpLever : new noteClass4("fKGUpLever", {
+			'closed' : '\uE01C',
+			'thrill' : '\uE052'
+		}, cG, 4.5, 0.8);
+		property var fKFSharpBar : new noteClass4("fKFSharpBar", {
+			'closed' : '\uE01D',
+			'thrill' : '\uE053'
+		}, cH, 5, 0.8);
+		property var fKDUpLever : new noteClass4("fKDUpLever", {
+			'closed' : '\uE01E',
+			'thrill' : '\uE054'
+		}, cA, 10, 0.8);
 
-	}
-	
-	
+		property var categories : {
+			"flute" : {
+				// *User instructions*: Modify the default instrument here. Use any of the instruments listed below.
+				"default" : "flute",
+				"config" : [
+					// *User instructions*: Modify the last false/true parameter in the
+					// instrumentConfig class to control the default activation of this configuration
+					new instrumentConfigClass("B tail", '\uE002', fbflat, false),
+					new instrumentConfigClass("C# thrill", '\uE003', fcsharptrill, false),
+					new instrumentConfigClass("OpenHole", '\uE004', [], false) // no associated notes with the OpenHole config
+					//,new instrumentConfigClass("Kingma System", '\uE005', [fKCUpLever,fKAuxCSharpTrill,fKBbUpLever,fKBUpLever,fKGUpLever,fKFSharpBar,fKDUpLever],false),  // errors at the glypths level
 
-	function displayUsedStates() {
-		chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
-		chkTechnicQuarter.checked = doesIntersect(usedstates, quarterstates);
-		chkTechnicRing.checked = doesIntersect(usedstates, ringstates);
-		chkTechnicThrill.checked = doesIntersect(usedstates, thrillstates);
-		if (usedstates.indexOf("open") == -1)
-			usedstates.push("open");
-		if (usedstates.indexOf("closed") == -1)
-			usedstates.push("closed");
-
-	}
-	// -----------------------------------------------------------------------
-	// --- Instruments -------------------------------------------------------
-	// -----------------------------------------------------------------------
-
-	property double cA: 2
-	property double cB: 3
-	property double cC: 2.1
-	property double cD: 4
-	property double cE: 3.8
-	property double cF: 1.2
-	property double cG: 4.5
-	property double cH: 1
-	
-	property var flbflat : new noteClass4("L Bb", {
-		'closed' : '\uE006',
-		'thrill' : '\uE03C'
-	}, cA, 1.5);
-	property var flb : new noteClass4("L B", {
-		'closed' : '\uE007',
-		'thrill' : '\uE03D'
-	}, cA, 2.5);
-	property var fl1 : new noteClass4("L1", {
-		'closed' : '\uE008',
-		'left' : '\uE024',
-		'right' : '\uE02A',
-		'halfleft' : '\uE030',
-		'halfright' : '\uE036',
-		'thrill' : '\uE03E'
-	}, cB, 1);
-	property var fl2 : new noteClass4("L2", {
-		'closed' : '\uE009',
-		'ring' : '\uE01F',
-		'left' : '\uE025',
-		'right' : '\uE02B',
-		'halfleft' : '\uE031',
-		'halfright' : '\uE037',
-		'thrill' : '\uE03F'
-	}, cB, 2, 1);
-	property var fl3 : new noteClass4("L3", {
-		'closed' : '\uE00A',
-		'ring' : '\uE020',
-		'left' : '\uE026',
-		'right' : '\uE02C',
-		'halfleft' : '\uE032',
-		'halfright' : '\uE038',
-		'thrill' : '\uE040'
-	}, cB, 3);
-	property var fgsharp : new noteClass4("G #", {
-		'closed' : '\uE00B',
-		'thrill' : '\uE041'
-	}, cD, 3.5);
-	property var fcsharptrill : new noteClass4("C # trill", {
-		'closed' : '\uE00C',
-		'thrill' : '\uE042'
-	}, cB, 4.2, 0.8);
-	property var frbflat : new noteClass4("Bb trill", {
-		'closed' : '\uE00D',
-		'thrill' : '\uE043'
-	}, cC, 4.5, 0.8);
-	property var fr1 : new noteClass4("R1", {
-		'closed' : '\uE00E',
-		'ring' : '\uE021',
-		'left' : '\uE027',
-		'right' : '\uE02D',
-		'halfleft' : '\uE033',
-		'halfright' : '\uE039',
-		'thrill' : '\uE044'
-	}, cB, 5);
-	property var fdtrill : new noteClass4("D trill", {
-		'closed' : '\uE00F',
-		'thrill' : '\uE045'
-	}, cC, 5.5, 0.8);
-	property var fr2 : new noteClass4("R2", {
-		'closed' : '\uE010',
-		'ring' : '\uE022',
-		'left' : '\uE028',
-		'right' : '\uE02E',
-		'halfleft' : '\uE034',
-		'halfright' : '\uE03A',
-		'thrill' : '\uE046'
-	}, cB, 6);
-	property var fdsharptrill : new noteClass4("D # trill", {
-		'closed' : '\uE011',
-		'thrill' : '\uE047'
-	}, cC, 6.5, 0.8);
-	property var fr3 : new noteClass4("R3", {
-		'closed' : '\uE012',
-		'ring' : '\uE023',
-		'left' : '\uE029',
-		'right' : '\uE02F',
-		'halfleft' : '\uE035',
-		'halfright' : '\uE03B',
-		'thrill' : '\uE048'
-	}, cB, 7);
-	property var fe : new noteClass4("Low E", {
-		'closed' : '\uE013',
-		'thrill' : '\uE049'
-	}, cA, 8);
-	property var fcsharp : new noteClass4("Low C #", {
-		'closed' : '\uE014',
-		'thrill' : '\uE04A'
-	}, cA, 9);
-	property var fc : new noteClass4("Low C", {
-		'closed' : '\uE015',
-		'thrill' : '\uE04B'
-	}, cB, 9);
-	property var fbflat : new noteClass4("Low Bb", {
-		'closed' : '\uE016',
-		'thrill' : '\uE04C'
-	}, cD, 9);
-	property var fgizmo : new noteClass4("Gizmo", {
-		"closed" : "\uE017",
-		"thrill" : "\uE04D"
-	}, cD, 10, 0.8);
-
-	property var fKCUpLever : new noteClass4("fKCUpLever", {
-		'closed' : '\uE018',
-		'thrill' : '\uE04E'
-	}, cE, 1.5, 0.8);
-	property var fKAuxCSharpTrill : new noteClass4("fKAuxCSharpTrill", {
-		'closed' : '\uE019',
-		'thrill' : '\uE04F'
-	}, cE, 2.5, 0.8);
-	property var fKBbUpLever : new noteClass4("fKBbUpLever", {
-		'closed' : '\uE01A',
-		'thrill' : '\uE050'
-	}, cF, 1, 0.8);
-	property var fKBUpLever : new noteClass4("fKBUpLever", {
-		'closed' : '\uE01B',
-		'thrill' : '\uE051'
-	}, cF, 2, 0.8);
-	property var fKGUpLever : new noteClass4("fKGUpLever", {
-		'closed' : '\uE01C',
-		'thrill' : '\uE052'
-	}, cG, 4.5, 0.8);
-	property var fKFSharpBar : new noteClass4("fKFSharpBar", {
-		'closed' : '\uE01D',
-		'thrill' : '\uE053'
-	}, cH, 5, 0.8);
-	property var fKDUpLever : new noteClass4("fKDUpLever", {
-		'closed' : '\uE01E',
-		'thrill' : '\uE054'
-	}, cA, 10, 0.8);
-
-	property var categories : {
-		"flute" : {
-			// *User instructions*: Modify the default instrument here. Use any of the instruments listed below.
-			"default" : "flute",
-			"config" : [
-				// *User instructions*: Modify the last false/true parameter in the
-				// instrumentConfig class to control the default activation of this configuration
-				new instrumentConfigClass("B tail", '\uE002', fbflat, false),
-				new instrumentConfigClass("C# thrill", '\uE003', fcsharptrill, false),
-				new instrumentConfigClass("OpenHole", '\uE004', [], false) // no associated notes with the OpenHole config
-				//,new instrumentConfigClass("Kingma System", '\uE005', [fKCUpLever,fKAuxCSharpTrill,fKBbUpLever,fKBUpLever,fKGUpLever,fKFSharpBar,fKDUpLever],false),  // errors at the glypths level
-
-			],
-			"support" : [
-				'wind.flutes'
-			],
-			"instruments" : {
-/*				"flute with B tail" : {
+				],
+				"support" : [
+					'wind.flutes'
+				],
+				"instruments" : {
+					/*				"flute with B tail" : {
 					"base" : ['\uE000', '\uE001', '\uE002'], // B
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat, fgizmo]
-				},*/
-				"Flute" : {
-					"base" : ['\uE000', '\uE001'], // C
-					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
-				}
+					},*/
+					"Flute" : {
+						"base" : ['\uE000', '\uE001'], // C
+						"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
+					}
+				},
+				"library" : []
 			},
-			"library": []
-		},
-		// unused - in progress
-		"clarinet" : {
-			"default" : "clarinet",
-			"config" : [],
-			"support" : [],
-			"instruments" : {
-				"clarinet" : {
-					"base" : ['\uE000', '\uE001', '\uE002', '\uE003'], // B + C thrill,
-					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
-				}
+			// unused - in progress
+			"clarinet" : {
+				"default" : "clarinet",
+				"config" : [],
+				"support" : [],
+				"instruments" : {
+					"clarinet" : {
+						"base" : ['\uE000', '\uE001', '\uE002', '\uE003'], // B + C thrill,
+						"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
+					}
+				},
+				"library" : []
 			},
-			"library": []
-		},
-		// default and empty category
-		"" : {
-			"default" : "",
-			"config" : [],
-			"support" : [],
-			"instruments" : {
-				"" : {
-					"base" : [],
-					"keys" : []
-				}
-			},
-			"library": []
-		}
-
-	};
-
-	/**
-	 * A class representating an instrument key, that can be open/closed.
-	 * With default size (=1).
-	 * @param name The name of the key (e.g. for the tooltip)
-	 * @param representation The glypth used in the Fiati font to display this key as closed
-	 * @ param row, colum where to put that key in the diagram
-	 * @return a note/key object
-	 */
-	function noteClass(name, representation, column, row) {
-		noteClass2.call(this, name, representation, column, row, 1);
-	}
-
-	/**
-	 * A class representating an instrument key, that can be open/closed.
-	 * @param name The name of the key (e.g. for the tooltip)
-	 * @param representation The glypth used in the Fiati font to display this key as closed
-	 * @param row, colum Where to put that key in the diagram
-	 * @param size The size of the key on the diagram
-	 * @return a note/key object
-	 */
-	function noteClass2(name, representation, column, row, size) {
-		noteClass4.call(this, name, {
-			"closed" : representation
-		}, column, row, size);
-		this.representation = representation;
-	}
-
-	/**
-	 * A class representating an instrument key, that can be open/closed/hal-fclosed/...
-	 * @param name The name of the key (e.g. for the tooltip)
-	 * @param modes An array of all the availble closure modes for that key with they corresponding glypth in the Fiati font.
-	 * E.g. {"closed" : '\uE012', "thrill": '\uE013'}
-	 * If not present, the "open" mode will be added with an empty representation
-	 * @param row, colum Where to put that key in the diagram
-	 * @param size The size of the key on the diagram
-	 * @return a note/key object
-	 */
-	function noteClass4(name, xmodes, column, row, size) {
-		this.name = name;
-		this.modes = xmodes;
-		if (!this.modes.open) {
-			// ajoute un mode "open" s'il n'y en a pas
-			this.modes.open = '';
-		}
-
-		this.currentMode = "open";
-		this.deactivated = false; // temp
-		this.row = row;
-		this.column = column;
-		this.size = ((typeof size !== 'undefined')) ? size : 1;
-
-		Object.defineProperty(this, "currentRepresentation", {
-			get : function () {
-				var r = this.modes[this.currentMode];
-				// bug que je ne comprends pas => je prends le 1er mode
-				if (!r) {
-					var kys = Object.keys(this.modes);
-					r = this.modes[kys[0]];
-				}
-
-				return (this.currentMode !== "open") ? r : "";
-			},
-			enumerable : true
-		});
-
-		Object.defineProperty(this, "selected", {
-			get : function () {
-				return (this.currentMode !== "open");
-			},
-			set : function (sel) {
-				this.currentMode = (sel) ? "closed" : "open";
-			},
-			enumerable : true
-		});
-
-	}
-
-	/**
-	 * An object for representation an instrument config option. Such as optional extra key found on some instruments (E.g. "C# thrill" key found on sme flute.)
-	 * @param name The name of the key (e.g. for the tooltip)
-	 * @param representation The glypth used in the Fiati font to display this key as *open*
-	 * @param note A valid note object representing the usage of that key of an array of Notes
-	 */
-	function instrumentConfigClass(name, representation, notes, defaultActive) {
-		var active = (defaultActive !== undefined) ? defaultActive : false;
-		this.name = name;
-		this.representation = representation;
-		this.notes = (Array.isArray(notes) ? notes : [notes]);
-
-		Object.defineProperty(this, "activated", {
-			get : function () {
-				return active;
-			},
-			set : function (newActive) {
-				active = newActive;
-				for (var i = 0; i < this.notes.length; i++) {
-					if (!active)
-						this.notes[i].currentMode = "open";
-				}
-			},
-			enumerable : true
-		});
-
-	}
-
-	  // -----------------------------------------------------------------------
-	  // --- Library -------------------------------------------------------
-	  // -----------------------------------------------------------------------
-	  /**
-	  * Class representing a preset.
-	  * @param category A category of instrument. Must match any of the categories defined in the categories arrays
-	  * @param label A label. Optional. If non proivded then replaced by an empty string
-	  * @param accidental The accidental of the note. A *string* corresponding to an element of  Musescore Accidental enumeration. Optional. If non proivded then replaced by "--", meaining "suitable to all notes". 
-	  * @param representation The textual representation of the key combination. Is expected to be a valid unicode combination ,ut no verification is made. Optional. If non proivded then replaced by an empty string.
-	  * @param head The head of the note. A *string* corresponding to an element of  Musescore HeadGroup enumeration. Optional. If non proivded then replaced by "--", meaining "suitable to all notes". 
-	  */
-	  
-	  function presetClass(category, label, note, accidental,representation, head) {
-			this.category=(category!==undefined)?String(category):"??";
-			this.label = (label!==undefined)?String(label):"";
-			this.note= (note!==undefined)?String(note):"";
-			
-			this.accidental=generic_preset;
-			if (accidental!==undefined && accidental!=="" && accidental!==generic_preset) {
-				var acc=String(accidental);
-				var accid=eval("Accidental." + acc);
-				if (accid===undefined || accid==0) acc="NONE";
-				this.accidental=acc;
+			// default and empty category
+			"" : {
+				"default" : "",
+				"config" : [],
+				"support" : [],
+				"instruments" : {
+					"" : {
+						"base" : [],
+						"keys" : []
+					}
+				},
+				"library" : []
 			}
-			
-			this.head=generic_preset;
-			if (head!==undefined && head!=="" && head!==generic_preset) {
-				var hd=String(head);
-				var accid=eval("NoteHeadGroup." + hd);
-				if (accid===undefined || accid==0) hd="HEAD_NORMAL";
-				this.head=hd;
+
+		};
+
+		/**
+		 * A class representating an instrument key, that can be open/closed.
+		 * With default size (=1).
+		 * @param name The name of the key (e.g. for the tooltip)
+		 * @param representation The glypth used in the Fiati font to display this key as closed
+		 * @ param row, colum where to put that key in the diagram
+		 * @return a note/key object
+		 */
+		function noteClass(name, representation, column, row) {
+			noteClass2.call(this, name, representation, column, row, 1);
+		}
+
+		/**
+		 * A class representating an instrument key, that can be open/closed.
+		 * @param name The name of the key (e.g. for the tooltip)
+		 * @param representation The glypth used in the Fiati font to display this key as closed
+		 * @param row, colum Where to put that key in the diagram
+		 * @param size The size of the key on the diagram
+		 * @return a note/key object
+		 */
+		function noteClass2(name, representation, column, row, size) {
+			noteClass4.call(this, name, {
+				"closed" : representation
+			}, column, row, size);
+			this.representation = representation;
+		}
+
+		/**
+		 * A class representating an instrument key, that can be open/closed/hal-fclosed/...
+		 * @param name The name of the key (e.g. for the tooltip)
+		 * @param modes An array of all the availble closure modes for that key with they corresponding glypth in the Fiati font.
+		 * E.g. {"closed" : '\uE012', "thrill": '\uE013'}
+		 * If not present, the "open" mode will be added with an empty representation
+		 * @param row, colum Where to put that key in the diagram
+		 * @param size The size of the key on the diagram
+		 * @return a note/key object
+		 */
+		function noteClass4(name, xmodes, column, row, size) {
+			this.name = name;
+			this.modes = xmodes;
+			if (!this.modes.open) {
+				// ajoute un mode "open" s'il n'y en a pas
+				this.modes.open = '';
 			}
-			
-			this.representation=(representation!==undefined)?String(representation):"";
-	  }
-	  
-	  readonly property string generic_preset: "--" 
-	  
-	  // -----------------------------------------------------------------------
-	  // --- Accidentals -------------------------------------------------------
-	  // -----------------------------------------------------------------------
-			
-	readonly property var pitchnotes : [ 'C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
 
-	readonly property var tpcs : [{
-			'tpc' : -1,
-			'name' : 'F??',
-			'raw' : 'F'
-		}, {
-			'tpc' : 0,
-			'name' : 'C??',
-			'raw' : 'C'
-		}, {
-			'tpc' : 1,
-			'name' : 'G??',
-			'raw' : 'G'
-		}, {
-			'tpc' : 2,
-			'name' : 'D??',
-			'raw' : 'D'
-		}, {
-			'tpc' : 3,
-			'name' : 'A??',
-			'raw' : 'A'
-		}, {
-			'tpc' : 4,
-			'name' : 'E??',
-			'raw' : 'E'
-		}, {
-			'tpc' : 5,
-			'name' : 'B??',
-			'raw' : 'B'
-		}, {
-			'tpc' : 6,
-			'name' : 'F?',
-			'raw' : 'F'
-		}, {
-			'tpc' : 7,
-			'name' : 'C?',
-			'raw' : 'C'
-		}, {
-			'tpc' : 8,
-			'name' : 'G?',
-			'raw' : 'G'
-		}, {
-			'tpc' : 9,
-			'name' : 'D?',
-			'raw' : 'D'
-		}, {
-			'tpc' : 10,
-			'name' : 'A?',
-			'raw' : 'A'
-		}, {
-			'tpc' : 11,
-			'name' : 'E?',
-			'raw' : 'E'
-		}, {
-			'tpc' : 12,
-			'name' : 'B?',
-			'raw' : 'B'
-		}, {
-			'tpc' : 13,
-			'name' : 'F',
-			'raw' : 'F'
-		}, {
-			'tpc' : 14,
-			'name' : 'C',
-			'raw' : 'C'
-		}, {
-			'tpc' : 15,
-			'name' : 'G',
-			'raw' : 'G'
-		}, {
-			'tpc' : 16,
-			'name' : 'D',
-			'raw' : 'D'
-		}, {
-			'tpc' : 17,
-			'name' : 'A',
-			'raw' : 'A'
-		}, {
-			'tpc' : 18,
-			'name' : 'E',
-			'raw' : 'E'
-		}, {
-			'tpc' : 19,
-			'name' : 'B',
-			'raw' : 'B'
-		}, {
-			'tpc' : 20,
-			'name' : 'F?',
-			'raw' : 'F'
-		}, {
-			'tpc' : 21,
-			'name' : 'C?',
-			'raw' : 'C'
-		}, {
-			'tpc' : 22,
-			'name' : 'G?',
-			'raw' : 'G'
-		}, {
-			'tpc' : 23,
-			'name' : 'D?',
-			'raw' : 'D'
-		}, {
-			'tpc' : 24,
-			'name' : 'A?',
-			'raw' : 'A'
-		}, {
-			'tpc' : 25,
-			'name' : 'E?',
-			'raw' : 'E'
-		}, {
-			'tpc' : 26,
-			'name' : 'B?',
-			'raw' : 'B'
-		}, {
-			'tpc' : 27,
-			'name' : 'F??',
-			'raw' : 'F'
-		}, {
-			'tpc' : 28,
-			'name' : 'C??',
-			'raw' : 'C'
-		}, {
-			'tpc' : 29,
-			'name' : 'G??',
-			'raw' : 'G'
-		}, {
-			'tpc' : 30,
-			'name' : 'D??',
-			'raw' : 'D'
-		}, {
-			'tpc' : 31,
-			'name' : 'A??',
-			'raw' : 'A'
-		}, {
-			'tpc' : 32,
-			'name' : 'E??',
-			'raw' : 'E'
-		}, {
-			'tpc' : 33,
-			'name' : 'B??',
-			'raw' : 'B'
+			this.currentMode = "open";
+			this.deactivated = false; // temp
+			this.row = row;
+			this.column = column;
+			this.size = ((typeof size !== 'undefined')) ? size : 1;
+
+			Object.defineProperty(this, "currentRepresentation", {
+				get : function () {
+					var r = this.modes[this.currentMode];
+					// bug que je ne comprends pas => je prends le 1er mode
+					if (!r) {
+						var kys = Object.keys(this.modes);
+						r = this.modes[kys[0]];
+					}
+
+					return (this.currentMode !== "open") ? r : "";
+				},
+				enumerable : true
+			});
+
+			Object.defineProperty(this, "selected", {
+				get : function () {
+					return (this.currentMode !== "open");
+				},
+				set : function (sel) {
+					this.currentMode = (sel) ? "closed" : "open";
+				},
+				enumerable : true
+			});
+
 		}
-	]
 
-	readonly property var accidentals : [
-		{ 'name': generic_preset, 'image': 'generic.png' },
-		{ 'name': 'NONE', 'image': 'NONE.png' },
-		{ 'name': 'FLAT', 'image': 'FLAT.png' },
-		{ 'name': 'NATURAL', 'image': 'NATURAL.png' },
-		{ 'name': 'SHARP', 'image': 'SHARP.png' },
-		{ 'name': 'SHARP2', 'image': 'SHARP2.png' },
-		{ 'name': 'FLAT2', 'image': 'FLAT2.png' },
-		{ 'name': 'NATURAL_FLAT', 'image': 'NATURAL_FLAT.png' },
-		{ 'name': 'NATURAL_SHARP', 'image': 'NATURAL_SHARP.png' },
-		{ 'name': 'SHARP_SHARP', 'image': 'SHARP_SHARP.png' },
-		{ 'name': 'FLAT_ARROW_UP', 'image': 'FLAT_ARROW_UP.png' },
-		{ 'name': 'FLAT_ARROW_DOWN', 'image': 'FLAT_ARROW_DOWN.png' },
-		{ 'name': 'NATURAL_ARROW_UP', 'image': 'NATURAL_ARROW_UP.png' },
-		{ 'name': 'NATURAL_ARROW_DOWN', 'image': 'NATURAL_ARROW_DOWN.png' },
-		{ 'name': 'SHARP_ARROW_UP', 'image': 'SHARP_ARROW_UP.png' },
-		{ 'name': 'SHARP_ARROW_DOWN', 'image': 'SHARP_ARROW_DOWN.png' },
-		{ 'name': 'SHARP2_ARROW_UP', 'image': 'SHARP2_ARROW_UP.png' },
-		{ 'name': 'SHARP2_ARROW_DOWN', 'image': 'SHARP2_ARROW_DOWN.png' },
-		{ 'name': 'FLAT2_ARROW_UP', 'image': 'FLAT2_ARROW_UP.png' },
-		{ 'name': 'FLAT2_ARROW_DOWN', 'image': 'FLAT2_ARROW_DOWN.png' },
-		{ 'name': 'MIRRORED_FLAT', 'image': 'MIRRORED_FLAT.png' },
-		{ 'name': 'MIRRORED_FLAT2', 'image': 'MIRRORED_FLAT2.png' },
-		{ 'name': 'SHARP_SLASH', 'image': 'SHARP_SLASH.png' },
-		{ 'name': 'SHARP_SLASH4', 'image': 'SHARP_SLASH4.png' },
-		{ 'name': 'FLAT_SLASH2', 'image': 'FLAT_SLASH2.png' },
-		{ 'name': 'FLAT_SLASH', 'image': 'FLAT_SLASH.png' },
-		{ 'name': 'SHARP_SLASH3', 'image': 'SHARP_SLASH3.png' },
-		{ 'name': 'SHARP_SLASH2', 'image': 'SHARP_SLASH2.png' },
-		{ 'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN', 'image': 'DOUBLE_FLAT_ONE_ARROW_DOWN.png' },
-		{ 'name': 'FLAT_ONE_ARROW_DOWN', 'image': 'FLAT_ONE_ARROW_DOWN.png' },
-		{ 'name': 'NATURAL_ONE_ARROW_DOWN', 'image': 'NATURAL_ONE_ARROW_DOWN.png' },
-		{ 'name': 'SHARP_ONE_ARROW_DOWN', 'image': 'SHARP_ONE_ARROW_DOWN.png' },
-		{ 'name': 'DOUBLE_SHARP_ONE_ARROW_DOWN', 'image': 'DOUBLE_SHARP_ONE_ARROW_DOWN.png' },
-		{ 'name': 'DOUBLE_FLAT_ONE_ARROW_UP', 'image': 'DOUBLE_FLAT_ONE_ARROW_UP.png' },
-		{ 'name': 'FLAT_ONE_ARROW_UP', 'image': 'FLAT_ONE_ARROW_UP.png' },
-		{ 'name': 'NATURAL_ONE_ARROW_UP', 'image': 'NATURAL_ONE_ARROW_UP.png' },
-		{ 'name': 'SHARP_ONE_ARROW_UP', 'image': 'SHARP_ONE_ARROW_UP.png' },
-		{ 'name': 'DOUBLE_SHARP_ONE_ARROW_UP', 'image': 'DOUBLE_SHARP_ONE_ARROW_UP.png' },
-		{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_TWO_ARROWS_DOWN.png' },
-		{ 'name': 'FLAT_TWO_ARROWS_DOWN', 'image': 'FLAT_TWO_ARROWS_DOWN.png' },
-		{ 'name': 'NATURAL_TWO_ARROWS_DOWN', 'image': 'NATURAL_TWO_ARROWS_DOWN.png' },
-		{ 'name': 'SHARP_TWO_ARROWS_DOWN', 'image': 'SHARP_TWO_ARROWS_DOWN.png' },
-		{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_TWO_ARROWS_DOWN.png' },
-		{ 'name': 'DOUBLE_FLAT_TWO_ARROWS_UP', 'image': 'DOUBLE_FLAT_TWO_ARROWS_UP.png' },
-		{ 'name': 'FLAT_TWO_ARROWS_UP', 'image': 'FLAT_TWO_ARROWS_UP.png' },
-		{ 'name': 'NATURAL_TWO_ARROWS_UP', 'image': 'NATURAL_TWO_ARROWS_UP.png' },
-		{ 'name': 'SHARP_TWO_ARROWS_UP', 'image': 'SHARP_TWO_ARROWS_UP.png' },
-		{ 'name': 'DOUBLE_SHARP_TWO_ARROWS_UP', 'image': 'DOUBLE_SHARP_TWO_ARROWS_UP.png' },
-		{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_DOWN', 'image': 'DOUBLE_FLAT_THREE_ARROWS_DOWN.png' },
-		{ 'name': 'FLAT_THREE_ARROWS_DOWN', 'image': 'FLAT_THREE_ARROWS_DOWN.png' },
-		{ 'name': 'NATURAL_THREE_ARROWS_DOWN', 'image': 'NATURAL_THREE_ARROWS_DOWN.png' },
-		{ 'name': 'SHARP_THREE_ARROWS_DOWN', 'image': 'SHARP_THREE_ARROWS_DOWN.png' },
-		{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_DOWN', 'image': 'DOUBLE_SHARP_THREE_ARROWS_DOWN.png' },
-		{ 'name': 'DOUBLE_FLAT_THREE_ARROWS_UP', 'image': 'DOUBLE_FLAT_THREE_ARROWS_UP.png' },
-		{ 'name': 'FLAT_THREE_ARROWS_UP', 'image': 'FLAT_THREE_ARROWS_UP.png' },
-		{ 'name': 'NATURAL_THREE_ARROWS_UP', 'image': 'NATURAL_THREE_ARROWS_UP.png' },
-		{ 'name': 'SHARP_THREE_ARROWS_UP', 'image': 'SHARP_THREE_ARROWS_UP.png' },
-		{ 'name': 'DOUBLE_SHARP_THREE_ARROWS_UP', 'image': 'DOUBLE_SHARP_THREE_ARROWS_UP.png' },
-		{ 'name': 'LOWER_ONE_SEPTIMAL_COMMA', 'image': 'LOWER_ONE_SEPTIMAL_COMMA.png' },
-		{ 'name': 'RAISE_ONE_SEPTIMAL_COMMA', 'image': 'RAISE_ONE_SEPTIMAL_COMMA.png' },
-		{ 'name': 'LOWER_TWO_SEPTIMAL_COMMAS', 'image': 'LOWER_TWO_SEPTIMAL_COMMAS.png' },
-		{ 'name': 'RAISE_TWO_SEPTIMAL_COMMAS', 'image': 'RAISE_TWO_SEPTIMAL_COMMAS.png' },
-		{ 'name': 'LOWER_ONE_UNDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_UNDECIMAL_QUARTERTONE.png' },
-		{ 'name': 'RAISE_ONE_UNDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_UNDECIMAL_QUARTERTONE.png' },
-		{ 'name': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'LOWER_ONE_TRIDECIMAL_QUARTERTONE.png' },
-		{ 'name': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE', 'image': 'RAISE_ONE_TRIDECIMAL_QUARTERTONE.png' },
-		{ 'name': 'DOUBLE_FLAT_EQUAL_TEMPERED', 'image': 'DOUBLE_FLAT_EQUAL_TEMPERED.png' },
-		{ 'name': 'FLAT_EQUAL_TEMPERED', 'image': 'FLAT_EQUAL_TEMPERED.png' },
-		{ 'name': 'NATURAL_EQUAL_TEMPERED', 'image': 'NATURAL_EQUAL_TEMPERED.png' },
-		{ 'name': 'SHARP_EQUAL_TEMPERED', 'image': 'SHARP_EQUAL_TEMPERED.png' },
-		{ 'name': 'DOUBLE_SHARP_EQUAL_TEMPERED', 'image': 'DOUBLE_SHARP_EQUAL_TEMPERED.png' },
-		{ 'name': 'QUARTER_FLAT_EQUAL_TEMPERED', 'image': 'QUARTER_FLAT_EQUAL_TEMPERED.png' },
-		{ 'name': 'QUARTER_SHARP_EQUAL_TEMPERED', 'image': 'QUARTER_SHARP_EQUAL_TEMPERED.png' },
-		{ 'name': 'SORI', 'image': 'SORI.png' },
-		{ 'name': 'KORON', 'image': 'KORON.png' }
-		//,{ 'name': 'UNKNOWN', 'image': 'UNKNOWN.png' }
-	];
-	readonly property var equivalences : [
-		['SHARP','NATURAL_SHARP'],
-		['FLAT','NATURAL_FLAT'],
-		['NONE','NATURAL'],
-		['SHARP2','SHARP_SHARP']
-	];
-	
-	readonly property var heads : [
-		{ 'name': generic_preset, 'image': 'generic.png' },
-		{ 'name': 'HEAD_NORMAL', 'image': 'HEAD_NORMAL.png' },
-		{ 'name': 'HEAD_CROSS', 'image': 'HEAD_CROSS.png' },
-		{ 'name': 'HEAD_PLUS', 'image': 'HEAD_PLUS.png' },
-		{ 'name': 'HEAD_XCIRCLE', 'image': 'HEAD_XCIRCLE.png' },
-		{ 'name': 'HEAD_WITHX', 'image': 'HEAD_WITHX.png' },
-		{ 'name': 'HEAD_TRIANGLE_UP', 'image': 'HEAD_TRIANGLE_UP.png' },
-		{ 'name': 'HEAD_TRIANGLE_DOWN', 'image': 'HEAD_TRIANGLE_DOWN.png' },
-		{ 'name': 'HEAD_SLASHED1', 'image': 'HEAD_SLASHED1.png' },
-		{ 'name': 'HEAD_SLASHED2', 'image': 'HEAD_SLASHED2.png' },
-		{ 'name': 'HEAD_DIAMOND', 'image': 'HEAD_DIAMOND.png' },
-		{ 'name': 'HEAD_DIAMOND_OLD', 'image': 'HEAD_DIAMOND_OLD.png' },
-		{ 'name': 'HEAD_CIRCLED', 'image': 'HEAD_CIRCLED.png' },
-		{ 'name': 'HEAD_CIRCLED_LARGE', 'image': 'HEAD_CIRCLED_LARGE.png' },
-		{ 'name': 'HEAD_LARGE_ARROW', 'image': 'HEAD_LARGE_ARROW.png' },
-		{ 'name': 'HEAD_BREVIS_ALT', 'image': 'HEAD_BREVIS_ALT.png' },
-		{ 'name': 'HEAD_SLASH', 'image': 'HEAD_SLASH.png' },
-		{ 'name': 'HEAD_SOL', 'image': 'HEAD_SOL.png' },
-		{ 'name': 'HEAD_LA', 'image': 'HEAD_LA.png' },
-		{ 'name': 'HEAD_FA', 'image': 'HEAD_FA.png' },
-		{ 'name': 'HEAD_MI', 'image': 'HEAD_MI.png' },
-		{ 'name': 'HEAD_DO', 'image': 'HEAD_DO.png' },
-		{ 'name': 'HEAD_RE', 'image': 'HEAD_RE.png' },
-		{ 'name': 'HEAD_TI', 'image': 'HEAD_TI.png' },
-		{ 'name': 'HEAD_DO_WALKER', 'image': 'HEAD_DO_WALKER.png' },
-		{ 'name': 'HEAD_RE_WALKER', 'image': 'HEAD_RE_WALKER.png' },
-		{ 'name': 'HEAD_TI_WALKER', 'image': 'HEAD_TI_WALKER.png' },
-		{ 'name': 'HEAD_DO_FUNK', 'image': 'HEAD_DO_FUNK.png' },
-		{ 'name': 'HEAD_RE_FUNK', 'image': 'HEAD_RE_FUNK.png' },
-		{ 'name': 'HEAD_TI_FUNK', 'image': 'HEAD_TI_FUNK.png' },
-		{ 'name': 'HEAD_DO_NAME', 'image': 'HEAD_DO_NAME.png' },
-		{ 'name': 'HEAD_RE_NAME', 'image': 'HEAD_RE_NAME.png' },
-		{ 'name': 'HEAD_MI_NAME', 'image': 'HEAD_MI_NAME.png' },
-		{ 'name': 'HEAD_FA_NAME', 'image': 'HEAD_FA_NAME.png' },
-		{ 'name': 'HEAD_SOL_NAME', 'image': 'HEAD_SOL_NAME.png' },
-		{ 'name': 'HEAD_LA_NAME', 'image': 'HEAD_LA_NAME.png' },
-		{ 'name': 'HEAD_TI_NAME', 'image': 'HEAD_TI_NAME.png' },
-		{ 'name': 'HEAD_SI_NAME', 'image': 'HEAD_SI_NAME.png' },
-		{ 'name': 'HEAD_A_SHARP', 'image': 'HEAD_A_SHARP.png' },
-		{ 'name': 'HEAD_A', 'image': 'HEAD_A.png' },
-		{ 'name': 'HEAD_A_FLAT', 'image': 'HEAD_A_FLAT.png' },
-		{ 'name': 'HEAD_B_SHARP', 'image': 'HEAD_B_SHARP.png' },
-		{ 'name': 'HEAD_B', 'image': 'HEAD_B.png' },
-		{ 'name': 'HEAD_B_FLAT', 'image': 'HEAD_B_FLAT.png' },
-		{ 'name': 'HEAD_C_SHARP', 'image': 'HEAD_C_SHARP.png' },
-		{ 'name': 'HEAD_C', 'image': 'HEAD_C.png' },
-		{ 'name': 'HEAD_C_FLAT', 'image': 'HEAD_C_FLAT.png' },
-		{ 'name': 'HEAD_D_SHARP', 'image': 'HEAD_D_SHARP.png' },
-		{ 'name': 'HEAD_D', 'image': 'HEAD_D.png' },
-		{ 'name': 'HEAD_D_FLAT', 'image': 'HEAD_D_FLAT.png' },
-		{ 'name': 'HEAD_E_SHARP', 'image': 'HEAD_E_SHARP.png' },
-		{ 'name': 'HEAD_E', 'image': 'HEAD_E.png' },
-		{ 'name': 'HEAD_E_FLAT', 'image': 'HEAD_E_FLAT.png' },
-		{ 'name': 'HEAD_F_SHARP', 'image': 'HEAD_F_SHARP.png' },
-		{ 'name': 'HEAD_F', 'image': 'HEAD_F.png' },
-		{ 'name': 'HEAD_F_FLAT', 'image': 'HEAD_F_FLAT.png' },
-		{ 'name': 'HEAD_G_SHARP', 'image': 'HEAD_G_SHARP.png' },
-		{ 'name': 'HEAD_G', 'image': 'HEAD_G.png' },
-		{ 'name': 'HEAD_G_FLAT', 'image': 'HEAD_G_FLAT.png' },
-		{ 'name': 'HEAD_H', 'image': 'HEAD_H.png' },
-		{ 'name': 'HEAD_H_SHARP', 'image': 'HEAD_H_SHARP.png' },
-		{ 'name': 'HEAD_CUSTOM', 'image': 'HEAD_CUSTOM.png' },
-		{ 'name': 'HEAD_GROUPS', 'image': 'HEAD_GROUPS.png' },
-		{ 'name': 'HEAD_INVALID', 'image': 'HEAD_INVALID.png' }
-	];
+		/**
+		 * An object for representation an instrument config option. Such as optional extra key found on some instruments (E.g. "C# thrill" key found on sme flute.)
+		 * @param name The name of the key (e.g. for the tooltip)
+		 * @param representation The glypth used in the Fiati font to display this key as *open*
+		 * @param note A valid note object representing the usage of that key of an array of Notes
+		 */
+		function instrumentConfigClass(name, representation, notes, defaultActive) {
+			var active = (defaultActive !== undefined) ? defaultActive : false;
+			this.name = name;
+			this.representation = representation;
+			this.notes = (Array.isArray(notes) ? notes : [notes]);
 
+			Object.defineProperty(this, "activated", {
+				get : function () {
+					return active;
+				},
+				set : function (newActive) {
+					active = newActive;
+					for (var i = 0; i < this.notes.length; i++) {
+						if (!active)
+							this.notes[i].currentMode = "open";
+					}
+				},
+				enumerable : true
+			});
 
-	function isEquivAccidental(a1, a2) {
-		for (var i = 0; i < equivalences.length; i++) {
-			if ((equivalences[i][0] === a1 && equivalences[i][1] === a2) ||
-				(equivalences[i][0] === a2 && equivalences[i][1] === a1))
-				return true;
 		}
-		return false;
-	}
 
-	  // -----------------------------------------------------------------------
-	// --- Debug -------------------------------------------------------
-	// -----------------------------------------------------------------------
-	function debug(level, label) {
-		if (level > debugLevel)
-			return;
+		// -----------------------------------------------------------------------
+		// --- Library -------------------------------------------------------
+		// -----------------------------------------------------------------------
+		/**
+		 * Class representing a preset.
+		 * @param category A category of instrument. Must match any of the categories defined in the categories arrays
+		 * @param label A label. Optional. If non proivded then replaced by an empty string
+		 * @param accidental The accidental of the note. A *string* corresponding to an element of  Musescore Accidental enumeration. Optional. If non proivded then replaced by "--", meaining "suitable to all notes".
+		 * @param representation The textual representation of the key combination. Is expected to be a valid unicode combination ,ut no verification is made. Optional. If non proivded then replaced by an empty string.
+		 * @param head The head of the note. A *string* corresponding to an element of  Musescore HeadGroup enumeration. Optional. If non proivded then replaced by "--", meaining "suitable to all notes".
+		 */
 
-		console.log(label);
-	}
+		function presetClass(category, label, note, accidental, representation, head) {
+			this.category = (category !== undefined) ? String(category) : "??";
+			this.label = (label !== undefined) ? String(label) : "";
+			this.note = (note !== undefined) ? String(note) : "";
 
-	function debugV(level, label, prop, value) {
-		if (level > debugLevel)
-			return;
+			this.accidental = generic_preset;
+			if (accidental !== undefined && accidental !== "" && accidental !== generic_preset) {
+				var acc = String(accidental);
+				var accid = eval("Accidental." + acc);
+				if (accid === undefined || accid == 0)
+					acc = "NONE";
+				this.accidental = acc;
+			}
 
-		console.log(label + " " + prop + ":" + value);
-	}
+			this.head = generic_preset;
+			if (head !== undefined && head !== "" && head !== generic_preset) {
+				var hd = String(head);
+				var accid = eval("NoteHeadGroup." + hd);
+				if (accid === undefined || accid == 0)
+					hd = "HEAD_NORMAL";
+				this.head = hd;
+			}
 
-	function debugP(level, label, element, prop) {
-		if (level > debugLevel)
-			return;
-
-		console.log(label + " " + prop + ":" + element[prop]);
-	}
-
-	function debugO(level, label, element) {
-		if (level > debugLevel)
-			return;
-
-		var kys = Object.keys(element);
-		for (var i = 0; i < kys.length; i++) {
-			debugV(level, label, kys[i], element[kys[i]]);
+			this.representation = (representation !== undefined) ? String(representation) : "";
 		}
-	}
 
-}
+		readonly property string generic_preset : "--"
+
+		// -----------------------------------------------------------------------
+		// --- Accidentals -------------------------------------------------------
+		// -----------------------------------------------------------------------
+
+		readonly property var pitchnotes : ['C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
+
+		readonly property var tpcs : [{
+				'tpc' : -1,
+				'name' : 'F??',
+				'raw' : 'F'
+			}, {
+				'tpc' : 0,
+				'name' : 'C??',
+				'raw' : 'C'
+			}, {
+				'tpc' : 1,
+				'name' : 'G??',
+				'raw' : 'G'
+			}, {
+				'tpc' : 2,
+				'name' : 'D??',
+				'raw' : 'D'
+			}, {
+				'tpc' : 3,
+				'name' : 'A??',
+				'raw' : 'A'
+			}, {
+				'tpc' : 4,
+				'name' : 'E??',
+				'raw' : 'E'
+			}, {
+				'tpc' : 5,
+				'name' : 'B??',
+				'raw' : 'B'
+			}, {
+				'tpc' : 6,
+				'name' : 'F?',
+				'raw' : 'F'
+			}, {
+				'tpc' : 7,
+				'name' : 'C?',
+				'raw' : 'C'
+			}, {
+				'tpc' : 8,
+				'name' : 'G?',
+				'raw' : 'G'
+			}, {
+				'tpc' : 9,
+				'name' : 'D?',
+				'raw' : 'D'
+			}, {
+				'tpc' : 10,
+				'name' : 'A?',
+				'raw' : 'A'
+			}, {
+				'tpc' : 11,
+				'name' : 'E?',
+				'raw' : 'E'
+			}, {
+				'tpc' : 12,
+				'name' : 'B?',
+				'raw' : 'B'
+			}, {
+				'tpc' : 13,
+				'name' : 'F',
+				'raw' : 'F'
+			}, {
+				'tpc' : 14,
+				'name' : 'C',
+				'raw' : 'C'
+			}, {
+				'tpc' : 15,
+				'name' : 'G',
+				'raw' : 'G'
+			}, {
+				'tpc' : 16,
+				'name' : 'D',
+				'raw' : 'D'
+			}, {
+				'tpc' : 17,
+				'name' : 'A',
+				'raw' : 'A'
+			}, {
+				'tpc' : 18,
+				'name' : 'E',
+				'raw' : 'E'
+			}, {
+				'tpc' : 19,
+				'name' : 'B',
+				'raw' : 'B'
+			}, {
+				'tpc' : 20,
+				'name' : 'F?',
+				'raw' : 'F'
+			}, {
+				'tpc' : 21,
+				'name' : 'C?',
+				'raw' : 'C'
+			}, {
+				'tpc' : 22,
+				'name' : 'G?',
+				'raw' : 'G'
+			}, {
+				'tpc' : 23,
+				'name' : 'D?',
+				'raw' : 'D'
+			}, {
+				'tpc' : 24,
+				'name' : 'A?',
+				'raw' : 'A'
+			}, {
+				'tpc' : 25,
+				'name' : 'E?',
+				'raw' : 'E'
+			}, {
+				'tpc' : 26,
+				'name' : 'B?',
+				'raw' : 'B'
+			}, {
+				'tpc' : 27,
+				'name' : 'F??',
+				'raw' : 'F'
+			}, {
+				'tpc' : 28,
+				'name' : 'C??',
+				'raw' : 'C'
+			}, {
+				'tpc' : 29,
+				'name' : 'G??',
+				'raw' : 'G'
+			}, {
+				'tpc' : 30,
+				'name' : 'D??',
+				'raw' : 'D'
+			}, {
+				'tpc' : 31,
+				'name' : 'A??',
+				'raw' : 'A'
+			}, {
+				'tpc' : 32,
+				'name' : 'E??',
+				'raw' : 'E'
+			}, {
+				'tpc' : 33,
+				'name' : 'B??',
+				'raw' : 'B'
+			}
+		]
+
+		readonly property var accidentals : [{
+				'name' : generic_preset,
+				'image' : 'generic.png'
+			}, {
+				'name' : 'NONE',
+				'image' : 'NONE.png'
+			}, {
+				'name' : 'FLAT',
+				'image' : 'FLAT.png'
+			}, {
+				'name' : 'NATURAL',
+				'image' : 'NATURAL.png'
+			}, {
+				'name' : 'SHARP',
+				'image' : 'SHARP.png'
+			}, {
+				'name' : 'SHARP2',
+				'image' : 'SHARP2.png'
+			}, {
+				'name' : 'FLAT2',
+				'image' : 'FLAT2.png'
+			}, {
+				'name' : 'NATURAL_FLAT',
+				'image' : 'NATURAL_FLAT.png'
+			}, {
+				'name' : 'NATURAL_SHARP',
+				'image' : 'NATURAL_SHARP.png'
+			}, {
+				'name' : 'SHARP_SHARP',
+				'image' : 'SHARP_SHARP.png'
+			}, {
+				'name' : 'FLAT_ARROW_UP',
+				'image' : 'FLAT_ARROW_UP.png'
+			}, {
+				'name' : 'FLAT_ARROW_DOWN',
+				'image' : 'FLAT_ARROW_DOWN.png'
+			}, {
+				'name' : 'NATURAL_ARROW_UP',
+				'image' : 'NATURAL_ARROW_UP.png'
+			}, {
+				'name' : 'NATURAL_ARROW_DOWN',
+				'image' : 'NATURAL_ARROW_DOWN.png'
+			}, {
+				'name' : 'SHARP_ARROW_UP',
+				'image' : 'SHARP_ARROW_UP.png'
+			}, {
+				'name' : 'SHARP_ARROW_DOWN',
+				'image' : 'SHARP_ARROW_DOWN.png'
+			}, {
+				'name' : 'SHARP2_ARROW_UP',
+				'image' : 'SHARP2_ARROW_UP.png'
+			}, {
+				'name' : 'SHARP2_ARROW_DOWN',
+				'image' : 'SHARP2_ARROW_DOWN.png'
+			}, {
+				'name' : 'FLAT2_ARROW_UP',
+				'image' : 'FLAT2_ARROW_UP.png'
+			}, {
+				'name' : 'FLAT2_ARROW_DOWN',
+				'image' : 'FLAT2_ARROW_DOWN.png'
+			}, {
+				'name' : 'MIRRORED_FLAT',
+				'image' : 'MIRRORED_FLAT.png'
+			}, {
+				'name' : 'MIRRORED_FLAT2',
+				'image' : 'MIRRORED_FLAT2.png'
+			}, {
+				'name' : 'SHARP_SLASH',
+				'image' : 'SHARP_SLASH.png'
+			}, {
+				'name' : 'SHARP_SLASH4',
+				'image' : 'SHARP_SLASH4.png'
+			}, {
+				'name' : 'FLAT_SLASH2',
+				'image' : 'FLAT_SLASH2.png'
+			}, {
+				'name' : 'FLAT_SLASH',
+				'image' : 'FLAT_SLASH.png'
+			}, {
+				'name' : 'SHARP_SLASH3',
+				'image' : 'SHARP_SLASH3.png'
+			}, {
+				'name' : 'SHARP_SLASH2',
+				'image' : 'SHARP_SLASH2.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_ONE_ARROW_DOWN',
+				'image' : 'DOUBLE_FLAT_ONE_ARROW_DOWN.png'
+			}, {
+				'name' : 'FLAT_ONE_ARROW_DOWN',
+				'image' : 'FLAT_ONE_ARROW_DOWN.png'
+			}, {
+				'name' : 'NATURAL_ONE_ARROW_DOWN',
+				'image' : 'NATURAL_ONE_ARROW_DOWN.png'
+			}, {
+				'name' : 'SHARP_ONE_ARROW_DOWN',
+				'image' : 'SHARP_ONE_ARROW_DOWN.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_ONE_ARROW_DOWN',
+				'image' : 'DOUBLE_SHARP_ONE_ARROW_DOWN.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_ONE_ARROW_UP',
+				'image' : 'DOUBLE_FLAT_ONE_ARROW_UP.png'
+			}, {
+				'name' : 'FLAT_ONE_ARROW_UP',
+				'image' : 'FLAT_ONE_ARROW_UP.png'
+			}, {
+				'name' : 'NATURAL_ONE_ARROW_UP',
+				'image' : 'NATURAL_ONE_ARROW_UP.png'
+			}, {
+				'name' : 'SHARP_ONE_ARROW_UP',
+				'image' : 'SHARP_ONE_ARROW_UP.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_ONE_ARROW_UP',
+				'image' : 'DOUBLE_SHARP_ONE_ARROW_UP.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_TWO_ARROWS_DOWN',
+				'image' : 'DOUBLE_FLAT_TWO_ARROWS_DOWN.png'
+			}, {
+				'name' : 'FLAT_TWO_ARROWS_DOWN',
+				'image' : 'FLAT_TWO_ARROWS_DOWN.png'
+			}, {
+				'name' : 'NATURAL_TWO_ARROWS_DOWN',
+				'image' : 'NATURAL_TWO_ARROWS_DOWN.png'
+			}, {
+				'name' : 'SHARP_TWO_ARROWS_DOWN',
+				'image' : 'SHARP_TWO_ARROWS_DOWN.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_TWO_ARROWS_DOWN',
+				'image' : 'DOUBLE_SHARP_TWO_ARROWS_DOWN.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_TWO_ARROWS_UP',
+				'image' : 'DOUBLE_FLAT_TWO_ARROWS_UP.png'
+			}, {
+				'name' : 'FLAT_TWO_ARROWS_UP',
+				'image' : 'FLAT_TWO_ARROWS_UP.png'
+			}, {
+				'name' : 'NATURAL_TWO_ARROWS_UP',
+				'image' : 'NATURAL_TWO_ARROWS_UP.png'
+			}, {
+				'name' : 'SHARP_TWO_ARROWS_UP',
+				'image' : 'SHARP_TWO_ARROWS_UP.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_TWO_ARROWS_UP',
+				'image' : 'DOUBLE_SHARP_TWO_ARROWS_UP.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_THREE_ARROWS_DOWN',
+				'image' : 'DOUBLE_FLAT_THREE_ARROWS_DOWN.png'
+			}, {
+				'name' : 'FLAT_THREE_ARROWS_DOWN',
+				'image' : 'FLAT_THREE_ARROWS_DOWN.png'
+			}, {
+				'name' : 'NATURAL_THREE_ARROWS_DOWN',
+				'image' : 'NATURAL_THREE_ARROWS_DOWN.png'
+			}, {
+				'name' : 'SHARP_THREE_ARROWS_DOWN',
+				'image' : 'SHARP_THREE_ARROWS_DOWN.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_THREE_ARROWS_DOWN',
+				'image' : 'DOUBLE_SHARP_THREE_ARROWS_DOWN.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_THREE_ARROWS_UP',
+				'image' : 'DOUBLE_FLAT_THREE_ARROWS_UP.png'
+			}, {
+				'name' : 'FLAT_THREE_ARROWS_UP',
+				'image' : 'FLAT_THREE_ARROWS_UP.png'
+			}, {
+				'name' : 'NATURAL_THREE_ARROWS_UP',
+				'image' : 'NATURAL_THREE_ARROWS_UP.png'
+			}, {
+				'name' : 'SHARP_THREE_ARROWS_UP',
+				'image' : 'SHARP_THREE_ARROWS_UP.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_THREE_ARROWS_UP',
+				'image' : 'DOUBLE_SHARP_THREE_ARROWS_UP.png'
+			}, {
+				'name' : 'LOWER_ONE_SEPTIMAL_COMMA',
+				'image' : 'LOWER_ONE_SEPTIMAL_COMMA.png'
+			}, {
+				'name' : 'RAISE_ONE_SEPTIMAL_COMMA',
+				'image' : 'RAISE_ONE_SEPTIMAL_COMMA.png'
+			}, {
+				'name' : 'LOWER_TWO_SEPTIMAL_COMMAS',
+				'image' : 'LOWER_TWO_SEPTIMAL_COMMAS.png'
+			}, {
+				'name' : 'RAISE_TWO_SEPTIMAL_COMMAS',
+				'image' : 'RAISE_TWO_SEPTIMAL_COMMAS.png'
+			}, {
+				'name' : 'LOWER_ONE_UNDECIMAL_QUARTERTONE',
+				'image' : 'LOWER_ONE_UNDECIMAL_QUARTERTONE.png'
+			}, {
+				'name' : 'RAISE_ONE_UNDECIMAL_QUARTERTONE',
+				'image' : 'RAISE_ONE_UNDECIMAL_QUARTERTONE.png'
+			}, {
+				'name' : 'LOWER_ONE_TRIDECIMAL_QUARTERTONE',
+				'image' : 'LOWER_ONE_TRIDECIMAL_QUARTERTONE.png'
+			}, {
+				'name' : 'RAISE_ONE_TRIDECIMAL_QUARTERTONE',
+				'image' : 'RAISE_ONE_TRIDECIMAL_QUARTERTONE.png'
+			}, {
+				'name' : 'DOUBLE_FLAT_EQUAL_TEMPERED',
+				'image' : 'DOUBLE_FLAT_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'FLAT_EQUAL_TEMPERED',
+				'image' : 'FLAT_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'NATURAL_EQUAL_TEMPERED',
+				'image' : 'NATURAL_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'SHARP_EQUAL_TEMPERED',
+				'image' : 'SHARP_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'DOUBLE_SHARP_EQUAL_TEMPERED',
+				'image' : 'DOUBLE_SHARP_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'QUARTER_FLAT_EQUAL_TEMPERED',
+				'image' : 'QUARTER_FLAT_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'QUARTER_SHARP_EQUAL_TEMPERED',
+				'image' : 'QUARTER_SHARP_EQUAL_TEMPERED.png'
+			}, {
+				'name' : 'SORI',
+				'image' : 'SORI.png'
+			}, {
+				'name' : 'KORON',
+				'image' : 'KORON.png'
+			}
+			//,{ 'name': 'UNKNOWN', 'image': 'UNKNOWN.png' }
+		];
+		readonly property var equivalences : [
+			['SHARP', 'NATURAL_SHARP'],
+			['FLAT', 'NATURAL_FLAT'],
+			['NONE', 'NATURAL'],
+			['SHARP2', 'SHARP_SHARP']
+		];
+
+		readonly property var heads : [{
+				'name' : generic_preset,
+				'image' : 'generic.png'
+			}, {
+				'name' : 'HEAD_NORMAL',
+				'image' : 'HEAD_NORMAL.png'
+			}, {
+				'name' : 'HEAD_CROSS',
+				'image' : 'HEAD_CROSS.png'
+			}, {
+				'name' : 'HEAD_PLUS',
+				'image' : 'HEAD_PLUS.png'
+			}, {
+				'name' : 'HEAD_XCIRCLE',
+				'image' : 'HEAD_XCIRCLE.png'
+			}, {
+				'name' : 'HEAD_WITHX',
+				'image' : 'HEAD_WITHX.png'
+			}, {
+				'name' : 'HEAD_TRIANGLE_UP',
+				'image' : 'HEAD_TRIANGLE_UP.png'
+			}, {
+				'name' : 'HEAD_TRIANGLE_DOWN',
+				'image' : 'HEAD_TRIANGLE_DOWN.png'
+			}, {
+				'name' : 'HEAD_SLASHED1',
+				'image' : 'HEAD_SLASHED1.png'
+			}, {
+				'name' : 'HEAD_SLASHED2',
+				'image' : 'HEAD_SLASHED2.png'
+			}, {
+				'name' : 'HEAD_DIAMOND',
+				'image' : 'HEAD_DIAMOND.png'
+			}, {
+				'name' : 'HEAD_DIAMOND_OLD',
+				'image' : 'HEAD_DIAMOND_OLD.png'
+			}, {
+				'name' : 'HEAD_CIRCLED',
+				'image' : 'HEAD_CIRCLED.png'
+			}, {
+				'name' : 'HEAD_CIRCLED_LARGE',
+				'image' : 'HEAD_CIRCLED_LARGE.png'
+			}, {
+				'name' : 'HEAD_LARGE_ARROW',
+				'image' : 'HEAD_LARGE_ARROW.png'
+			}, {
+				'name' : 'HEAD_BREVIS_ALT',
+				'image' : 'HEAD_BREVIS_ALT.png'
+			}, {
+				'name' : 'HEAD_SLASH',
+				'image' : 'HEAD_SLASH.png'
+			}, {
+				'name' : 'HEAD_SOL',
+				'image' : 'HEAD_SOL.png'
+			}, {
+				'name' : 'HEAD_LA',
+				'image' : 'HEAD_LA.png'
+			}, {
+				'name' : 'HEAD_FA',
+				'image' : 'HEAD_FA.png'
+			}, {
+				'name' : 'HEAD_MI',
+				'image' : 'HEAD_MI.png'
+			}, {
+				'name' : 'HEAD_DO',
+				'image' : 'HEAD_DO.png'
+			}, {
+				'name' : 'HEAD_RE',
+				'image' : 'HEAD_RE.png'
+			}, {
+				'name' : 'HEAD_TI',
+				'image' : 'HEAD_TI.png'
+			}, {
+				'name' : 'HEAD_DO_WALKER',
+				'image' : 'HEAD_DO_WALKER.png'
+			}, {
+				'name' : 'HEAD_RE_WALKER',
+				'image' : 'HEAD_RE_WALKER.png'
+			}, {
+				'name' : 'HEAD_TI_WALKER',
+				'image' : 'HEAD_TI_WALKER.png'
+			}, {
+				'name' : 'HEAD_DO_FUNK',
+				'image' : 'HEAD_DO_FUNK.png'
+			}, {
+				'name' : 'HEAD_RE_FUNK',
+				'image' : 'HEAD_RE_FUNK.png'
+			}, {
+				'name' : 'HEAD_TI_FUNK',
+				'image' : 'HEAD_TI_FUNK.png'
+			}, {
+				'name' : 'HEAD_DO_NAME',
+				'image' : 'HEAD_DO_NAME.png'
+			}, {
+				'name' : 'HEAD_RE_NAME',
+				'image' : 'HEAD_RE_NAME.png'
+			}, {
+				'name' : 'HEAD_MI_NAME',
+				'image' : 'HEAD_MI_NAME.png'
+			}, {
+				'name' : 'HEAD_FA_NAME',
+				'image' : 'HEAD_FA_NAME.png'
+			}, {
+				'name' : 'HEAD_SOL_NAME',
+				'image' : 'HEAD_SOL_NAME.png'
+			}, {
+				'name' : 'HEAD_LA_NAME',
+				'image' : 'HEAD_LA_NAME.png'
+			}, {
+				'name' : 'HEAD_TI_NAME',
+				'image' : 'HEAD_TI_NAME.png'
+			}, {
+				'name' : 'HEAD_SI_NAME',
+				'image' : 'HEAD_SI_NAME.png'
+			}, {
+				'name' : 'HEAD_A_SHARP',
+				'image' : 'HEAD_A_SHARP.png'
+			}, {
+				'name' : 'HEAD_A',
+				'image' : 'HEAD_A.png'
+			}, {
+				'name' : 'HEAD_A_FLAT',
+				'image' : 'HEAD_A_FLAT.png'
+			}, {
+				'name' : 'HEAD_B_SHARP',
+				'image' : 'HEAD_B_SHARP.png'
+			}, {
+				'name' : 'HEAD_B',
+				'image' : 'HEAD_B.png'
+			}, {
+				'name' : 'HEAD_B_FLAT',
+				'image' : 'HEAD_B_FLAT.png'
+			}, {
+				'name' : 'HEAD_C_SHARP',
+				'image' : 'HEAD_C_SHARP.png'
+			}, {
+				'name' : 'HEAD_C',
+				'image' : 'HEAD_C.png'
+			}, {
+				'name' : 'HEAD_C_FLAT',
+				'image' : 'HEAD_C_FLAT.png'
+			}, {
+				'name' : 'HEAD_D_SHARP',
+				'image' : 'HEAD_D_SHARP.png'
+			}, {
+				'name' : 'HEAD_D',
+				'image' : 'HEAD_D.png'
+			}, {
+				'name' : 'HEAD_D_FLAT',
+				'image' : 'HEAD_D_FLAT.png'
+			}, {
+				'name' : 'HEAD_E_SHARP',
+				'image' : 'HEAD_E_SHARP.png'
+			}, {
+				'name' : 'HEAD_E',
+				'image' : 'HEAD_E.png'
+			}, {
+				'name' : 'HEAD_E_FLAT',
+				'image' : 'HEAD_E_FLAT.png'
+			}, {
+				'name' : 'HEAD_F_SHARP',
+				'image' : 'HEAD_F_SHARP.png'
+			}, {
+				'name' : 'HEAD_F',
+				'image' : 'HEAD_F.png'
+			}, {
+				'name' : 'HEAD_F_FLAT',
+				'image' : 'HEAD_F_FLAT.png'
+			}, {
+				'name' : 'HEAD_G_SHARP',
+				'image' : 'HEAD_G_SHARP.png'
+			}, {
+				'name' : 'HEAD_G',
+				'image' : 'HEAD_G.png'
+			}, {
+				'name' : 'HEAD_G_FLAT',
+				'image' : 'HEAD_G_FLAT.png'
+			}, {
+				'name' : 'HEAD_H',
+				'image' : 'HEAD_H.png'
+			}, {
+				'name' : 'HEAD_H_SHARP',
+				'image' : 'HEAD_H_SHARP.png'
+			}, {
+				'name' : 'HEAD_CUSTOM',
+				'image' : 'HEAD_CUSTOM.png'
+			}, {
+				'name' : 'HEAD_GROUPS',
+				'image' : 'HEAD_GROUPS.png'
+			}, {
+				'name' : 'HEAD_INVALID',
+				'image' : 'HEAD_INVALID.png'
+			}
+		];
+
+		function isEquivAccidental(a1, a2) {
+			for (var i = 0; i < equivalences.length; i++) {
+				if ((equivalences[i][0] === a1 && equivalences[i][1] === a2) ||
+					(equivalences[i][0] === a2 && equivalences[i][1] === a1))
+					return true;
+			}
+			return false;
+		}
+
+		// -----------------------------------------------------------------------
+		// --- Debug -------------------------------------------------------
+		// -----------------------------------------------------------------------
+		function debug(level, label) {
+			if (level > debugLevel)
+				return;
+
+			console.log(label);
+		}
+
+		function debugV(level, label, prop, value) {
+			if (level > debugLevel)
+				return;
+
+			console.log(label + " " + prop + ":" + value);
+		}
+
+		function debugP(level, label, element, prop) {
+			if (level > debugLevel)
+				return;
+
+			console.log(label + " " + prop + ":" + element[prop]);
+		}
+
+		function debugO(level, label, element) {
+			if (level > debugLevel)
+				return;
+
+			var kys = Object.keys(element);
+			for (var i = 0; i < kys.length; i++) {
+				debugV(level, label, kys[i], element[kys[i]]);
+			}
+		}
+
+	}
