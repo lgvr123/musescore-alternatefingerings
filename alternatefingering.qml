@@ -2891,7 +2891,7 @@ MuseScore {
 
 	function selectPreset(preset, strict) {
 		
-		if (preset === undeifined) 
+		if (preset === undefined) 
 			return;
 	
 		if (strict === undefined)
