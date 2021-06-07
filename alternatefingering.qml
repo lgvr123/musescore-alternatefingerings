@@ -89,7 +89,13 @@ MuseScore {
 		// lecture des options
 		readOptions();
 		readLibrary();
-
+		if (tuningSettingsFile.exists()) {
+			console.log("AccidentalTuning settings file found.")
+			loadTuningSettings();
+		} else {
+			console.log("AccidentalTuning settings file not found.")
+		}
+		
 		// preliminary check of the usedstates
 		displayUsedStates();
 
@@ -453,11 +459,13 @@ MuseScore {
 
 		var forceAcc = (chkForceAccidental.checkState === Qt.Checked);
 		var forceHead = (chkForceHead.checkState === Qt.Checked);
+		var forceNote = (chkForceNote.checkState === Qt.Checked);
+		var doTuning = chkDoTuning.enabled && (chkDoTuning.checkState === Qt.Checked);
 		//console.log("--Default forceAcc="+forceAcc);
 		//console.log("--Default forceHead="+forceHead);
 
 		// both default behaviours set to "Never Align" ? no alignement needed
-		if (!forceAcc && !forceHead) {
+		if (!forceAcc && !forceHead && !forceNote && !doTuning) {
 			//console.log("-- => no alignement");
 			alignToPreset_after();
 			return;
@@ -486,18 +494,18 @@ MuseScore {
 		}
 
 		// console.log("-- => alignement required");
-		alignToPreset_do(allnotes, forceAcc, forceHead);
+		alignToPreset_do(allnotes, forceAcc, forceHead, forceNote, doTuning);
 	}
 
 	/**
 	 * Execute the alignement. An alignement strategy set as "Ask" is considered here as "Never align"
 	 */
-	function alignToPreset_do(allnotes, forceAcc, forceHead) {
+	function alignToPreset_do(allnotes, forceAcc, forceHead, forceNote, doTuning) {
 
 		// console.log("--Aligning with forceAcc="+forceAcc);
 		// console.log("--Aligning with forceHead="+forceHead);
 		// both default behaviours set to "Never Align" ? no alignement needed
-		if (!forceAcc && !forceHead) {
+		if (!forceAcc && !forceHead && !forceNote && !doTuning) {
 			// console.log("-- => no alignment");
 			alignToPreset_after();
 			return;
@@ -515,6 +523,14 @@ MuseScore {
 					nt.accidentalType = eval("Accidental." + currentPreset.accidental);
 				}
 			}
+/*			// note
+			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
+				// we must align the head
+				if (forceAcc) {
+					nt.accidentalType = eval("Accidental." + currentPreset.accidental);
+				}
+			}
+*/
 			// head
 			if (currentPreset.head !== generic_preset && currentPreset.head !== nt.headData.name) {
 				// we must align the head
@@ -522,6 +538,12 @@ MuseScore {
 					nt.headGroup = eval("NoteHeadGroup." + currentPreset.head);
 				}
 			}
+			// tuning
+			console.log("Tuning before:"+nt.tuning);
+			if (chkDoTuning.enabled && doTuning) {
+					nt.tuning = getAccidentalTuning(currentPreset.accidental);
+			}
+			console.log("Tuning after:"+nt.tuning);
 		}
 		curScore.endCmd(false);
 
@@ -1252,7 +1274,7 @@ MuseScore {
 
 					columns : 1
 					columnSpacing : 5
-					rowSpacing : 5
+					rowSpacing : -2
 
 					CheckBox {
 						id : chkForceAccidental
@@ -1276,6 +1298,28 @@ MuseScore {
 								visible : chkForceAccidental.checked
 							}
 						}
+					}
+
+					CheckBox {
+						id : chkForceNote
+						text : "Pitch"
+						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
+						Layout.rightMargin : 5
+						Layout.leftMargin : 5
+						indicator.width : 16
+						indicator.height : 16
+						visible: false; // Not ready yet
+					}
+
+					CheckBox {
+						id : chkDoTuning
+						text : "+ tunings"
+						Layout.alignment : Qt.AlignTop | Qt.AlignLeft
+						Layout.rightMargin : 5
+						Layout.leftMargin : 5
+						indicator.width : 16
+						indicator.height : 16
+						enabled: tuningSettingsFile.exists() && chkForceAccidental.checked
 					}
 
 					CheckBox {
@@ -2999,6 +3043,8 @@ MuseScore {
 		// push to notes options
 		lastoptions['pushacc'] = (chkForceAccidental.checkState === Qt.Checked) ? "true" : "false";
 		lastoptions['pushhead'] = (chkForceHead.checkState === Qt.Checked) ? "true" : "false";
+		lastoptions['pushnote'] = (chkForceNote.checkState === Qt.Checked) ? "true" : "false";
+		lastoptions['pushtuning'] = (chkDoTuning.checkState === Qt.Checked) ? "true" : "false";
 
 		// instruments config
 		if (typeof lastoptions['categories'] === 'undefined') {
@@ -3120,6 +3166,10 @@ MuseScore {
 		debug(level_DEBUG, "readOptions: 'pushacc' --> " + chkForceAccidental.checked + " (" + lastoptions['pushacc'] + ")");
 		chkForceHead.checkState = (lastoptions['pushhead'] === "true") ? Qt.Checked : Qt.Unchecked;
 		debug(level_DEBUG, "readOptions: 'pushhead' --> " + chkForceHead.checked + " (" + lastoptions['pushhead'] + ")");
+		chkForceNote.checkState = (lastoptions['pushnote'] === "true") ? Qt.Checked : Qt.Unchecked;
+		debug(level_DEBUG, "readOptions: 'pushnote' --> " + chkForceNote.checked + " (" + lastoptions['pushnote'] + ")");
+		chkDoTuning.checkState = (lastoptions['pushtuning'] === "true") ? Qt.Checked : Qt.Unchecked;
+		debug(level_DEBUG, "readOptions: 'pushtuning' --> " + chkDoTuning.checked + " (" + lastoptions['pushtuning'] + ")");
 
 		// instruments config
 		var cats = Object.keys(lastoptions['categories']);
@@ -3691,231 +3741,306 @@ MuseScore {
 
 		readonly property var accidentals : [{
 				'name' : generic_preset,
+				'tuning' : 0,
 				'image' : 'generic.png'
 			}, {
 				'name' : 'NONE',
+				'tuning' : 0,
 				'image' : 'NONE.png'
 			}, {
 				'name' : 'FLAT',
+				'tuning' : 0,
 				'image' : 'FLAT.png'
 			}, {
 				'name' : 'NATURAL',
+				'tuning' : 0,
 				'image' : 'NATURAL.png'
 			}, {
 				'name' : 'SHARP',
+				'tuning' : 0,
 				'image' : 'SHARP.png'
 			}, {
 				'name' : 'SHARP2',
+				'tuning' : 0,
 				'image' : 'SHARP2.png'
 			}, {
 				'name' : 'FLAT2',
+				'tuning' : 0,
 				'image' : 'FLAT2.png'
 			}, {
 				'name' : 'NATURAL_FLAT',
+				'tuning' : 0,
 				'image' : 'NATURAL_FLAT.png'
 			}, {
 				'name' : 'NATURAL_SHARP',
+				'tuning' : 0,
 				'image' : 'NATURAL_SHARP.png'
 			}, {
 				'name' : 'SHARP_SHARP',
+				'tuning' : 0,
 				'image' : 'SHARP_SHARP.png'
 			}, {
 				'name' : 'FLAT_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'FLAT_ARROW_UP.png'
 			}, {
 				'name' : 'FLAT_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'FLAT_ARROW_DOWN.png'
 			}, {
 				'name' : 'NATURAL_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'NATURAL_ARROW_UP.png'
 			}, {
 				'name' : 'NATURAL_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'NATURAL_ARROW_DOWN.png'
 			}, {
 				'name' : 'SHARP_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'SHARP_ARROW_UP.png'
 			}, {
 				'name' : 'SHARP_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'SHARP_ARROW_DOWN.png'
 			}, {
 				'name' : 'SHARP2_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'SHARP2_ARROW_UP.png'
 			}, {
 				'name' : 'SHARP2_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'SHARP2_ARROW_DOWN.png'
 			}, {
 				'name' : 'FLAT2_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'FLAT2_ARROW_UP.png'
 			}, {
 				'name' : 'FLAT2_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'FLAT2_ARROW_DOWN.png'
 			}, {
 				'name' : 'MIRRORED_FLAT',
+				'tuning' : 0,
 				'image' : 'MIRRORED_FLAT.png'
 			}, {
 				'name' : 'MIRRORED_FLAT2',
+				'tuning' : 0,
 				'image' : 'MIRRORED_FLAT2.png'
 			}, {
 				'name' : 'SHARP_SLASH',
+				'tuning' : 0,
 				'image' : 'SHARP_SLASH.png'
 			}, {
 				'name' : 'SHARP_SLASH4',
+				'tuning' : 0,
 				'image' : 'SHARP_SLASH4.png'
 			}, {
 				'name' : 'FLAT_SLASH2',
+				'tuning' : 0,
 				'image' : 'FLAT_SLASH2.png'
 			}, {
 				'name' : 'FLAT_SLASH',
+				'tuning' : 0,
 				'image' : 'FLAT_SLASH.png'
 			}, {
 				'name' : 'SHARP_SLASH3',
+				'tuning' : 0,
 				'image' : 'SHARP_SLASH3.png'
 			}, {
 				'name' : 'SHARP_SLASH2',
+				'tuning' : 0,
 				'image' : 'SHARP_SLASH2.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_ONE_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_ONE_ARROW_DOWN.png'
 			}, {
 				'name' : 'FLAT_ONE_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'FLAT_ONE_ARROW_DOWN.png'
 			}, {
 				'name' : 'NATURAL_ONE_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'NATURAL_ONE_ARROW_DOWN.png'
 			}, {
 				'name' : 'SHARP_ONE_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'SHARP_ONE_ARROW_DOWN.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_ONE_ARROW_DOWN',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_ONE_ARROW_DOWN.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_ONE_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_ONE_ARROW_UP.png'
 			}, {
 				'name' : 'FLAT_ONE_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'FLAT_ONE_ARROW_UP.png'
 			}, {
 				'name' : 'NATURAL_ONE_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'NATURAL_ONE_ARROW_UP.png'
 			}, {
 				'name' : 'SHARP_ONE_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'SHARP_ONE_ARROW_UP.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_ONE_ARROW_UP',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_ONE_ARROW_UP.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_TWO_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_TWO_ARROWS_DOWN.png'
 			}, {
 				'name' : 'FLAT_TWO_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'FLAT_TWO_ARROWS_DOWN.png'
 			}, {
 				'name' : 'NATURAL_TWO_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'NATURAL_TWO_ARROWS_DOWN.png'
 			}, {
 				'name' : 'SHARP_TWO_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'SHARP_TWO_ARROWS_DOWN.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_TWO_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_TWO_ARROWS_DOWN.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_TWO_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_TWO_ARROWS_UP.png'
 			}, {
 				'name' : 'FLAT_TWO_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'FLAT_TWO_ARROWS_UP.png'
 			}, {
 				'name' : 'NATURAL_TWO_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'NATURAL_TWO_ARROWS_UP.png'
 			}, {
 				'name' : 'SHARP_TWO_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'SHARP_TWO_ARROWS_UP.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_TWO_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_TWO_ARROWS_UP.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_THREE_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_THREE_ARROWS_DOWN.png'
 			}, {
 				'name' : 'FLAT_THREE_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'FLAT_THREE_ARROWS_DOWN.png'
 			}, {
 				'name' : 'NATURAL_THREE_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'NATURAL_THREE_ARROWS_DOWN.png'
 			}, {
 				'name' : 'SHARP_THREE_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'SHARP_THREE_ARROWS_DOWN.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_THREE_ARROWS_DOWN',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_THREE_ARROWS_DOWN.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_THREE_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_THREE_ARROWS_UP.png'
 			}, {
 				'name' : 'FLAT_THREE_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'FLAT_THREE_ARROWS_UP.png'
 			}, {
 				'name' : 'NATURAL_THREE_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'NATURAL_THREE_ARROWS_UP.png'
 			}, {
 				'name' : 'SHARP_THREE_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'SHARP_THREE_ARROWS_UP.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_THREE_ARROWS_UP',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_THREE_ARROWS_UP.png'
 			}, {
 				'name' : 'LOWER_ONE_SEPTIMAL_COMMA',
+				'tuning' : 0,
 				'image' : 'LOWER_ONE_SEPTIMAL_COMMA.png'
 			}, {
 				'name' : 'RAISE_ONE_SEPTIMAL_COMMA',
+				'tuning' : 0,
 				'image' : 'RAISE_ONE_SEPTIMAL_COMMA.png'
 			}, {
 				'name' : 'LOWER_TWO_SEPTIMAL_COMMAS',
+				'tuning' : 0,
 				'image' : 'LOWER_TWO_SEPTIMAL_COMMAS.png'
 			}, {
 				'name' : 'RAISE_TWO_SEPTIMAL_COMMAS',
+				'tuning' : 0,
 				'image' : 'RAISE_TWO_SEPTIMAL_COMMAS.png'
 			}, {
 				'name' : 'LOWER_ONE_UNDECIMAL_QUARTERTONE',
+				'tuning' : 0,
 				'image' : 'LOWER_ONE_UNDECIMAL_QUARTERTONE.png'
 			}, {
 				'name' : 'RAISE_ONE_UNDECIMAL_QUARTERTONE',
+				'tuning' : 0,
 				'image' : 'RAISE_ONE_UNDECIMAL_QUARTERTONE.png'
 			}, {
 				'name' : 'LOWER_ONE_TRIDECIMAL_QUARTERTONE',
+				'tuning' : 0,
 				'image' : 'LOWER_ONE_TRIDECIMAL_QUARTERTONE.png'
 			}, {
 				'name' : 'RAISE_ONE_TRIDECIMAL_QUARTERTONE',
+				'tuning' : 0,
 				'image' : 'RAISE_ONE_TRIDECIMAL_QUARTERTONE.png'
 			}, {
 				'name' : 'DOUBLE_FLAT_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'DOUBLE_FLAT_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'FLAT_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'FLAT_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'NATURAL_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'NATURAL_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'SHARP_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'SHARP_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'DOUBLE_SHARP_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'DOUBLE_SHARP_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'QUARTER_FLAT_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'QUARTER_FLAT_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'QUARTER_SHARP_EQUAL_TEMPERED',
+				'tuning' : 0,
 				'image' : 'QUARTER_SHARP_EQUAL_TEMPERED.png'
 			}, {
 				'name' : 'SORI',
+				'tuning' : 0,
 				'image' : 'SORI.png'
 			}, {
 				'name' : 'KORON',
+				'tuning' : 0,
 				'image' : 'KORON.png'
 			}
-			//,{ 'name': 'UNKNOWN', 'image': 'UNKNOWN.png' }
+			//,{ 'name': 'UNKNOWN', 'tuning': 0, 'image': 'UNKNOWN.png' }
 		];
 		readonly property var equivalences : [
 			['SHARP', 'NATURAL_SHARP'],
@@ -4118,7 +4243,6 @@ MuseScore {
 				'image' : 'HEAD_INVALID.png'
 			}
 		];
-
 		function isEquivAccidental(a1, a2) {
 			for (var i = 0; i < equivalences.length; i++) {
 				if ((equivalences[i][0] === a1 && equivalences[i][1] === a2) ||
@@ -4128,6 +4252,47 @@ MuseScore {
 			return false;
 		}
 
+		// -----------------------------------------------------------------------
+		// --- AccindetalTuner support -------------------------------------------
+		// -----------------------------------------------------------------------
+		FileIO {
+			id : tuningSettingsFile
+			source : homePath() + "/MuseScore_AT_Settings.dat"
+		}
+
+		// Taken from AccidentalTuner.qml but adapted to feed our own accidentals model
+		function loadTuningSettings() {
+			var textInFile = tuningSettingsFile.read();
+			var lines = textInFile.split("\n");
+			for (var i = 0; i < lines.length; i++) {
+				if (lines[i][0] == '{') {
+					try {
+						var obj = JSON.parse(lines[i]);
+						for (var j = 0; j < accidentals.length; j++) {
+							if (obj.name == accidentals[j].name) {
+								accidentals[j].tuning = obj.tuning;
+								break;
+							}
+						}
+
+					} catch (e) {}
+				}
+			}
+		}
+		
+		// Taken from AccidentalTuner.qml but adapted to get the tuning from our own accidentals model
+		function getAccidentalTuning(accidental){
+			//if accidental not in the accidentalList, return 0
+
+			for (var i = 0; i < accidentals.length; i++) {
+				if (accidental == accidentals[i].name) {
+					return accidentals[i].tuning;
+				}
+			}
+
+			return 0;
+			}
+		
 		// -----------------------------------------------------------------------
 		// --- Debug -------------------------------------------------------
 		// -----------------------------------------------------------------------
