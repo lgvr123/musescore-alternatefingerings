@@ -7,6 +7,9 @@ import QtQuick.Controls.Styles 1.4
 import QtQuick.Layouts 1.1
 import FileIO 3.0
 
+import "zparkingb/selectionhelper.js" as SelHelper
+import "zparkingb/notehelper.js" as NoteHelper
+
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
@@ -109,16 +112,16 @@ MuseScore {
 		var warnMultipleFingerings = false;
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
-			notes = getNotesRestsFromCursor(true);
+			notes = SelHelper.getNotesRestsFromCursor(true);
 			if (notes && (notes.length > 0)) {
 				debug(level_DEBUG, "NOTES FOUND FROM CURSOR");
 			} else {
-				notes = getNotesRestsFromSelection();
+				notes = SelHelper.getNotesRestsFromSelection();
 				if (notes && (notes.length > 0)) {
 					debug(level_DEBUG, "NOTES FOUND FROM SELECTION");
 				} else {
 					debug(level_DEBUG, "NO NOTES FOUND");
-					var fingerings = getFingeringsFromSelection();
+					var fingerings = SelHelper.getFingeringsFromSelection();
 					if (fingerings && (fingerings.length > 0)) {
 						debug(level_DEBUG, "FINGERINGS FOUND FROM SELECTION");
 						notes = [];
@@ -173,7 +176,7 @@ MuseScore {
 					// Read the first fingering
 					if (isValidNote) { // On enrichit tout: Note comme Rest.
 						var fingerings = getFingerings(note);
-						enrichNote(note); // add note name, accidental name, ...
+						NoteHelper.enrichNote(note); // add note name, accidental name, ...
 
 						if (fingerings && fingerings.length > 0) {
 							fingerings = fingerings.filter(function (f) {
@@ -485,7 +488,7 @@ MuseScore {
 					var chordnotes = note.parent.notes;
 
 					for (var j = 0; j < chordnotes.length; j++) {
-						var nt = enrichNote(chordnotes[j]);
+						var nt = NoteHelper.enrichNote(chordnotes[j]);
 						allnotes.push(nt);
 					}
 				}
@@ -592,345 +595,6 @@ MuseScore {
 		};
 	}
 
-	// -----------------------------------------------------------------------
-	// --- Selection helper --------------------------------------------------
-	// -----------------------------------------------------------------------
-	/**
-	 * Get all the selected notes from the selection
-	 * @return Note[] : each returned {@link Note}  has the following properties:
-	 *      - element.type==Element.NOTE
-	 */
-	function getNotesFromSelection() {
-		var selection = curScore.selection;
-		var el = selection.elements;
-		var notes = [];
-		var n = 0;
-		for (var i = 0; i < el.length; i++) {
-			var element = el[i];
-			if (element.type == Element.NOTE) {
-				notes[n++] = element;
-			}
-
-		}
-		return notes;
-	}
-
-	/**
-	 * Get all the selected rest from the selection
-	 * @return Note[] : each returned {@link Rest}  has the following properties:
-	 *      - element.type==Element.REST
-	 */
-	function getRestsFromSelection() {
-		var selection = curScore.selection;
-		var el = selection.elements;
-		var rests = [];
-		for (var i = 0; i < el.length; i++) {
-			var element = el[i];
-			if (element.type == Element.REST) {
-				rests.push(element);
-			}
-
-		}
-		return rests;
-	}
-
-	/**
-	 * Get all the selected notes and rests from the selection
-	 * @return Note[] : each returned {@link Rest}  has the following properties:
-	 *      - element.type==Element.REST or Element.NOTE
-	 */
-	function getNotesRestsFromSelection() {
-		var selection = curScore.selection;
-		var el = selection.elements;
-		var rests = [];
-		for (var i = 0; i < el.length; i++) {
-			var element = el[i];
-			if ((element.type == Element.REST) || (element.type == Element.NOTE)) {
-				rests.push(element);
-			}
-
-		}
-		return rests;
-	}
-	/**
-	 * Get all the selected chords from the selection
-	 * @return Chord[] : each returned {@link Chord}  has the following properties:
-	 *      - element.type==Element.CHORD
-	 */
-	function getChordsFromSelection() {
-		var notes = getNotesFromSelection();
-		var chords = [];
-		var prevChord;
-		for (var i = 0; i < notes.length; i++) {
-			var element = notes[i];
-			var chord = element.parent;
-			if (prevChord && !prevChord.is(chord)) {
-				chords.push(chord);
-			}
-			prevChord = chord;
-		}
-		return chords;
-	}
-
-	/**
-	 * Get all the selected segments from the selection
-	 * @return Segment[] : each returned {@link Segment}  has the following properties:
-	 *      - element.type==Element.SEGMENT
-	 */
-	function getSegmentsFromSelection() {
-		// Les segments sur base des notes et accords
-		var chords = getChordsFromSelection();
-		var segments = [];
-		var prevSeg;
-		for (var i = 0; i < chords.length; i++) {
-			var element = chords[i];
-			var seg = element.parent;
-			if (prevSeg && !prevSeg.is(seg)) {
-				segments.push(seg);
-			}
-			prevChord = seg;
-		}
-
-		// Les segments sur base des accords
-		var rests = getRestsFromSelection();
-		for (var i = 0; i < rests.length; i++) {
-			var element = rests[i];
-			var seg = element.parent;
-			
-			if (segments.indexOf(seg)===-1)  {
-				segments.push(seg);
-			}
-		}
-
-		return segments;
-	}
-
-	/**
-	 * Reourne les fingerings sélectionnés
-	 * @return Fingering[] : each returned {@link Fingering}  has the following properties:
-	 *      - element.type==Element.FINGERING
-	 */
-	function getFingeringsFromSelection() {
-		var selection = curScore.selection;
-		var el = selection.elements;
-		var fingerings = [];
-		for (var i = 0; i < el.length; i++) {
-			var element = el[i];
-			if (element.type == Element.FINGERING) {
-				fingerings.push(element);
-			}
-		}
-		return fingerings;
-	}
-
-	/**
-	 * Get all the selected notes based on the cursor.
-	 * Rem: This does not any result in case of the notes are selected inidvidually.
-	 * @param oneNoteBySegment : boolean. If true, only one note by segment will be returned.
-	 * @return Note[] : each returned {@link Note}  has the following properties:
-	 *      - element.type==Element.NOTE
-	 *
-	 */
-	function getNotesFromCursor(oneNoteBySegment) {
-		var chords = getChordsFromCursor();
-		var notes = [];
-		for (var c = 0; c < chords.length; c++) {
-			var chord = chords[c];
-			var nn = chord.notes;
-			for (var i = 0; i < nn.length; i++) {
-				var note = nn[i];
-				notes[notes.length] = note;
-				if (oneNoteBySegment)
-					break;
-			}
-		}
-		return notes;
-	}
-
-	/**
-	 * Get all the selected chords based on the cursor.
-	 * Rem: This does not any result in case of the notes are selected inidvidually.
-	 * @return Chord[] : each returned {@link Note} has the following properties:
-	 *      - element.type==Element.CHORD
-	 *
-	 */
-	function getChordsFromCursor() {
-		var score = curScore;
-		var cursor = curScore.newCursor()
-			var firstTick,
-		firstStaff,
-		lastTick,
-		lastStaff;
-		// start
-		cursor.rewind(Cursor.SELECTION_START);
-		firstTick = cursor.tick;
-		firstStaff = cursor.track;
-		// end
-		cursor.rewind(Cursor.SELECTION_END);
-		lastTick = cursor.tick;
-		if (lastTick == 0) { // dealing with some bug when selecting to end.
-			lastTick = curScore.lastSegment.tick + 1;
-		}
-		lastStaff = cursor.track;
-		debugV(level_DEBUG, "> first", "tick", firstTick);
-		debugV(level_DEBUG, "> first", "track", firstStaff);
-		debugV(level_DEBUG, "> last", "tick", lastTick);
-		debugV(level_DEBUG, "> last", "track", lastStaff);
-		var chords = [];
-		for (var track = firstStaff; track <= lastStaff; track++) {
-
-			cursor.rewind(Cursor.SELECTION_START);
-			var segment = cursor.segment;
-			while (segment && (segment.tick < lastTick)) {
-				var element;
-				element = segment.elementAt(track);
-				if (element && element.type == Element.CHORD) {
-					debugV(level_TRACE, "- segment -", "tick", segment.tick);
-					debugV(level_TRACE, "- segment -", "segmentType", segment.segmentType);
-					debugV(level_TRACE, "--element", "label", (element) ? element.name : "null");
-					chords[chords.length] = element;
-				}
-
-				cursor.next();
-				segment = cursor.segment;
-			}
-		}
-
-		return chords;
-	}
-
-	/**
-	 * Get all the selected rests based on the cursor.
-	 * Rem: This does not any result in case of the rests and notes are selected inidvidually.
-	 * @return Rest[] : each returned {@link Note} has the following properties:
-	 *      - element.type==Element.REST
-	 *
-	 */
-	function getRestsFromCursor() {
-		var score = curScore;
-		var cursor = curScore.newCursor()
-			var firstTick,
-		firstStaff,
-		lastTick,
-		lastStaff;
-		// start
-		cursor.rewind(Cursor.SELECTION_START);
-		firstTick = cursor.tick;
-		firstStaff = cursor.track;
-		// end
-		cursor.rewind(Cursor.SELECTION_END);
-		lastTick = cursor.tick;
-		if (lastTick == 0) { // dealing with some bug when selecting to end.
-			lastTick = curScore.lastSegment.tick + 1;
-		}
-		lastStaff = cursor.track;
-		debugV(level_DEBUG, "> first", "tick", firstTick);
-		debugV(level_DEBUG, "> first", "track", firstStaff);
-		debugV(level_DEBUG, "> last", "tick", lastTick);
-		debugV(level_DEBUG, "> last", "track", lastStaff);
-		var rests = [];
-		for (var track = firstStaff; track <= lastStaff; track++) {
-
-			cursor.rewind(Cursor.SELECTION_START);
-			var segment = cursor.segment;
-			while (segment && (segment.tick < lastTick)) {
-				var element;
-				element = segment.elementAt(track);
-				if (element && element.type == Element.REST) {
-					debugV(level_TRACE, "- segment -", "tick", segment.tick);
-					debugV(level_TRACE, "- segment -", "segmentType", segment.segmentType);
-					debugV(level_TRACE, "--element", "label", (element) ? element.name : "null");
-					rests.push(element);
-				}
-
-				cursor.next();
-				segment = cursor.segment;
-			}
-		}
-
-		return rests;
-	}
-
-	/**
-	 * Get all the selected notes and rests based on the cursor.
-	 * Rem: This does not any result in case of the rests and notes are selected inidvidually.
-	 * @return Rest[] : each returned {@link Note} has the following properties:
-	 *      - element.type==Element.REST or Element.NOTE
-	 *
-	 */
-	function getNotesRestsFromCursor() {
-		var score = curScore;
-		var cursor = curScore.newCursor()
-			var firstTick,
-		firstStaff,
-		lastTick,
-		lastStaff;
-		// start
-		cursor.rewind(Cursor.SELECTION_START);
-		firstTick = cursor.tick;
-		firstStaff = cursor.track;
-		// end
-		cursor.rewind(Cursor.SELECTION_END);
-		lastTick = cursor.tick;
-		if (lastTick == 0) { // dealing with some bug when selecting to end.
-			lastTick = curScore.lastSegment.tick + 1;
-		}
-		lastStaff = cursor.track;
-		debugV(level_DEBUG, "> first", "tick", firstTick);
-		debugV(level_DEBUG, "> first", "track", firstStaff);
-		debugV(level_DEBUG, "> last", "tick", lastTick);
-		debugV(level_DEBUG, "> last", "track", lastStaff);
-		var rests = [];
-		for (var track = firstStaff; track <= lastStaff; track++) {
-
-			cursor.rewind(Cursor.SELECTION_START);
-			var segment = cursor.segment;
-			while (segment && (segment.tick < lastTick)) {
-				var element;
-				element = segment.elementAt(track);
-				if (element && ((element.type == Element.REST) || (element.type == Element.NOTE))){
-					debugV(level_TRACE, "- segment -", "tick", segment.tick);
-					debugV(level_TRACE, "- segment -", "segmentType", segment.segmentType);
-					debugV(level_TRACE, "--element", "label", (element) ? element.name : "null");
-					rests.push(element);
-				}
-
-				cursor.next();
-				segment = cursor.segment;
-			}
-		}
-
-		return rests;
-	}
-
-	/**
-	 * Get all the selected segments based on the cursor.
-	 * Rem: This does not return any result in case of the notes are selected inidvidually.
-	 * @return Segment[] : each returned {@link Note} has
-	 *      - element.type==Element.SEGMENT
-	 *
-	 */
-	function getSegmentsFromCursor() {
-		var score = curScore;
-		var cursor = curScore.newCursor()
-			cursor.rewind(Cursor.SELECTION_END);
-		var lastTick = cursor.tick;
-		cursor.rewind(Cursor.SELECTION_START);
-		var firstTick = cursor.tick;
-		debugV(level_DEBUG, "> first", "tick", firstTick);
-		debugV(level_DEBUG, "> last", "tick", lastTick);
-		var segment = cursor.segment;
-		debugV(level_DEBUG, "> starting at", "tick", (segment) ? segment.tick : "NO SEGMENT");
-		var segments = [];
-		var s = 0;
-		while (segment && (segment.tick < lastTick)) {
-			segments[s++] = segment;
-			cursor.next();
-			segment = cursor.segment;
-		}
-
-		return segments;
-	}
 
 	// -----------------------------------------------------------------------
 	// --- Score manipulation ------------------------------------------------
@@ -1042,8 +706,8 @@ MuseScore {
 			var pitchnote = pitchnotes[pitch % 12];
 			var noteOctave = Math.floor(pitch / 12) - 1;
 
-			for (var i = 0; i < tpcs.length; i++) {
-				var t = tpcs[i];
+			for (var i = 0; i < NoteHelper.tpcs.length; i++) {
+				var t = NoteHelper.tpcs[i];
 				if (note.tpc == t.tpc) {
 					tpc = t;
 					break;
@@ -3594,150 +3258,6 @@ MuseScore {
 		// --- Accidentals -------------------------------------------------------
 		// -----------------------------------------------------------------------
 
-		readonly property var pitchnotes : ['C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B']
-
-		readonly property var tpcs : [{
-				'tpc' : -1,
-				'name' : 'F??',
-				'raw' : 'F'
-			}, {
-				'tpc' : 0,
-				'name' : 'C??',
-				'raw' : 'C'
-			}, {
-				'tpc' : 1,
-				'name' : 'G??',
-				'raw' : 'G'
-			}, {
-				'tpc' : 2,
-				'name' : 'D??',
-				'raw' : 'D'
-			}, {
-				'tpc' : 3,
-				'name' : 'A??',
-				'raw' : 'A'
-			}, {
-				'tpc' : 4,
-				'name' : 'E??',
-				'raw' : 'E'
-			}, {
-				'tpc' : 5,
-				'name' : 'B??',
-				'raw' : 'B'
-			}, {
-				'tpc' : 6,
-				'name' : 'F?',
-				'raw' : 'F'
-			}, {
-				'tpc' : 7,
-				'name' : 'C?',
-				'raw' : 'C'
-			}, {
-				'tpc' : 8,
-				'name' : 'G?',
-				'raw' : 'G'
-			}, {
-				'tpc' : 9,
-				'name' : 'D?',
-				'raw' : 'D'
-			}, {
-				'tpc' : 10,
-				'name' : 'A?',
-				'raw' : 'A'
-			}, {
-				'tpc' : 11,
-				'name' : 'E?',
-				'raw' : 'E'
-			}, {
-				'tpc' : 12,
-				'name' : 'B?',
-				'raw' : 'B'
-			}, {
-				'tpc' : 13,
-				'name' : 'F',
-				'raw' : 'F'
-			}, {
-				'tpc' : 14,
-				'name' : 'C',
-				'raw' : 'C'
-			}, {
-				'tpc' : 15,
-				'name' : 'G',
-				'raw' : 'G'
-			}, {
-				'tpc' : 16,
-				'name' : 'D',
-				'raw' : 'D'
-			}, {
-				'tpc' : 17,
-				'name' : 'A',
-				'raw' : 'A'
-			}, {
-				'tpc' : 18,
-				'name' : 'E',
-				'raw' : 'E'
-			}, {
-				'tpc' : 19,
-				'name' : 'B',
-				'raw' : 'B'
-			}, {
-				'tpc' : 20,
-				'name' : 'F?',
-				'raw' : 'F'
-			}, {
-				'tpc' : 21,
-				'name' : 'C?',
-				'raw' : 'C'
-			}, {
-				'tpc' : 22,
-				'name' : 'G?',
-				'raw' : 'G'
-			}, {
-				'tpc' : 23,
-				'name' : 'D?',
-				'raw' : 'D'
-			}, {
-				'tpc' : 24,
-				'name' : 'A?',
-				'raw' : 'A'
-			}, {
-				'tpc' : 25,
-				'name' : 'E?',
-				'raw' : 'E'
-			}, {
-				'tpc' : 26,
-				'name' : 'B?',
-				'raw' : 'B'
-			}, {
-				'tpc' : 27,
-				'name' : 'F??',
-				'raw' : 'F'
-			}, {
-				'tpc' : 28,
-				'name' : 'C??',
-				'raw' : 'C'
-			}, {
-				'tpc' : 29,
-				'name' : 'G??',
-				'raw' : 'G'
-			}, {
-				'tpc' : 30,
-				'name' : 'D??',
-				'raw' : 'D'
-			}, {
-				'tpc' : 31,
-				'name' : 'A??',
-				'raw' : 'A'
-			}, {
-				'tpc' : 32,
-				'name' : 'E??',
-				'raw' : 'E'
-			}, {
-				'tpc' : 33,
-				'name' : 'B??',
-				'raw' : 'B'
-			}
-		]
 
 		readonly property var accidentals : [{
 				'name' : generic_preset,
