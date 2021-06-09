@@ -118,7 +118,8 @@ function buildPitchedNote(noteName, accidental) {
 
     var recompose = {
         "pitch": pitch,
-        "tpc": tpc.tpc
+        "tpc1": tpc.tpc,
+        "tpc2": tpc.tpc
     };
 
 	return recompose;

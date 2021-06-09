@@ -13,7 +13,7 @@ import "zparkingb/notehelper.js" as NoteHelper
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
-	version : "2.0.0"
+	version : "1.4.0"
 	pluginType : "dialog"
 	//dockArea: "right"
 	requiresScore : true
@@ -47,7 +47,7 @@ MuseScore {
 	property var __notes : [];
 
 	// config
-	readonly property int debugLevel : level_DEBUG;
+	readonly property int debugLevel : level_TRACE;
 	readonly property bool atFingeringLevel : true;
 
 	// work variables
@@ -135,7 +135,7 @@ MuseScore {
 					} else {
 						debug(level_DEBUG, "NO NOTES FOUND");
 						notes=[];
-						//invalidSelectionDialog.open(); // v2 AutorisÈ
+						//invalidSelectionDialog.open(); // v2 Autoris√©
 						//return;
 					}
 				}
@@ -176,7 +176,7 @@ MuseScore {
 					// Read the first fingering
 					if (isValidNote) { // On enrichit tout: Note comme Rest.
 						var fingerings = getFingerings(note);
-						NoteHelper.enrichNote(note); // add note name, accidental name, ...
+						enrichNoteHead(note); // add note name, accidental name, ...
 
 						if (fingerings && fingerings.length > 0) {
 							fingerings = fingerings.filter(function (f) {
@@ -203,9 +203,9 @@ MuseScore {
 
 		}
 
-		// On peut arriver ici avec un ensemble de notes dont on dÈduit des fingerings
+		// On peut arriver ici avec un ensemble de notes dont on d√©duit des fingerings
 		// Ou juste un fingering
-		debugV(level_INFO, ">>", "notes", notes);
+		debugV(level_INFO, ">>", "notes", notes.length);
 		debugV(level_INFO, ">>", "instrument", instrument);
 		debugV(level_INFO, ">>", "category", category);
 		debugV(level_INFO, ">>", "fingering", ((fingering) ? fingering.text : fingering));
@@ -213,7 +213,7 @@ MuseScore {
 		debugV(level_INFO, ">>", "warnings", warnings);
 		// INVALID INSTRUMENT
 		if (!instrument && !category) {
-			//unkownInstrumentDialog.open(); // v2: autorisÈ
+			//unkownInstrumentDialog.open(); // v2: autoris√©
 			//return;
 			notes=[];
 			category="";
@@ -224,10 +224,10 @@ MuseScore {
 		__notes = notes;
 		__category = category;
 
-		// On fabrique le modËle pour le ComboBox
+		// On fabrique le mod√®le pour le ComboBox
 		pushFingering(fingering ? fingering.text : undefined)
 
-		// on sÈlectionne la 1Ëre note dans la liste des presets
+		// on s√©lectionne la 1√®re note dans la liste des presets
 		if (notes.length > 0) {
 			var note1=undefined;
 			for (var i=0;i<notes.length;i++) {
@@ -255,7 +255,7 @@ MuseScore {
 	function pushFingering(ff) {
 		ready = false;
 
-		// BasÈ sur la sÈlection, on rÈcupËre le doigtÈ dÈj‡ saisi
+		// Bas√© sur la s√©lection, on r√©cup√®re le doigt√© d√©j√† saisi
 		var sFingering;
 		var instrument_type;
 		if (ff) {
@@ -285,7 +285,7 @@ MuseScore {
 		debugV(level_INFO, "analyse", 'type', instrument_type);
 		debugV(level_INFO, "analyse", 'fingering', sFingering);
 
-		// SÈlection parmi les clÈs standards
+		// S√©lection parmi les cl√©s standards
 		var keys = __instruments[instrument_type]["keys"];
 		for (var i = 0; i < keys.length; i++) {
 			var note = keys[i];
@@ -301,7 +301,7 @@ MuseScore {
 			debugP(level_TRACE, "note " + note.name, note, "currentMode");
 		}
 
-		// SÈlection parmi les configuration de l'instrument
+		// S√©lection parmi les configuration de l'instrument
 		for (var i = 0; i < __config.length; i++) {
 			var config = __config[i];
 
@@ -329,13 +329,13 @@ MuseScore {
 			}
 		}
 
-		// On sÈlectionne le bon instrument
+		// On s√©lectionne le bon instrument
 		currentInstrument = instrument_type;
 		refreshed = false; // awful trick to force the refresh
 		refreshed = true;
 
-		// On consruit la liste des notes dÈpendants des configurations actuellement sÈlectionnÈes.
-		// Je voudrais faire Áa par binding mais le javascript de QML ne supporte pas flatMap() => je dois le faire manuellement
+		// On consruit la liste des notes d√©pendants des configurations actuellement s√©lectionn√©es.
+		// Je voudrais faire √ßa par binding mais le javascript de QML ne supporte pas flatMap() => je dois le faire manuellement
 		buildConfigNotes();
 
 		ready = true;
@@ -350,13 +350,21 @@ MuseScore {
 		debugV(level_INFO, "Fingering", "as string", sFingering);
 
 		curScore.startCmd();
+		debug(level_TRACE,">>>>>START CMD [write fingering]");
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
-			var prevNote;
+			var prevNote=undefined;
 			var firstNote;
 			for (var i = 0; i < __notes.length; i++) {
 				var note = __notes[i];
-				if ((i == 0) || (prevNote && !prevNote.parent.is(note.parent))) {
+				if (note.type!=Element.NOTE) {
+					debugV(level_DEBUG, "Skipping fingering for non note","index",i);
+					prevNote=undefined;
+					continue;
+				}
+				debugV(level_DEBUG, "Going for fingering of element","index",i);
+				
+				if ((prevNote===undefined) || (prevNote && !prevNote.parent.is(note.parent))) {
 					// first note of chord. Going to treat the chord as once
 					debug(level_TRACE, "dealing with first note");
 					var chordnotes = note.parent.notes;
@@ -400,13 +408,14 @@ MuseScore {
 
 				} else {
 					// We don't treat the other notes of the same chord
-					debug(level_DEBUG, "skipping one note");
+					debug(level_DEBUG, "skipping next note of same chord");
 				}
 				prevNote = note;
 			}
 
 		}
 
+		debug(level_TRACE,"<<<<<END CMD [write fingering]");
 		curScore.endCmd(false);
 	}
 
@@ -462,34 +471,43 @@ MuseScore {
 
 		var forceAcc = (chkForceAccidental.checkState === Qt.Checked);
 		var forceHead = (chkForceHead.checkState === Qt.Checked);
-		var forceNote = (chkForceNote.checkState === Qt.Checked);
 		var doTuning = chkDoTuning.enabled && (chkDoTuning.checkState === Qt.Checked);
 		//console.log("--Default forceAcc="+forceAcc);
 		//console.log("--Default forceHead="+forceHead);
 
 		// both default behaviours set to "Never Align" ? no alignement needed
-		if (!forceAcc && !forceHead && !forceNote && !doTuning) {
+		if (!forceAcc && !forceHead && !doTuning) {
 			//console.log("-- => no alignement");
 			alignToPreset_after();
 			return;
 		}
 
-		var allnotes = [];
+		var t={'note':currentPreset.note,'accidental':((currentPreset.accidental !== generic_preset)?currentPreset.accidental:"NONE")};
+		var target=NoteHelper.buildPitchedNote(t.note, t.accidental);
+
+		debugO(level_DEBUG,"Target note: ",t);
+		debugO(level_DEBUG,"Target note: ",target);
+
+		curScore.startCmd();
+		debug(level_TRACE,">>>>>START CMD [align to preset]");
 
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
-			var prevNote;
+			var prevNote=undefined;
 			var firstNote;
 			for (var i = 0; i < __notes.length; i++) {
 				var note = __notes[i];
-				if ((i == 0) || (prevNote && !prevNote.parent.is(note.parent))) {
+				if(note.type==Element.REST) {
+					note=alignToPreset_do(note,target, forceAcc, forceHead, doTuning);
+					__notes[i]=note;
+				} else  if ((prevNote===undefined) || (prevNote && !prevNote.parent.is(note.parent))) {
 					// first note of chord. Going to treat the chord as once
 					debug(level_TRACE, "dealing with first note");
 					var chordnotes = note.parent.notes;
 
 					for (var j = 0; j < chordnotes.length; j++) {
-						var nt = NoteHelper.enrichNote(chordnotes[j]);
-						allnotes.push(nt);
+						var nt = enrichNoteHead(chordnotes[j]);
+						alignToPreset_do(nt,target, forceAcc, forceHead, doTuning);
 					}
 				}
 				prevNote = note;
@@ -497,65 +515,56 @@ MuseScore {
 		}
 
 		// console.log("-- => alignement required");
-		alignToPreset_do(allnotes, forceAcc, forceHead, forceNote, doTuning);
+
+		debug(level_TRACE,"<<<<<END CMD [align to preset]");
+		curScore.endCmd(false);
+		alignToPreset_after();
 	}
 
 	/**
 	 * Execute the alignement. An alignement strategy set as "Ask" is considered here as "Never align"
 	 */
-	function alignToPreset_do(allnotes, forceAcc, forceHead, forceNote, doTuning) {
+	function alignToPreset_do(nt, target, forceAcc, forceHead, doTuning) {
 
-		// console.log("--Aligning with forceAcc="+forceAcc);
-		// console.log("--Aligning with forceHead="+forceHead);
-		// both default behaviours set to "Never Align" ? no alignement needed
-		if (!forceAcc && !forceHead && !forceNote && !doTuning) {
-			// console.log("-- => no alignment");
-			alignToPreset_after();
-			return;
+		// note and accidental
+		if (forceAcc) {
+			debug(level_DEBUG,"** aligning note **");
+			if (nt.type == Element.REST) {
+				var note = restToNote(nt, target);
+				nt = note;
+				enrichNoteHead(nt);
+			}
+
+			// we must align the accidental too
+			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
+				debug(level_DEBUG,"** aligning accidental **");
+				nt.accidentalType = eval("Accidental." + currentPreset.accidental);
+			}
+			// To do **after** the set of accidentalType because this (kinda) resets the pitch
+			changeNote(nt, target);
+
 		}
 
-		curScore.startCmd();
-
-		for (var j = 0; j < allnotes.length; j++) {
-			var nt = allnotes[j]; //no enrichment needed. Done during preparation
-
-			// accidental
-			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
-				// we must align the head
-				if (forceAcc) {
-					nt.accidentalType = eval("Accidental." + currentPreset.accidental);
-				}
-			}
-/*			// note
-			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
-				// we must align the head
-				if (forceAcc) {
-					nt.accidentalType = eval("Accidental." + currentPreset.accidental);
-				}
-			}
-*/
-			// head
+		// we must align the head
+		if (forceHead && (nt.type == Element.NOTE)) {
 			if (currentPreset.head !== generic_preset && currentPreset.head !== nt.headData.name) {
-				// we must align the head
-				if (forceHead) {
-					nt.headGroup = eval("NoteHeadGroup." + currentPreset.head);
-				}
+				debug(level_DEBUG,"** aligning head **");
+				nt.headGroup = eval("NoteHeadGroup." + currentPreset.head);
 			}
-			// tuning
-			console.log("Tuning before:"+nt.tuning);
-			if (chkDoTuning.enabled && doTuning) {
-					nt.tuning = getAccidentalTuning(currentPreset.accidental);
-			}
-			console.log("Tuning after:"+nt.tuning);
 		}
-		curScore.endCmd(false);
-
-		alignToPreset_after();
-	}
+		// tuning
+		console.log("Tuning before:" + nt.tuning);
+		if (doTuning && (nt.type == Element.NOTE)) {
+			debug(level_DEBUG,"** aligning tuning **");
+			nt.tuning = getAccidentalTuning(currentPreset.accidental);
+		}
+		console.log("Tuning after:" + nt.tuning);
+		
+		return nt;
+		}
 
 	function alignToPreset_after() {
 		//console.log("===AFTER ALIGNEMENT TO PRESET==");
-		Qt.quit()
 	}
 
 	function removeAllFingerings() {
@@ -564,6 +573,7 @@ MuseScore {
 		var nbFing = 0
 
 			curScore.startCmd();
+		debug(level_TRACE,">>>>>START CMD [remove fingering]");
 		if (atFingeringLevel) {
 			// Managing fingering in the Fingering element (note.elements)
 			for (var i = 0; i < __notes.length; i++) {
@@ -588,6 +598,7 @@ MuseScore {
 			}
 		}
 
+		debug(level_TRACE,"<<<<<END CMD [remove fingering]");
 		curScore.endCmd(false);
 		return {
 			'nbnotes' : nbNotes,
@@ -661,13 +672,56 @@ MuseScore {
 		}
 
 	}
+	
+	function changeNote(note, toNote) {
+	    if (note.type != Element.NOTE) {
+			debug(level_INFO, "! Changing Note of a non-Note element"); 
+	        return;
+		}
+		
+		var debugTpc=note.tpc;
+		
+		debugPitch(level_DEBUG, "Before correction",note);
+		note.tpc1 = toNote.tpc1;
+		note.tpc2 = toNote.tpc2;
+		note.pitch = toNote.pitch;
+		debugPitch(level_DEBUG, "After correction",note);
+		
+		return note;
 
+	}
+	
+	function restToNote(rest, toNote) {
+	    if (rest.type != Element.REST)
+	        return;
+
+	    //console.log("==ON A REST==");
+	    var cur_time = rest.parent.tick; // getting rest's segment's tick
+	    var duration = rest.duration;
+		var oCursor = curScore.newCursor()
+	    oCursor.rewindToTick(cur_time);
+	    oCursor.setDuration(duration.numerator, duration.denominator);
+	    //oCursor.addNote(toNote.pitch); // We can add whatever note here, we'll rectify it afterwards
+	    oCursor.addNote(0); // We can add whatever note here, we'll rectify it afterwards
+	    oCursor.rewindToTick(cur_time);
+	    var chord = oCursor.element;
+	    var note = chord.notes[0];
+		
+		debugPitch(level_DEBUG,"Added note",note);
+
+		changeNote(note,toNote);
+		
+		debugPitch(level_DEBUG,"Corrected note",note);
+
+		
+		return note;
+	}
 	/**
-	* Enrichit Note et Rest d'une mÍme maniËre (point de vue propriÈtÈ de l'objet)
+	* Enrichit Note et Rest d'une m√™me mani√®re (point de vue propri√©t√© de l'objet)
 	*/
-	function enrichNote(note) {
+	function enrichNoteHead(note) {
 
-		// Par dÈfaut:
+		// Par d√©faut:
 		note.headData = {
 			name : "UNKOWN",
 			image : "NONE.png"
@@ -703,7 +757,7 @@ MuseScore {
 				'raw' : '?'
 			};
 			var pitch = note.pitch;
-			var pitchnote = pitchnotes[pitch % 12];
+			var pitchnote = NoteHelper.pitchnotes[pitch % 12];
 			var noteOctave = Math.floor(pitch / 12) - 1;
 
 			for (var i = 0; i < NoteHelper.tpcs.length; i++) {
@@ -755,7 +809,7 @@ MuseScore {
 		var splt = sKeys.split('');
 		var found;
 		var instruments = categories[category]["instruments"];
-		// on trie pour avoir les plus grand clÈs en 1er
+		// on trie pour avoir les plus grand cl√©s en 1er
 		var sorted = Object.keys(instruments);
 		sorted = sorted.sort(function (a, b) {
 				var res = instruments[b]['base'].length - instruments[a]['base'].length;
@@ -786,8 +840,8 @@ MuseScore {
 		t = what.filter(function (e) {
 				return within.indexOf(e) >  - 1;
 			});
-		// Je supprime de la chaÓne ‡ retrouver ce qu'il ya dans l'interection
-		// Il ne devrait rien manquer, donc le rÈsultat devrait Ítre vide.
+		// Je supprime de la cha√Æne √† retrouver ce qu'il ya dans l'interection
+		// Il ne devrait rien manquer, donc le r√©sultat devrait √™tre vide.
 		t2 = what.filter(function (e) {
 				return t.indexOf(e) ===  - 1;
 			});
@@ -800,6 +854,7 @@ MuseScore {
 			});
 		return intersect.length > 0;
 	}
+	
 
 	// -----------------------------------------------------------------------
 	// --- Screen design -----------------------------------------------------
@@ -878,7 +933,7 @@ MuseScore {
 					Repeater {
 						id : repNotes
 						model : ready ? getNormalNotes(refreshed) : []; //awful hack. Just return the raw __config array
-						//delegate : holeComponent - via Loader, pour passer la note ‡ gÈrer
+						//delegate : holeComponent - via Loader, pour passer la note √† g√©rer
 						Loader {
 							id : loaderNotes
 							Binding {
@@ -894,7 +949,7 @@ MuseScore {
 					Repeater {
 						id : repModes
 						model : ready ? getConfigNotes(refreshed) : []; //awful hack. Just return the raw __config array
-						//delegate : holeComponent - via Loader, pour passer la note ‡ gÈrer depuis le mode
+						//delegate : holeComponent - via Loader, pour passer la note √† g√©rer depuis le mode
 						Loader {
 							id : loaderModes
 							Binding {
@@ -942,7 +997,7 @@ MuseScore {
 
 					CheckBox {
 						id : chkForceAccidental
-						text : "Accidentals"
+						text : "Note/accidental"
 						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
 						Layout.rightMargin : 5
 						Layout.leftMargin : 5
@@ -962,17 +1017,6 @@ MuseScore {
 								visible : chkForceAccidental.checked
 							}
 						}
-					}
-
-					CheckBox {
-						id : chkForceNote
-						text : "Pitch"
-						Layout.alignment : Qt.AlignVCenter | Qt.AlignLeft
-						Layout.rightMargin : 5
-						Layout.leftMargin : 5
-						indicator.width : 16
-						indicator.height : 16
-						visible: false; // Not ready yet
 					}
 
 					CheckBox {
@@ -1084,8 +1128,10 @@ MuseScore {
 					}
 
 					onAccepted : {
-						writeFingering();
-						alignToPreset();
+						alignToPreset(); // first aligning the notes if needed (and replacing the rests by notes if required)
+						writeFingering(); // secondly adding the fingering
+						Qt.quit();
+
 					}
 					onRejected : Qt.quit()
 
@@ -1298,7 +1344,7 @@ MuseScore {
 					clip : true
 					focus : true
 
-					highlightMoveDuration : 250 // 250 pour changer la sÈlection
+					highlightMoveDuration : 250 // 250 pour changer la s√©lection
 					highlightMoveVelocity : 2000 // ou 2000px/sec
 
 
@@ -1570,12 +1616,12 @@ MuseScore {
 			MouseArea {
 				anchors.fill : parent
 				onClicked : {
-					if (note.deactivated) { // temp. On devrait rÈsoudre Áa via mode.activated seulement
-						parent.state = "deactivated"; // temp en attendant de rÈsoudre le problËme de binding
+					if (note.deactivated) { // temp. On devrait r√©soudre √ßa via mode.activated seulement
+						parent.state = "deactivated"; // temp en attendant de r√©soudre le probl√®me de binding
 						return;
 					}
 					var keystates = Object.keys(note.modes);
-					// Object.keys ne prÈserve pas l'ordre, donc je repars de la array des Ètats.
+					// Object.keys ne pr√©serve pas l'ordre, donc je repars de la array des √©tats.
 					var states = usedstates.filter(function (e) {
 							return keystates.indexOf(e) >  - 1;
 						});
@@ -2637,7 +2683,7 @@ MuseScore {
 				break;
 			}
 		}
-		if (filtered.length > 0) { // les filtres stricts ont retenus au minimum 1 ÈlÈment
+		if (filtered.length > 0) { // les filtres stricts ont retenus au minimum 1 √©l√©ment
 			best = filtered[0].index;
 			for (var i = 0; i < weaks.length; i++) {
 				var f = weaks[i];
@@ -2707,7 +2753,6 @@ MuseScore {
 		// push to notes options
 		lastoptions['pushacc'] = (chkForceAccidental.checkState === Qt.Checked) ? "true" : "false";
 		lastoptions['pushhead'] = (chkForceHead.checkState === Qt.Checked) ? "true" : "false";
-		lastoptions['pushnote'] = (chkForceNote.checkState === Qt.Checked) ? "true" : "false";
 		lastoptions['pushtuning'] = (chkDoTuning.checkState === Qt.Checked) ? "true" : "false";
 
 		// instruments config
@@ -2830,8 +2875,6 @@ MuseScore {
 		debug(level_DEBUG, "readOptions: 'pushacc' --> " + chkForceAccidental.checked + " (" + lastoptions['pushacc'] + ")");
 		chkForceHead.checkState = (lastoptions['pushhead'] === "true") ? Qt.Checked : Qt.Unchecked;
 		debug(level_DEBUG, "readOptions: 'pushhead' --> " + chkForceHead.checked + " (" + lastoptions['pushhead'] + ")");
-		chkForceNote.checkState = (lastoptions['pushnote'] === "true") ? Qt.Checked : Qt.Unchecked;
-		debug(level_DEBUG, "readOptions: 'pushnote' --> " + chkForceNote.checked + " (" + lastoptions['pushnote'] + ")");
 		chkDoTuning.checkState = (lastoptions['pushtuning'] === "true") ? Qt.Checked : Qt.Unchecked;
 		debug(level_DEBUG, "readOptions: 'pushtuning' --> " + chkDoTuning.checked + " (" + lastoptions['pushtuning'] + ")");
 
@@ -2884,7 +2927,7 @@ MuseScore {
 				var cat = cats[c];
 				categories[cat]['library'] = allpresets[cat];
 
-				// alignement de la librairie v1.2.0 ‡ v1.3.0
+				// alignement de la librairie v1.2.0 √† v1.3.0
 				for (var i = 0; i < allpresets[cat].length; i++) {
 					var p = allpresets[cat][i];
 					debugO(level_DEBUG, "readLibrary: preset:", p);
@@ -3847,4 +3890,9 @@ MuseScore {
 			}
 		}
 
+		function debugPitch(level,label,note) {
+			debugP(level,label,note,'pitch');
+			debugP(level,label,note,'tpc1');
+			debugP(level,label,note,'tpc2');
+		}
 	}
