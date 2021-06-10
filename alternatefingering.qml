@@ -72,6 +72,8 @@ MuseScore {
 	readonly property int titlePointSize : 12
 	readonly property int tooltipShow : 500
 	readonly property int tooltipHide : 5000
+	
+	readonly property int similarpitch : 2
 
 	readonly property int level_NONE : 0;
 	readonly property int level_INFO : 10;
@@ -2589,11 +2591,12 @@ MuseScore {
 		} else {
 			// loose filter (on note only)
 			var lib = [];
+			var pitch=note.pitch; // generate a depends on non-NOTIFYable properties: Warning: Ms::PluginAPI::Note::pitch
 			for (var i = 0; i < __library.length; i++) {
 				var preset = __library[i];
-				debug(level_TRACE, preset.label + note.extname.name + ";" + preset.note + ";" + note.accidentalData.name + ";" + preset.accidental);
-				if ((note.extname.name === preset.note)
-					 || ("" === preset.note && "NONE" === preset.accidental)) {
+				debug(level_TRACE, preset.label + note.extname.name + ";" + preset.note + ";" + note.accidentalData.name + ";" + preset.accidental+ ";" + pitch + ";" + preset.pitch);
+//				if ((note.extname.name === preset.note) || ("" === preset.note && "NONE" === preset.accidental)) {
+				if (((preset.pitch-similarpitch)<=pitch) && ((preset.pitch+similarpitch)>=pitch)) {
 					lib.push(preset);
 				}
 			}
@@ -2908,38 +2911,40 @@ MuseScore {
 
 		function readLibrary() {
 
-			if (!libraryFile.exists())
-				return;
+		    if (!libraryFile.exists())
+		        return;
 
-			var json = libraryFile.read();
+		    var json = libraryFile.read();
 
-			var allpresets = {};
+		    var allpresets = {};
 
-			try {
-				allpresets = JSON.parse(json);
-			} catch (e) {
-				console.error('while reading the library file', e.message);
-			}
+		    try {
+		        allpresets = JSON.parse(json);
+		    } catch (e) {
+		        console.error('while reading the library file', e.message);
+		    }
 
-			var cats = Object.keys(categories);
+		    var cats = Object.keys(categories);
 
-			for (var c = 0; c < cats.length; c++) {
-				var cat = cats[c];
-				categories[cat]['library'] = allpresets[cat];
+		    for (var c = 0; c < cats.length; c++) {
+		        var cat = cats[c];
+		        var pp = [];
+		        for (var i = 0; i < allpresets[cat].length; i++) {
+		            var raw = allpresets[cat][i];
+		            if (raw.head == undefined) {
+		                raw.head = generic_preset;
+		            }
+		            var p = new presetClassRaw(raw); // getting a real presetClass with the transient fields set correclty
+		            debugO(level_DEBUG, "readLibrary: preset:", p);
+		            debugP(level_DEBUG, "readLibrary: preset:", p,"pitch"); // transient = non-enumerable
+		            pp.push(p);
+		        }
 
-				// alignement de la librairie v1.2.0 à v1.3.0
-				for (var i = 0; i < allpresets[cat].length; i++) {
-					var p = allpresets[cat][i];
-					debugO(level_DEBUG, "readLibrary: preset:", p);
-					if (p.head == undefined) {
-						p.head = generic_preset;
-					}
-				}
+		        categories[cat]['library'] = pp;
 
-			}
+		    }
 
 		}
-
 		function displayUsedStates() {
 			chkTechnicHalf.checked = doesIntersect(usedstates, halfstates);
 			chkTechnicQuarter.checked = doesIntersect(usedstates, quarterstates);
@@ -3271,18 +3276,19 @@ MuseScore {
 
 		function presetClass(category, label, note, accidental, representation, head) {
 			this.category = (category !== undefined) ? String(category) : "??";
+
 			this.label = (label !== undefined) ? String(label) : "";
-			this.note = (note !== undefined) ? String(note) : "";
 
-			this.accidental = generic_preset;
+			var _note = (note !== undefined) ? String(note) : "";
+
+			var _acc = generic_preset;
 			if (accidental !== undefined && accidental !== "" && accidental !== generic_preset) {
-				var acc = String(accidental);
-				var accid = eval("Accidental." + acc);
+				_acc = String(accidental);
+				var accid = eval("Accidental." + _acc);
 				if (accid === undefined || accid == 0)
-					acc = "NONE";
-				this.accidental = acc;
-			}
-
+					_acc = "NONE";
+0			}
+			
 			this.head = generic_preset;
 			if (head !== undefined && head !== "" && head !== generic_preset) {
 				var hd = String(head);
@@ -3293,6 +3299,37 @@ MuseScore {
 			}
 
 			this.representation = (representation !== undefined) ? String(representation) : "";
+
+			var _pitch=NoteHelper.buildPitchedNote(_note,_acc).pitch;
+			
+			Object.defineProperty(this, "accidental", {
+				get : function () {
+					return _acc;
+				},
+				enumerable : true
+			});
+			
+			Object.defineProperty(this, "note", {
+				get : function () {
+					return _note;
+				},
+				enumerable : true
+			});
+
+			Object.defineProperty(this, "pitch", {
+				get : function () {
+					return _pitch;
+				},
+				enumerable : false
+			});
+
+		}
+		
+		/**
+		* Creation of a preset from a preset object containing the *enumerable* fields (ie. the non transient fields)
+		*/
+		function presetClassRaw(raw) {
+			presetClass.call(this,raw.category, raw.label, raw.note, raw.accidental, raw.representation, raw.head);
 		}
 
 		readonly property string generic_preset : "--"
