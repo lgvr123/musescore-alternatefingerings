@@ -389,24 +389,7 @@ MuseScore {
 						}
 					}
 
-					// If no fingering found, create a new one
-					if (!f) {
-						debug(level_DEBUG, "adding a new fingering");
-						f = newElement(Element.FINGERING);
-						f.text = sFingering;
-						f.fontFace = 'Fiati';
-						f.fontSize = 42;
-						// LEFT = 0, RIGHT = 1, HCENTER = 2, TOP = 0, BOTTOM = 4, VCENTER = 8, BASELINE = 16
-						f.align = 2; // HCenter and top
-						// Set text to below the staff
-						f.placement = Placement.BELOW;
-						// Turn on note relative placement
-						f.autoplace = true;
-						note.add(f);
-					} else {
-						f.text = sFingering;
-						debug(level_DEBUG, "exsiting fingering modified");
-					}
+					addFingeringTextToNote(note,sFingering,f);
 
 				} else {
 					// We don't treat the other notes of the same chord
@@ -419,6 +402,28 @@ MuseScore {
 
 		debug(level_TRACE,"<<<<<END CMD [write fingering]");
 		curScore.endCmd(false);
+	}
+	
+	function addFingeringTextToNote(note, representation, textobj) {
+		// If no fingering found, create a new one
+		if (!textobj) {
+			debug(level_DEBUG, "adding a new fingering");
+			var f = newElement(Element.FINGERING);
+			f.text = representation;
+			f.fontFace = 'Fiati';
+			f.fontSize = 42;
+			// LEFT = 0, RIGHT = 1, HCENTER = 2, TOP = 0, BOTTOM = 4, VCENTER = 8, BASELINE = 16
+			f.align = 2; // HCenter and top
+			// Set text to below the staff
+			f.placement = Placement.BELOW;
+			// Turn on note relative placement
+			f.autoplace = true;
+			note.add(f);
+		} else {
+			textobj.text = representation;
+			debug(level_DEBUG, "exsiting fingering modified");
+		}
+		
 	}
 
 	function buildFingeringRepresentation() {
@@ -484,11 +489,6 @@ MuseScore {
 			return;
 		}
 
-		var t={'note':currentPreset.note,'accidental':((currentPreset.accidental !== generic_preset)?currentPreset.accidental:"NONE")};
-		var target=NoteHelper.buildPitchedNote(t.note, t.accidental);
-
-		debugO(level_DEBUG,"Target note: ",t);
-		debugO(level_DEBUG,"Target note: ",target);
 
 		curScore.startCmd();
 		debug(level_TRACE,">>>>>START CMD [align to preset]");
@@ -500,7 +500,7 @@ MuseScore {
 			for (var i = 0; i < __notes.length; i++) {
 				var note = __notes[i];
 				if(note.type==Element.REST) {
-					note=alignToPreset_do(note,target, forceAcc, forceHead, doTuning);
+					note=alignToPreset_do(note,currentPreset, forceAcc, forceHead, doTuning);
 					__notes[i]=note;
 				} else  if ((prevNote===undefined) || (prevNote && !prevNote.parent.is(note.parent))) {
 					// first note of chord. Going to treat the chord as once
@@ -509,7 +509,7 @@ MuseScore {
 
 					for (var j = 0; j < chordnotes.length; j++) {
 						var nt = enrichNoteHead(chordnotes[j]);
-						alignToPreset_do(nt,target, forceAcc, forceHead, doTuning);
+						alignToPreset_do(nt,currentPreset, forceAcc, forceHead, doTuning);
 					}
 				}
 				prevNote = note;
@@ -524,48 +524,60 @@ MuseScore {
 	}
 
 	/**
-	 * Execute the alignement. An alignement strategy set as "Ask" is considered here as "Never align"
+	 * Execute the alignement. 
 	 */
-	function alignToPreset_do(nt, target, forceAcc, forceHead, doTuning) {
+	function alignToPreset_do(nt, preset, forceAcc, forceHead, doTuning) {
+		
+		if (preset === undefined)
+		    return;
+
+		var t = {
+		    'note': preset.note,
+		    'accidental': ((preset.accidental !== generic_preset) ? preset.accidental : "NONE")
+		};
+		var target = NoteHelper.buildPitchedNote(t.note, t.accidental);
+
+		debugO(level_DEBUG, "Target note: ", t);
+		debugO(level_DEBUG, "Target note: ", target);
 
 		// note and accidental
 		if (forceAcc) {
-			debug(level_DEBUG,"** aligning note **");
-			if (nt.type == Element.REST) {
-				var note = restToNote(nt, target);
-				nt = note;
-				enrichNoteHead(nt);
-			}
+		    debug(level_DEBUG, "** aligning note **");
+		    if (nt.type == Element.REST) {
+		        var note = restToNote(nt, target);
+		        nt = note;
+		        enrichNoteHead(nt);
+		    }
 
-			// we must align the accidental too
-			if (currentPreset.accidental !== generic_preset && currentPreset.accidental !== nt.accidentalData.name) {
-				debug(level_DEBUG,"** aligning accidental **");
-				nt.accidentalType = eval("Accidental." + currentPreset.accidental);
-			}
-			// To do **after** the set of accidentalType because this (kinda) resets the pitch
-			changeNote(nt, target);
+		    // we must align the accidental too
+		    if (preset.accidental !== generic_preset && preset.accidental !== nt.accidentalData.name) {
+		        debug(level_DEBUG, "** aligning accidental **");
+		        nt.accidentalType = eval("Accidental." + preset.accidental);
+		    }
+		    // To do **after** the set of accidentalType because this (kinda) resets the pitch
+		    changeNote(nt, target);
 
 		}
 
 		// we must align the head
 		if (forceHead && (nt.type == Element.NOTE)) {
-			if (currentPreset.head !== generic_preset && currentPreset.head !== nt.headData.name) {
-				debug(level_DEBUG,"** aligning head **");
-				nt.headGroup = eval("NoteHeadGroup." + currentPreset.head);
-			}
+		    if (preset.head !== generic_preset && preset.head !== nt.headData.name) {
+		        debug(level_DEBUG, "** aligning head **");
+		        nt.headGroup = eval("NoteHeadGroup." + preset.head);
+		    }
 		}
 		// tuning
 		console.log("Tuning before:" + nt.tuning);
 		if (doTuning && (nt.type == Element.NOTE)) {
-			debug(level_DEBUG,"** aligning tuning **");
-			nt.tuning = getAccidentalTuning(currentPreset.accidental);
+		    debug(level_DEBUG, "** aligning tuning **");
+		    nt.tuning = getAccidentalTuning(preset.accidental);
 		}
 		console.log("Tuning after:" + nt.tuning);
-		
+
 		return nt;
 		}
 
-	function alignToPreset_after() {
+		function alignToPreset_after() {
 		//console.log("===AFTER ALIGNEMENT TO PRESET==");
 	}
 
@@ -693,6 +705,10 @@ MuseScore {
 
 	}
 	
+	/**
+	* 
+	* duration: {numerator, denominator} optional. If undefined, the rest duration will be used.
+	*/
 	function restToNote(rest, toNote) {
 	    if (rest.type != Element.REST)
 	        return;
@@ -1104,6 +1120,26 @@ MuseScore {
 					ToolTip.visible : hovered
 				}
 
+				Button {
+					implicitHeight : buttonBox.contentItem.height
+					implicitWidth : buttonBox.contentItem.height
+
+					indicator :
+					Image {
+						source : "alternatefingering/settings.svg"
+						mipmap : true // smoothing
+						width : 23
+						fillMode : Image.PreserveAspectFit // ensure it fits
+						anchors.centerIn : parent
+					}
+					onClicked : printLibrary(__category)
+					ToolTip.text : "Print library"
+					hoverEnabled : true
+					ToolTip.delay : tooltipShow
+					ToolTip.timeout : tooltipHide
+					ToolTip.visible : hovered
+				}
+
 				Item { // spacer // DEBUG Item/Rectangle
 					id : spacer
 					implicitHeight : 10
@@ -1490,6 +1526,33 @@ MuseScore {
 							ToolTip.timeout : tooltipHide
 							ToolTip.visible : hovered
 						}
+
+						Button {
+							implicitHeight : buttonBox.contentItem.height * 0.6 //btnOk.height
+							implicitWidth : buttonBox.contentItem.height * 0.6 //btnOk.height
+
+							indicator :
+							Image {
+								source : "alternatefingering/delete.svg"
+								mipmap : true // smoothing
+								width : 23
+								fillMode : Image.PreserveAspectFit // ensure it fits
+								anchors.centerIn : parent
+							}
+							onClicked : {
+								var note = __notes[0];
+								var p = new presetClass(__category, "", note.extname.name, note.accidentalData.name, buildFingeringRepresentation(), note.headData.name);
+								debug(level_DEBUG, JSON.stringify(p));
+								selectPreset(p,false); // select the closest match
+								currentPreset=lstPresets.model[lstPresets.currentIndex]; // make it the current present to be pushed to the score
+							}
+							ToolTip.text : "Search fingering in presets"
+							hoverEnabled : true
+							ToolTip.delay : tooltipShow
+							ToolTip.timeout : tooltipHide
+							ToolTip.visible : hovered
+						}
+
 					}
 				}
 			} // left column
@@ -1780,7 +1843,7 @@ MuseScore {
 				fill : parent
 			}
 			contentItem : Text {
-				text : (__modelInstruments[currentIndex]) ? __modelInstruments[currentIndex] : "--"
+				text : (__modelInstruments[currentIndex]) ? __instruments[__modelInstruments[currentIndex]].label : "--"
 				font.pointSize : titlePointSize
 				verticalAlignment : Qt.AlignVCenter
 			}
@@ -1798,7 +1861,7 @@ MuseScore {
 		id : txtInstruCompo
 		Text {
 			id : txtInstru
-			text : (__category==="")?"Non supported instrument":__modelInstruments[0]
+			text : (__category==="")?"Non supported instrument":__instruments[ __modelInstruments[0]].label
 			font.pointSize : (__category==="")?9:titlePointSize
 			anchors {
 				//top : parent.top
@@ -2122,6 +2185,19 @@ MuseScore {
 				}
 			}
 
+			Text {
+				Layout.fillWidth : true
+				verticalAlignment : Text.AlignVCenter
+				horizontalAlignment : Text.AlignHCenter
+				font.pointSize : 10
+
+				text : '<a href="https://musescore.org/en/project/accidental-tuner" title="Link to MuseScore plugin library">AccidntalTuner</a> by <a href="https://www.gilbertyammine.com/" title="gilbertyammine.com">https://www.gilbertyammine.com/</a>'
+
+				wrapMode : Text.Wrap
+
+				onLinkActivated : Qt.openUrlExternally(link)
+
+			}
 			Text {
 				Layout.fillWidth : true
 				verticalAlignment : Text.AlignVCenter
@@ -2669,10 +2745,10 @@ MuseScore {
 
 		if (strict) {
 			stricts = ["category", "representation", "note", "accidental", "head", "label"];
-			weaks = [];
+			//weaks = [];
 		} else {
 			stricts = ["category", "representation"];
-			weaks = ["note", "accidental", "head", "label"];
+			//weaks = ["note", "accidental", "head", "label"];
 		}
 
 		var best = -1;
@@ -2688,7 +2764,10 @@ MuseScore {
 		}
 		if (filtered.length > 0) { // les filtres stricts ont retenus au minimum 1 élément
 			best = filtered[0].index;
-			for (var i = 0; i < weaks.length; i++) {
+			var pitch = preset.pitch;
+			var delta=99;
+			console.log("looking for "+pitch+"; starting at "+delta);
+			/*for (var i = 0; i < weaks.length; i++) {
 				var f = weaks[i];
 				filtered = filtered.filter(function (p1) {
 						return (p1[f] === "--" || preset[f] === "--" || p1[f] === undefined || preset[f] === undefined || p1[f] === preset[f]);
@@ -2697,6 +2776,16 @@ MuseScore {
 					break;
 				else
 					best = filtered[0].index;
+			}*/
+			// looking for the preset with the best match at pitch level
+			for(var i=0;i<filtered.length;i++) {
+				var p=filtered[i];
+				//console.log("analyzing for "+p.pitch+"; target at "+delta);
+				var d=Math.abs(p.pitch-pitch); // is only working if the pitch field of the presetClass is numerable=true. Don't know why. It should work even if at false
+				if (d<delta) {
+					best=p.index;
+					delta=d;
+				}
 			}
 		}
 
@@ -2956,6 +3045,85 @@ MuseScore {
 				usedstates.push("closed");
 
 		}
+
+		// -----------------------------------------------------------------------
+		// --- Export library -----------------------------------------------------
+		// -----------------------------------------------------------------------
+		function printLibrary(category) {
+		    if (category === undefined) {
+		        console.warn("Library export: not category has been provided");
+		        return;
+		    }
+
+		    if (categories[category] === undefined) {
+		        console.warn("Library export: invalid category " + category);
+		        return;
+		    }
+			debug(level_INFO,"Exporting "+category+" library");
+			
+			var def=categories[category]["default"];
+			var instru=categories[category]["instruments"][def];
+
+			var lib=categories[category]["library"];
+			
+			
+			for(var i=0;i<lib.length;i++) {
+				var preset=lib[i];
+				preset.tuning=getAccidentalTuning(preset.accidental);
+				preset.orderkey=preset.pitch*100+preset.tuning;
+				
+			}
+			
+			// Sorting the library
+			lib = lib.sort(function (a, b) {
+				var res = a.orderkey - b.orderkey;
+				if (res==0) res=a.representation.localeCompare(b.representation);
+				return res;
+			});
+
+
+            var score = newScore("library", instru.id, ((lib.length==0)?1:lib.length));
+            //var score = newScore("library", instru.id, 99);
+            var numerator = 4;
+            var denominator = 4;
+
+            score.addText("title", "Alternate "+instru.label+" diagrams");
+			
+			score.startCmd();
+
+            var cursor = score.newCursor();
+            cursor.track = 0;
+
+            cursor.rewind(0);
+            var ts = newElement(Element.TIMESIG);
+            ts.timesig = fraction(numerator, denominator);
+            cursor.add(ts);
+			
+            cursor.rewind(0);
+
+			for(var i=0;i<lib.length;i++) {
+				if (i>0) cursor.next();
+				cursor.setDuration(0,0);  // quarter
+				var rest=cursor.element;
+				var preset=lib[i];
+				rest=alignToPreset_do(rest,preset,true,true,true);
+				addFingeringTextToNote(rest, preset.representation);
+
+/* 				var f = newElement(Element.TEXT);
+				f.text = preset.pitch + "/" + preset.tuning;
+				// LEFT = 0, RIGHT = 1, HCENTER = 2, TOP = 0, BOTTOM = 4, VCENTER = 8, BASELINE = 16
+				f.align = 2; // HCenter and top
+				f.placement = Placement.ABOVE;
+				// Turn on note relative placement
+				f.autoplace = true;
+				rest.add(f);
+ */
+				}
+
+			score.endCmd();
+			
+		}
+
 		// -----------------------------------------------------------------------
 		// --- Instruments -------------------------------------------------------
 		// -----------------------------------------------------------------------
@@ -3122,6 +3290,8 @@ MuseScore {
 					"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat, fgizmo]
 					},*/
 					"Flute" : {
+						"id": "flute", // instrument Id from https://github.com/musescore/MuseScore/blob/3.x/share/instruments/instruments.xml
+						"label" : "Flute", // nice name
 						"base" : ['\uE000', '\uE001'], // C
 						"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
 					}
@@ -3135,6 +3305,8 @@ MuseScore {
 				"support" : [],
 				"instruments" : {
 					"clarinet" : {
+						"id": "clarinet", // instrument Id from https://github.com/musescore/MuseScore/blob/3.x/share/instruments/instruments.xml
+						"label" : "Clarinet", // nice name
 						"base" : ['\uE000', '\uE001', '\uE002', '\uE003'], // B + C thrill,
 						"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, fcsharptrill, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fbflat]
 					}
@@ -3148,6 +3320,8 @@ MuseScore {
 				"support" : [],
 				"instruments" : {
 					"" : {
+						"id":"piano",
+						"label":"default",
 						"base" : [],
 						"keys" : []
 					}
@@ -3320,7 +3494,8 @@ MuseScore {
 				get : function () {
 					return _pitch;
 				},
-				enumerable : false
+				//enumerable : false
+				enumerable : true // should be false, because it is transient. but if we keep at false then the selectPreset function is no able to access it.
 			});
 
 		}
