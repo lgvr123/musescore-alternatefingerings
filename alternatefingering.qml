@@ -47,7 +47,7 @@ MuseScore {
 	property var __notes : [];
 
 	// config
-	readonly property int debugLevel : level_TRACE;
+	readonly property int debugLevel : level_DEBUG;
 	readonly property bool atFingeringLevel : true;
 
 	// work variables
@@ -567,12 +567,12 @@ MuseScore {
 		    }
 		}
 		// tuning
-		console.log("Tuning before:" + nt.tuning);
+		debug(level_TRACE, "Tuning before:" + nt.tuning);
 		if (doTuning && (nt.type == Element.NOTE)) {
 		    debug(level_DEBUG, "** aligning tuning **");
 		    nt.tuning = getAccidentalTuning(preset.accidental);
 		}
-		console.log("Tuning after:" + nt.tuning);
+		debug(level_TRACE, "Tuning after:" + nt.tuning);
 
 		return nt;
 		}
@@ -695,11 +695,11 @@ MuseScore {
 		
 		var debugTpc=note.tpc;
 		
-		debugPitch(level_DEBUG, "Before correction",note);
+		debugPitch(level_TRACE, "Before correction",note);
 		note.tpc1 = toNote.tpc1;
 		note.tpc2 = toNote.tpc2;
 		note.pitch = toNote.pitch;
-		debugPitch(level_DEBUG, "After correction",note);
+		debugPitch(level_TRACE, "After correction",note);
 		
 		return note;
 
@@ -3101,28 +3101,41 @@ MuseScore {
 			
             cursor.rewind(0);
 
-			for(var i=0;i<lib.length;i++) {
-				if (i>0) cursor.next();
-				cursor.setDuration(0,0);  // quarter
-				var rest=cursor.element;
-				var preset=lib[i];
-				rest=alignToPreset_do(rest,preset,true,true,true);
-				addFingeringTextToNote(rest, preset.representation);
+            for (var i = 0; i < lib.length; i++) {
+                if (i > 0)
+                    cursor.next();
+                cursor.setDuration(0, 0); // quarter
+                var rest = cursor.element;
+                var preset = lib[i];
+				debugO(level_DEBUG,"Exporting preset",preset);
+                rest = alignToPreset_do(rest, preset, true, true, true);
+                addFingeringTextToNote(rest, preset.representation);
+				
 
-/* 				var f = newElement(Element.TEXT);
-				f.text = preset.pitch + "/" + preset.tuning;
-				// LEFT = 0, RIGHT = 1, HCENTER = 2, TOP = 0, BOTTOM = 4, VCENTER = 8, BASELINE = 16
-				f.align = 2; // HCenter and top
-				f.placement = Placement.ABOVE;
-				// Turn on note relative placement
-				f.autoplace = true;
-				rest.add(f);
- */
-				}
+                if (preset.label !== undefined && preset.label !== "") {
+					
 
-			score.endCmd();
-			
-		}
+                    //var f = newElement(Element.STAFF_TEXT);
+                    var f = newElement(Element.TEXT);
+					//f.subStyle=Tid.EXPRESSION;
+					f.fontSize = 8;
+                    f.text = preset.label.replace(" ", "\n");
+                    // LEFT = 0, RIGHT = 1, HCENTER = 2, TOP = 0, BOTTOM = 4, VCENTER = 8, BASELINE = 16
+                    f.align = 6; // HCenter and Bottom
+                    f.placement = Placement.ABOVE;
+                    // Turn on note relative placement
+                    f.autoplace = true;
+					f.offsetY=-5;
+                    //rest.parent.add(f);  // STAFF_TEXT added at the level of the Segment (and not the note)
+                    rest.add(f);  // STAFF_TEXT added at the level of the Segment (and not the note)
+
+                }
+
+            }
+
+            score.endCmd();
+
+            }
 
 		// -----------------------------------------------------------------------
 		// --- Instruments -------------------------------------------------------
