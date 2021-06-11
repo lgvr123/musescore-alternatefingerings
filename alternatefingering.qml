@@ -1126,7 +1126,7 @@ MuseScore {
 
 					indicator :
 					Image {
-						source : "alternatefingering/settings.svg"
+						source : "alternatefingering/export.svg"
 						mipmap : true // smoothing
 						width : 23
 						fillMode : Image.PreserveAspectFit // ensure it fits
@@ -1353,7 +1353,7 @@ MuseScore {
 			}
 		} // status bar
 		GroupBox {
-			title : "Favorites" + (chkFilterPreset.checkState === Qt.Checked ? " (strict)" : chkFilterPreset.checkState === Qt.PartiallyChecked ? " (similar)" : "")
+			title : "Presets" + (chkFilterPreset.checkState === Qt.Checked ? " (strict)" : chkFilterPreset.checkState === Qt.PartiallyChecked ? " (similar)" : "")
 			Layout.row : 2
 			Layout.column : 1
 			Layout.columnSpan : 1
@@ -1437,7 +1437,7 @@ MuseScore {
 								presetsRefreshed = true;
 							}
 
-							ToolTip.text : "Show only the current note's favorites"
+							ToolTip.text : "Show only the current note's presets"
 							hoverEnabled : true
 							ToolTip.delay : tooltipShow
 							ToolTip.timeout : tooltipHide
@@ -1464,7 +1464,7 @@ MuseScore {
 								addPresetWindow.state = "add"
 									addPresetWindow.show()
 							}
-							ToolTip.text : "Add current keys combination as new favorite"
+							ToolTip.text : "Add current keys combination as new preset"
 							hoverEnabled : true
 							ToolTip.delay : tooltipShow
 							ToolTip.timeout : tooltipHide
@@ -1492,7 +1492,7 @@ MuseScore {
 								addPresetWindow.state = "edit"
 									addPresetWindow.show()
 							}
-							ToolTip.text : "Edit the selected favorite"
+							ToolTip.text : "Edit the selected preset"
 							hoverEnabled : true
 							ToolTip.delay : tooltipShow
 							ToolTip.timeout : tooltipHide
@@ -1520,7 +1520,7 @@ MuseScore {
 								addPresetWindow.state = "remove"
 									addPresetWindow.show()
 							}
-							ToolTip.text : "Remove the selected favorite"
+							ToolTip.text : "Remove the selected preset"
 							hoverEnabled : true
 							ToolTip.delay : tooltipShow
 							ToolTip.timeout : tooltipHide
@@ -1533,7 +1533,7 @@ MuseScore {
 
 							indicator :
 							Image {
-								source : "alternatefingering/delete.svg"
+								source : "alternatefingering/select.svg"
 								mipmap : true // smoothing
 								width : 23
 								fillMode : Image.PreserveAspectFit // ensure it fits
