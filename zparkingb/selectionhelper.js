@@ -2,6 +2,15 @@
 /* Parking B - MuseScore - Selection helper
 /* v1.0.0
 /**********************************************/
+var level_NONE = 0;
+var level_INFO = 10;
+var level_DEBUG = 20;
+var level_TRACE = 30;
+var level_ALL = 999;
+
+// config
+var debugLevel = level_DEBUG;
+
 // -----------------------------------------------------------------------
 // --- Selection helper --------------------------------------------------
 // -----------------------------------------------------------------------
@@ -354,4 +363,38 @@ function getSegmentsFromCursor() {
     }
 
     return segments;
+}
+
+// -----------------------------------------------------------------------
+// --- Debug -------------------------------------------------------
+// -----------------------------------------------------------------------
+function debug(level, label) {
+	if (level > debugLevel)
+		return;
+
+	console.log(label);
+}
+
+function debugV(level, label, prop, value) {
+	if (level > debugLevel)
+		return;
+
+	console.log(label + " " + prop + ":" + value);
+}
+
+function debugP(level, label, element, prop) {
+	if (level > debugLevel)
+		return;
+
+	console.log(label + " " + prop + ":" + element[prop]);
+}
+
+function debugO(level, label, element) {
+	if (level > debugLevel)
+		return;
+
+	var kys = Object.keys(element);
+	for (var i = 0; i < kys.length; i++) {
+		debugV(level, label, kys[i], element[kys[i]]);
+	}
 }

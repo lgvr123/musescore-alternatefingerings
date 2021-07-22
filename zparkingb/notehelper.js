@@ -2,6 +2,11 @@
 /* Parking B - MuseScore - Note helper
 /* v1.0.0
 /**********************************************/
+var level_NONE = 0;
+var level_INFO = 10;
+var level_DEBUG = 20;
+var level_TRACE = 30;
+var level_ALL = 999;
 /**
 * Add some propeprties to the note. Among others, the name of the note, in the format "C4" and "C#4", ...
 * The added properties:
