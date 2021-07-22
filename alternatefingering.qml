@@ -688,6 +688,7 @@ MuseScore {
 	}
 	
 	function changeNote(note, toNote) {
+		var note=NoteHelper.changeNote(note, toNote);
 	    if (note.type != Element.NOTE) {
 			debug(level_INFO, "! Changing Note of a non-Note element"); 
 	        return;
@@ -710,28 +711,8 @@ MuseScore {
 	* duration: {numerator, denominator} optional. If undefined, the rest duration will be used.
 	*/
 	function restToNote(rest, toNote) {
-	    if (rest.type != Element.REST)
-	        return;
-
-	    //console.log("==ON A REST==");
-	    var cur_time = rest.parent.tick; // getting rest's segment's tick
-	    var duration = rest.duration;
-		var oCursor = curScore.newCursor()
-	    oCursor.rewindToTick(cur_time);
-	    oCursor.setDuration(duration.numerator, duration.denominator);
-	    //oCursor.addNote(toNote.pitch); // We can add whatever note here, we'll rectify it afterwards
-	    oCursor.addNote(0); // We can add whatever note here, we'll rectify it afterwards
-	    oCursor.rewindToTick(cur_time);
-	    var chord = oCursor.element;
-	    var note = chord.notes[0];
-		
-		debugPitch(level_DEBUG,"Added note",note);
-
-		changeNote(note,toNote);
-		
+		var note=NoteHelper.restToNote(rest,toNote);
 		debugPitch(level_DEBUG,"Corrected note",note);
-
-		
 		return note;
 	}
 	/**
