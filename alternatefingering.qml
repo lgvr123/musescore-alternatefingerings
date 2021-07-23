@@ -1906,54 +1906,12 @@ MuseScore {
 		onNo : confirmRemoveMissingDialog.close();
 	}
 
-	MessageDialog {
-		id : confirmPushToNoteDialog
-		icon : StandardIcon.Question
-		property var notes : []
-		property int forceAcc : 0
-		property int forceHead : 0
-
-		standardButtons : StandardButton.Yes | StandardButton.No
-		title : 'Align notes to preset'
-		text : 'Some of the selected notes have a different accidental and/or head than the chosen preset.<br/>' +
-		'Do want to align the notes ' +
-		((forceAcc == -1) ? '<b>accidentals</b>' : '') +
-		((forceAcc == -1 && forceHead == -1) ? ' and ' : '') +
-		((forceHead == -1) ? '<b>heads</b>' : '') +
-		' on the preset ?<br/>'
-
-		informativeText : 'Your choice will apply to all the selected notes.<br/><br/>'
-		detailedText :
-		((forceAcc == 1) ? 'Accidentals will always be aligned if different.\n' :
-			((forceAcc == 0) ? 'Accidentals will never be aligned.\n' :
-				'Accidentals will be aligned depending on your choice.\n')) +
-		((forceHead == 1) ? 'Heads will always be aligned if different.\n' :
-			((forceHead == 0) ? 'Heads will never be aligned.\n' :
-				'Heads will be aligned depending on your choice.\n')) +
-		'\nThose behaviours can be changed in the options.'
-		onYes : {
-			if (forceAcc == -1)
-				forceAcc = 1;
-			if (forceHead == -1)
-				forceHead = 1;
-			confirmPushToNoteDialog.close();
-			alignToPreset_do(notes, forceAcc, forceHead);
-		}
-		onNo : {
-			if (forceAcc == -1)
-				forceAcc = 0;
-			if (forceHead == -1)
-				forceHead = 0;
-			confirmPushToNoteDialog.close();
-			alignToPreset_do(notes, forceAcc, forceHead);
-		}
-	}
 
 	Window {
 		id : optionsWindow
 		title : "Options..."
 		width : 500
-		height : 450
+		height : 550
 		modality : Qt.WindowModal
 		flags : Qt.Dialog | Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
 		//color: "#E3E3E3"
