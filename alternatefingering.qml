@@ -689,17 +689,7 @@ MuseScore {
 	
 	function changeNote(note, toNote) {
 		var note=NoteHelper.changeNote(note, toNote);
-	    if (note.type != Element.NOTE) {
-			debug(level_INFO, "! Changing Note of a non-Note element"); 
-	        return;
-		}
-		
-		var debugTpc=note.tpc;
-		
-		debugPitch(level_TRACE, "Before correction",note);
-		note.tpc1 = toNote.tpc1;
-		note.tpc2 = toNote.tpc2;
-		note.pitch = toNote.pitch;
+	   
 		debugPitch(level_TRACE, "After correction",note);
 		
 		return note;
@@ -2615,6 +2605,8 @@ MuseScore {
 	function getPresetsLibrary(refresh) { // refresh is just meant for the "awful hack" ;-)
 		var note = __notes[0];
 
+		if(note===undefined) return [];
+
 		var sorted = __library.sort(function (a, b) {
 				var kA = keysorder.indexOf(a.note.substr(0, 1));
 				var kB = keysorder.indexOf(b.note.substr(0, 1));
@@ -2999,6 +2991,8 @@ MuseScore {
 		    for (var c = 0; c < cats.length; c++) {
 		        var cat = cats[c];
 		        var pp = [];
+				
+				if (allpresets[cat]!==undefined) {
 		        for (var i = 0; i < allpresets[cat].length; i++) {
 		            var raw = allpresets[cat][i];
 		            if (raw.head == undefined) {
@@ -3009,6 +3003,7 @@ MuseScore {
 		            debugP(level_DEBUG, "readLibrary: preset:", p,"pitch"); // transient = non-enumerable
 		            pp.push(p);
 		        }
+				}
 
 		        categories[cat]['library'] = pp;
 
@@ -3293,6 +3288,20 @@ MuseScore {
 				"library" : []
 			},
 			// unused - in progress
+			"saxophone" : {
+				"default" : "saxophone",
+				"config" : [],
+				"support" : ['wind.reed.saxophone'],
+				"instruments" : {
+					"saxophone" : {
+						"id": "saxophone", // instrument Id from https://github.com/musescore/MuseScore/blob/3.x/share/instruments/instruments.xml
+						"label" : "Saxophone", // nice name
+						"base" : ['\uE280'], 
+						"keys" : [flbflat]
+					}
+				},
+				"library" : []
+			},
 			"clarinet" : {
 				"default" : "clarinet",
 				"config" : [],
