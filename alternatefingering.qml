@@ -10,6 +10,12 @@ import FileIO 3.0
 import "zparkingb/selectionhelper.js" as SelHelper
 import "zparkingb/notehelper.js" as NoteHelper
 
+/**********************
+/* Parking B - MuseScore - Alternate Fingerings plugin
+/* v1.4.1
+/* ChangeLog: 
+/* 	- 23/7/21: Added limited saxophone
+/**********************************************/
 MuseScore {
 	menuPath : "Plugins.Alternate Fingering"
 	description : "Add and edit alternate fingering"
@@ -3266,6 +3272,7 @@ MuseScore {
 					// instrumentConfig class to control the default activation of this configuration
 					new instrumentConfigClass("B tail", '\uE002', fbflat, false),
 					new instrumentConfigClass("C# thrill", '\uE003', fcsharptrill, false),
+					new instrumentConfigClass("Gizmo", '\uE001', fgizmo, false),
 					new instrumentConfigClass("OpenHole", '\uE004', [], false) // no associated notes with the OpenHole config
 					//,new instrumentConfigClass("Kingma System", '\uE005', [fKCUpLever,fKAuxCSharpTrill,fKBbUpLever,fKBUpLever,fKGUpLever,fKFSharpBar,fKDUpLever],false),  // errors at the glypths level
 
@@ -3282,7 +3289,7 @@ MuseScore {
 						"id": "flute", // instrument Id from https://github.com/musescore/MuseScore/blob/3.x/share/instruments/instruments.xml
 						"label" : "Flute", // nice name
 						"base" : ['\uE000', '\uE001'], // C
-						"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc, fgizmo]
+						"keys" : [flbflat, flb, fl1, fl2, fl3, fgsharp, frbflat, fr1, fdtrill, fr2, fdsharptrill, fr3, fe, fcsharp, fc]
 					}
 				},
 				"library" : []
