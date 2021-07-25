@@ -3,6 +3,7 @@
 /* v1.0.1
 /* ChangeLog: 
 /* 	- 22/7/21: Added restToNote and changeNote function
+/*  - 25/7/21: Managing of transposing instruments
 /**********************************************/
 /**
  * Add some propeprties to the note. Among others, the name of the note, in the format "C4" and "C#4", ...
@@ -28,18 +29,27 @@ function enrichNote(note) {
 	}
 
 	// note name and octave
+	var pitch = note.pitch;
+	var tpitch= pitch+note.tpc2-note.tpc1; // note displayed as if it has that pitch
+	note.extname = pitchToName(tpitch,note.tpc2);
+	note.pitchname = pitchToName(pitch,note.tpc1);
+	return;
+
+}
+
+function pitchToName(npitch, ntpc) {
 	var tpc = {
 		'tpc' : 0,
 		'name' : '?',
 		'raw' : '?'
 	};
-	var pitch = note.pitch;
-	var pitchnote = pitchnotes[pitch % 12];
-	var noteOctave = Math.floor(pitch / 12) - 1;
+
+	var pitchnote = pitchnotes[npitch % 12];
+	var noteOctave = Math.floor(npitch / 12) - 1;
 
 	for (var i = 0; i < tpcs.length; i++) {
 		var t = tpcs[i];
-		if (note.tpc == t.tpc) {
+		if (ntpc == t.tpc) {
 			tpc = t;
 			break;
 		}
@@ -51,15 +61,17 @@ function enrichNote(note) {
 		noteOctave--;
 	}
 
-	note.extname = {
+	return {
 		"fullname" : tpc.name + noteOctave,
 		"name" : tpc.raw + noteOctave,
 		"raw" : tpc.raw,
 		"octave" : noteOctave
 	};
-	return;
 
+	
+	
 }
+
 /**
  * Reconstructed a note pitch information based on the note name and its accidental
  * @param noteName the name of the note, without alteration. Eg "C4", and not "C#4"
@@ -120,8 +132,8 @@ function buildPitchedNote(noteName, accidental) {
 
 	var recompose = {
 		"pitch" : pitch,
-		"tpc1" : tpc.tpc,
-		"tpc2" : tpc.tpc
+		//"tpc1" : tpc.tpc,  // ==> undefined to forece the representation
+		"tpc2" : tpc.tpc 
 	};
 
 	return recompose;
@@ -142,7 +154,7 @@ function restToNote(rest, toNote) {
 		oCursor.rewindToTick(cur_time);
 	// oCursor.setDuration(duration.numerator, duration.denominator); // 22/7/21 En commentaire, car efface la Duration mise en amont
 	//oCursor.addNote(toNote.pitch); // We can add whatever note here, we'll rectify it afterwards
-	oCursor.addNote(0); // We can add whatever note here, we'll rectify it afterwards
+	oCursor.addNote(60); // We can add whatever note here, we'll rectify it afterwards
 	oCursor.rewindToTick(cur_time);
 	var chord = oCursor.element;
 	var note = chord.notes[0];
@@ -157,6 +169,12 @@ function restToNote(rest, toNote) {
 	return note;
 }
 
+/**
+* Convention 
+*   keep toNote.tpc1 undefined to force a representation. For transposing instruments, the pitch will be adapted (e.g. a note displayed at C, will be pitched as D)
+*   keep toNote.tpc2 undefined to force a pitch. For transposing instruments, the representation will be adapted  (e.g. a note pitched at C, will be displayed as Bb)
+
+*/
 function changeNote(note, toNote) {
 	if (note.type != Element.NOTE) {
 		debug(level_INFO, "! Changing Note of a non-Note element");
@@ -164,10 +182,25 @@ function changeNote(note, toNote) {
 	}
 
 	var debugTpc = note.tpc;
+	
+	console.log("default is pitch: "+note.pitch+", tpc: "+note.tpc1+"/"+note.tpc2+"/"+note.tpc);
+	console.log("requested is pitch: "+((toNote.pitch===undefined)?"undefined":toNote.pitch)+
+		", tpc: "+((toNote.tpc1===undefined)?"undefined":toNote.tpc1)+"/"+((toNote.tpc2===undefined)?"undefined":toNote.tpc2));
+	
+	var transposing=note.tpc2-note.tpc1;
+	
+	var p=(toNote.tpc1===undefined)?toNote.pitch-transposing:toNote.pitch;
+	var t1=(toNote.tpc1===undefined)?toNote.tpc2-transposing:toNote.tpc1;
+	var t2=(toNote.tpc2===undefined)?toNote.tpc1+transposing:toNote.tpc2;
 
-	note.tpc1 = toNote.tpc1;
-	note.tpc2 = toNote.tpc2;
-	note.pitch = toNote.pitch;
+	console.log("Adapted as pitch: "+p+", tpc: "+t1+"/"+t2);
+
+
+	note.tpc1 =t1;
+	note.tpc2 = t2;
+	note.pitch = p;
+
+	console.log("After is pitch: "+note.pitch+", tpc: "+note.tpc1+"/"+note.tpc2+"/"+note.tpc);
 
 	return note;
 
