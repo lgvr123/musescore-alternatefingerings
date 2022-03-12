@@ -1,13 +1,13 @@
 # Alternate Fingerings plugin for MuseScore 3.x
 *Alternate Fingerings plugin for MuseScore 3.x* is a tool to add and edit manually a keys combination for non-standard play positions, for instruments like flutes, reeds, ...
 
-## New features in 1.2.0
-* Manage your library of presets
-    * Presets can be filtered by note, by accident,
-    * Supports "similarity" between accidentals (e.g. FLAT ~~ NATURAL + FLAT)
-* Save your default instrument configuration and plugin options to disk
-* Remove the fingerings of the selected notes
-* Revamped User Interface
+## New features in 1.4.0
+
+* Manages transposing instruments
+* Export of the library to new MuseScore score
+* Better filters in the library regarding the currently selected note
+* Shows the difference between a selected preset and  the currently selected note (such as difference in note head, accidental, ...)
+
 
 ## Features
 * Support for the flute family of instruments (wind.flutes.flute). 
