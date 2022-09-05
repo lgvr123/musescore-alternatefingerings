@@ -1,20 +1,18 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.2
 
-/**********************
-/* Parking B - SmallChecBox
-/* v1.0.0
-/* ChangeLog:
-/* 	- 1.0.0: Initial release
-/**********************************************/
+/**
+* 1.1: set default leftPadding to 0 and stop adding 2 at the left of the indicator
+*/
 CheckBox {
     id: schk
     property alias boxWidth: box.implicitWidth
+    leftPadding : 0
     indicator: Rectangle {
         id: box
-        implicitWidth: 16
+        implicitWidth: 20
         implicitHeight: implicitWidth
-        x: schk.leftPadding + 2
+        x: schk.leftPadding
         y: parent.height / 2 - height / 2
         border.color: "grey"
 

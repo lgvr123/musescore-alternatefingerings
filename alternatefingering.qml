@@ -9,18 +9,22 @@ import FileIO 3.0
 
 import "zparkingb/selectionhelper.js" as SelHelper
 import "zparkingb/notehelper.js" as NoteHelper
+import "alternatefingering"
 
 /**********************
 /* Parking B - MuseScore - Alternate Fingerings plugin
-/* v1.4.2
+/* v1.4.5
 /* ChangeLog:
 /* 	- 23/7/21: Added limited saxophone
 /*  - 25/7/21: Transposing instruments
+/*  - 14/11/21: Resetting the tuning on Remove a fingering
+/*  1.4.4: 17/3/22 utilisation du nouveau SmallCheckBox
+/*  1.4.5: Qt.quit issue
 /**********************************************/
 MuseScore {
     menuPath: "Plugins.Alternate Fingering"
     description: "Add and edit alternate fingering"
-    version: "1.4.0"
+    version: "1.4.5"
     pluginType: "dialog"
     //dockArea: "right"
     requiresScore: true
@@ -607,6 +611,7 @@ MuseScore {
                 // We delete all the fingering found and
                 for (var j = 0; j < chordnotes.length; j++) {
                     var nt = chordnotes[j];
+					nt.tuning=0; // resetting the tuning
                     var fgs = getFingerings(nt);
                     if (fgs && fgs.length > 0) {
                         for (var k = 0; k < fgs.length; k++) {
@@ -955,49 +960,29 @@ MuseScore {
                     columnSpacing: 5
                     rowSpacing: -2
 
-                    CheckBox {
+                    SmallCheckBox {
                         id: chkForceAccidental
                         text: "Note/accidental"
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-                        Layout.rightMargin: 5
-                        Layout.leftMargin: 5
-                        indicator: Rectangle {
-                            implicitWidth: 12
-                            implicitHeight: implicitWidth
-                            x: chkForceAccidental.leftPadding + 2
-                            y: parent.height / 2 - height / 2
-                            border.color: "grey"
-
-                            Rectangle {
-                                width: parent.implicitWidth / 2
-                                height: parent.implicitWidth / 2
-                                x: parent.implicitWidth / 4
-                                y: parent.implicitWidth / 4
-                                color: "grey"
-                                visible: chkForceAccidental.checked
-                            }
-                        }
+                        leftPadding: 5
+						boxWidth: 16
                     }
 
-                    CheckBox {
+                    SmallCheckBox {
                         id: chkDoTuning
                         text: "+ tunings"
                         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                        Layout.rightMargin: 5
-                        Layout.leftMargin: 5
-                        indicator.width: 16
-                        indicator.height: 16
+                        leftPadding: 5
                         enabled: tuningSettingsFile.exists() && chkForceAccidental.checked
+						boxWidth: 16
                     }
 
-                    CheckBox {
+                    SmallCheckBox {
                         id: chkForceHead
                         text: "Notes heads"
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-                        Layout.rightMargin: 5
-                        Layout.leftMargin: 5
-                        indicator.width: 16
-                        indicator.height: 16
+                        leftPadding: 5
+						boxWidth: 16
                     }
 
                 }
@@ -1110,10 +1095,10 @@ MuseScore {
                     onAccepted: {
                         alignToPreset(); // first aligning the notes if needed (and replacing the rests by notes if required)
                         writeFingering(); // secondly adding the fingering
-                        Qt.quit();
+                        mainWindow.parent.Window.window.close(); //Qt.quit();
 
                     }
-                    onRejected: Qt.quit()
+                    onRejected: mainWindow.parent.Window.window.close(); //Qt.quit()
 
                 }
             }
@@ -1823,7 +1808,7 @@ MuseScore {
         text: 'The staff instrument is not a valid intrument'
         detailedText: 'Alternate Fingering only manages \'wind.flutes.flute\''
         onAccepted: {
-            Qt.quit()
+            mainWindow.parent.Window.window.close(); //Qt.quit()
         }
     }
     MessageDialog {
@@ -1834,7 +1819,7 @@ MuseScore {
         text: 'The selection is not valid'
         detailedText: 'At least one note must be selected, and all the notes must of the same instrument.'
         onAccepted: {
-            Qt.quit()
+            mainWindow.parent.Window.window.close(); //Qt.quit()
         }
     }
 
@@ -1849,7 +1834,7 @@ MuseScore {
         'The Zip file contains the font file you need to install on your device.\n' +
         'You will also need to restart MuseScore for it to recognize the new font.'
         onAccepted: {
-            Qt.quit()
+            mainWindow.parent.Window.window.close(); //Qt.quit()
         }
     }
 
