@@ -20,6 +20,7 @@ import "alternatefingering"
 /*  - 14/11/21: Resetting the tuning on Remove a fingering
 /*  1.4.4: 17/3/22 utilisation du nouveau SmallCheckBox
 /*  1.4.5: Qt.quit issue
+/*  1.4.5: GridLayout correction
 /**********************************************/
 MuseScore {
     menuPath: "Plugins.Alternate Fingering"
@@ -838,8 +839,8 @@ MuseScore {
         anchors.bottomMargin: 5
 
         Item {
-            Layout.row: 1
-            Layout.column: 1
+            Layout.row: 0
+            Layout.column: 0
             Layout.columnSpan: 2
             Layout.rowSpan: 1
 
@@ -871,8 +872,8 @@ MuseScore {
 
 
         ColumnLayout { // hack because the GridLayout doesn't manage well the invisible elements
-            Layout.row: 2
-            Layout.column: 2
+            Layout.row: 1
+            Layout.column: 1
             Layout.columnSpan: 1
             Layout.rowSpan: 4
             Layout.fillHeight: true
@@ -991,8 +992,8 @@ MuseScore {
         } // right column
 
         Item { // buttons row // DEBUG was Item
-            Layout.row: 6
-            Layout.column: 1
+            Layout.row: 5
+            Layout.column: 0
             Layout.columnSpan: 2
             Layout.rowSpan: 1
             Layout.fillWidth: true
@@ -1105,8 +1106,8 @@ MuseScore {
         } // button rows
 
         Item { // status bar
-            Layout.row: 7
-            Layout.column: 1
+            Layout.row: 6
+            Layout.column: 0
             Layout.columnSpan: 2
             Layout.rowSpan: 1
             Layout.fillWidth: true
@@ -1281,8 +1282,8 @@ MuseScore {
         } // status bar
         GroupBox {
             title: "Presets" + (chkFilterPreset.checkState === Qt.Checked ? " (strict)" : chkFilterPreset.checkState === Qt.PartiallyChecked ? " (similar)" : "")
-            Layout.row: 2
-            Layout.column: 1
+            Layout.row: 1
+            Layout.column: 0
             Layout.columnSpan: 1
             Layout.rowSpan: 4
 
@@ -2197,8 +2198,8 @@ MuseScore {
                 anchors.margins: 10
 
                 Text {
-                    Layout.row: 1
-                    Layout.column: 1
+                    Layout.row: 0
+                    Layout.column: 0
                     Layout.columnSpan: 2
                     Layout.rowSpan: 1
 
@@ -2217,8 +2218,8 @@ MuseScore {
                 }
 
                 Rectangle { // se passer du rectangle ???
-                    Layout.row: 2
-                    Layout.column: 1
+                    Layout.row: 1
+                    Layout.column: 0
                     Layout.columnSpan: 2
                     Layout.rowSpan: 1
 
@@ -2249,8 +2250,8 @@ MuseScore {
                 }
 
                 Label {
-                    Layout.row: 3
-                    Layout.column: 1
+                    Layout.row: 2
+                    Layout.column: 0
                     Layout.columnSpan: 1
                     Layout.rowSpan: 1
 
@@ -2263,8 +2264,8 @@ MuseScore {
                 }
 
                 TextField {
-                    Layout.row: 3
-                    Layout.column: 2
+                    Layout.row: 2
+                    Layout.column: 1
                     Layout.columnSpan: 1
                     Layout.rowSpan: 1
 
@@ -2280,8 +2281,8 @@ MuseScore {
                 }
 
                 Label {
-                    Layout.row: 4
-                    Layout.column: 1
+                    Layout.row: 3
+                    Layout.column: 0
                     Layout.columnSpan: 1
                     Layout.rowSpan: 1
 
@@ -2294,8 +2295,8 @@ MuseScore {
                 }
 
                 RowLayout {
-                    Layout.row: 4
-                    Layout.column: 2
+                    Layout.row: 3
+                    Layout.column: 1
                     Layout.columnSpan: 1
                     Layout.rowSpan: 1
 
@@ -2382,8 +2383,8 @@ MuseScore {
                 }
 
                 DialogButtonBox {
-                    Layout.row: 5
-                    Layout.column: 1
+                    Layout.row: 4
+                    Layout.column: 0
                     Layout.columnSpan: 2
                     Layout.rowSpan: 1
                     Layout.alignment: Qt.AlignRight
