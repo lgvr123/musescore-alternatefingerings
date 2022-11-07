@@ -25,9 +25,9 @@ Download the [last stable version](https://github.com/lgvr123/musescore-alternat
 For installation see [Plugins](https://musescore.org/en/handbook/3/plugins).
 
 ## Sponsorship ##
-[<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="50"/>](https://www.tipeee.com/parkingb)
-[<img src="/support/paypal.jpg" alt="Support me on Paypal" height="55"/>](https://www.paypal.me/LaurentvanRoy)
-[<img src="/support/patreon.png" alt="Support me on Patreon" height="40"/>](https://patreon.com/parkingb)
+[<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="50"/>](https://www.tipeee.com/parkingb) •&nbsp;
+[<img src="/support/paypal.jpg" alt="Support me on Paypal" height="55"/>](https://www.paypal.me/LaurentvanRoy) •&nbsp;
+[<img src="/support/patreon.png" alt="Support me on Patreon" height="30"/>](https://patreon.com/parkingb)
 
 ## Known issues
 * Kingma Sysem for the flute is not supporterd
