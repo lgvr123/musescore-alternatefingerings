@@ -6,7 +6,7 @@
 * Manages transposing instruments
 * Export of the library to new MuseScore score
 * Better filters in the library regarding the currently selected note
-* Shows the difference between a selected preset and  the currently selected note (such as difference in note head, accidental, ...)
+* Shows the difference between a selected preset and the currently selected note (such as difference in note head, accidental, ...)
 
 
 ## Features
@@ -25,9 +25,12 @@ Download the [last stable version](https://github.com/lgvr123/musescore-alternat
 For installation see [Plugins](https://musescore.org/en/handbook/3/plugins).
 
 ## Sponsorship ##
+If you appreciate my plugins, you can support and sponsor their development on the following platforms:
 [<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="50"/>](https://www.tipeee.com/parkingb) 
 [<img src="/support/paypal.jpg" alt="Support me on Paypal" height="55"/>](https://www.paypal.me/LaurentvanRoy) 
 [<img src="/support/patreon.png" alt="Support me on Patreon" height="25"/>](https://patreon.com/parkingb)
+
+And also check my **[Zploger application](https://www.parkingb.be/zploger)**, a tool for managing a library of scores, with extended MuseScore support.
 
 ## Known issues
 * Kingma Sysem for the flute is not supporterd
