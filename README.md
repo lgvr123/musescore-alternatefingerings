@@ -24,8 +24,10 @@
 Download the [last stable version](https://github.com/lgvr123/musescore-alternatefingerings/releases).
 For installation see [Plugins](https://musescore.org/en/handbook/3/plugins).
 
-## Support ##
-[<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="80"/>](https://fr.tipeee.com/parkingb)
+## Sponsorship ##
+[<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="80"/>](https://www.tipeee.com/parkingb)
+[<img src="/support/paypal.jpg" alt="Support me on Paypal" height="80"/>](https://www.paypal.me/LaurentvanRoy)
+[<img src="/support/patreon.png" alt="Support me on Patreon" height="80"/>](https://patreon.com/parkingb)
 
 ## Known issues
 * Kingma Sysem for the flute is not supporterd
