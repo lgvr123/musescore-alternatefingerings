@@ -20,11 +20,12 @@
 ## Pre-requisistes
 * This plugin relies on Fiati font being installed, which can be downloaded here: https://github.com/eduardomourar/fiati/releases For windows 10 users: Make sure to install the font for "All Users" or MuseScore (and thus this plugin) won't have access to it.
 
-## Installation
-* If using MuseScore version 3 then download the plugin and unzip it.
-* Install using the instructions in the MuseScore 3.x Handbook, which typically involves copying the QML file to the local MuseScore Plugin directory.
-* Open MuseScore and navigate to 'Plugins' -> 'Plugin Manager' to enable the plugin. Tick the box against 'alternatefingering' and apply with 'OK'.
+## Download and Install ##
+Download the [last stable version](https://github.com/lgvr123/musescore-alternatefingerings/releases).
+For installation see [Plugins](https://musescore.org/en/handbook/3/plugins).
 
+## Support ##
+[<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="80"/>](https://fr.tipeee.com/parkingb)
 
 ## Known issues
 * Kingma Sysem for the flute is not supporterd
