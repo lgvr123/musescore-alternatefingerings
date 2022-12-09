@@ -7,13 +7,11 @@ import QtQuick.Controls.Styles 1.4
 import QtQuick.Layouts 1.1
 import FileIO 3.0
 
-import "zparkingb/selectionhelper.js" as SelHelper
-import "zparkingb/notehelper.js" as NoteHelper
-import "alternatefingering"
+import "selectionhelper.js" as SelHelper
+import "notehelper.js" as NoteHelper
 
 /**********************
 /* Parking B - MuseScore - Alternate Fingerings plugin
-/* v1.4.5
 /* ChangeLog:
 /* 	- 23/7/21: Added limited saxophone
 /*  - 25/7/21: Transposing instruments
@@ -21,11 +19,13 @@ import "alternatefingering"
 /*  1.4.4: 17/3/22 utilisation du nouveau SmallCheckBox
 /*  1.4.5: Qt.quit issue
 /*  1.4.5: GridLayout correction
+/*  1.4.6: New plugin folder structure
+/*  1.4.6: Port to MS4
 /**********************************************/
 MuseScore {
     menuPath: "Plugins.Alternate Fingering"
-    description: "Add and edit alternate fingering"
-    version: "1.4.5"
+    description: "Add and edit alternate fingerings"
+    version: "1.4.6"
     pluginType: "dialog"
     //dockArea: "right"
     requiresScore: true
@@ -33,6 +33,13 @@ MuseScore {
     height: 600
 
     id: mainWindow
+
+    Component.onCompleted : {
+        if (mscoreMajorVersion >= 4) {
+            mainWindow.thumbnailName = "logo.png";
+            mainWindow.title = "Alternate fingerings";
+        }
+    }    
 
     /** category of instrument :"flute","clarinet", ... */
     property string __category: ""
@@ -1013,7 +1020,7 @@ MuseScore {
 
                     indicator:
                     Image {
-                        source: "alternatefingering/save.svg"
+                        source: "save.svg"
                         width: 23
                         fillMode: Image.PreserveAspectFit // ensure it fits
                         mipmap: true // smoothing
@@ -1034,7 +1041,7 @@ MuseScore {
 
                     indicator:
                     Image {
-                        source: "alternatefingering/settings.svg"
+                        source: "settings.svg"
                         mipmap: true // smoothing
                         width: 23
                         fillMode: Image.PreserveAspectFit // ensure it fits
@@ -1054,7 +1061,7 @@ MuseScore {
 
                     indicator:
                     Image {
-                        source: "alternatefingering/export.svg"
+                        source: "export.svg"
                         mipmap: true // smoothing
                         width: 23
                         fillMode: Image.PreserveAspectFit // ensure it fits
@@ -1155,7 +1162,7 @@ MuseScore {
                 implicitWidth: i_pna.width
                 Image {
                     id: i_pna
-                    source: "./alternatefingering/" + ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
+                    source:  ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
                     fillMode: Image.PreserveAspectFit
                     anchors.centerIn: parent
                     height: 20
@@ -1181,7 +1188,7 @@ MuseScore {
 
                 Image {
                     id: i_pnh
-                    source: "./alternatefingering/" + ((currentPreset) ? getHeadImage(currentPreset.head) : "NONE.png")
+                    source:  ((currentPreset) ? getHeadImage(currentPreset.head) : "NONE.png")
                     fillMode: Image.PreserveAspectFit
                     anchors.centerIn: parent
                     height: 20
@@ -1236,7 +1243,7 @@ MuseScore {
 
                 Image {
                     id: i_tna
-                    source: "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].accidentalData.image : "NONE.png")
+                    source:  ((__notes.length > 0) ? __notes[0].accidentalData.image : "NONE.png")
                     fillMode: Image.PreserveAspectFit
                     anchors.centerIn: parent
                     height: 20
@@ -1263,7 +1270,7 @@ MuseScore {
 
                 Image {
                     id: i_tnh
-                    source: "./alternatefingering/" + ((__notes.length > 0) ? __notes[0].headData.image : "NONE.png")
+                    source:  ((__notes.length > 0) ? __notes[0].headData.image : "NONE.png")
                     fillMode: Image.PreserveAspectFit
                     anchors.centerIn: parent
                     height: 20
@@ -1355,7 +1362,7 @@ MuseScore {
                                     id: imgFilter
                                     mipmap: true // smoothing
                                     width: 21 // 23, a little bit smaller
-                                    source: "alternatefingering/filter.svg"
+                                    source: "filter.svg"
                                     fillMode: Image.PreserveAspectFit // ensure it fits
                                     anchors.centerIn: parent
                                 }
@@ -1379,7 +1386,7 @@ MuseScore {
 
                             indicator:
                             Image {
-                                source: "alternatefingering/add.svg"
+                                source: "add.svg"
                                 mipmap: true // smoothing
                                 width: 23
                                 fillMode: Image.PreserveAspectFit // ensure it fits
@@ -1407,7 +1414,7 @@ MuseScore {
 
                             indicator:
                             Image {
-                                source: "alternatefingering/edit.svg"
+                                source: "edit.svg"
                                 mipmap: true // smoothing
                                 width: 23
                                 fillMode: Image.PreserveAspectFit // ensure it fits
@@ -1435,7 +1442,7 @@ MuseScore {
 
                             indicator:
                             Image {
-                                source: "alternatefingering/delete.svg"
+                                source: "delete.svg"
                                 mipmap: true // smoothing
                                 width: 23
                                 fillMode: Image.PreserveAspectFit // ensure it fits
@@ -1461,7 +1468,7 @@ MuseScore {
 
                             indicator:
                             Image {
-                                source: "alternatefingering/select.svg"
+                                source: "select.svg"
                                 mipmap: true // smoothing
                                 width: 23
                                 fillMode: Image.PreserveAspectFit // ensure it fits
@@ -1496,20 +1503,20 @@ MuseScore {
         Image {
             id: btn
             property var panel
-            source: "./alternatefingering/openpanel.svg"
+            source: "openpanel.svg"
             states: [
                 State {
                     when: panel.visible;
                     PropertyChanges {
                         target: btn;
-                        source: "./alternatefingering/closepanel.svg"
+                        source: "closepanel.svg"
                     }
                 },
                 State {
                     when: !panel.visible;
                     PropertyChanges {
                         target: btn;
-                        source: "./alternatefingering/openpanel.svg"
+                        source: "openpanel.svg"
                     }
                 }
             ]
@@ -1536,70 +1543,70 @@ MuseScore {
             y: note ? note.row * 20 : 0;
             scale: note ? note.size : 1;
 
-            source: "./alternatefingering/open.svg"
+            source: "open.svg"
 
             states: [
                 State {
                     name: "open"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/open.svg"
+                        source: "open.svg"
                     }
                 },
                 State {
                     name: "closed"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/closed.svg"
+                        source: "closed.svg"
                     }
                 },
                 State {
                     name: "left"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/left.svg"
+                        source: "left.svg"
                     }
                 },
                 State {
                     name: "right"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/right.svg"
+                        source: "right.svg"
                     }
                 },
                 State {
                     name: "halfleft"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/quarterleft.svg"
+                        source: "quarterleft.svg"
                     }
                 },
                 State {
                     name: "halfright"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/quarterright.svg"
+                        source: "quarterright.svg"
                     }
                 },
                 State {
                     name: "ring"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/ring.svg"
+                        source: "ring.svg"
                     }
                 },
                 State {
                     name: "thrill"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/thrill.svg"
+                        source: "thrill.svg"
                     }
                 },
                 State {
                     name: "deactivated"
                     PropertyChanges {
                         target: img;
-                        source: "./alternatefingering/deactivated.svg"
+                        source: "deactivated.svg"
                     }
                 }
             ]
@@ -1706,7 +1713,7 @@ MuseScore {
 
             Image {
                 id: prsAcc
-                source: "./alternatefingering/" + getAccidentalImage(__preset.accidental)
+                source:  getAccidentalImage(__preset.accidental)
                 fillMode: Image.PreserveAspectFit
                 height: 20
                 width: 20
@@ -1718,7 +1725,7 @@ MuseScore {
 
             Image {
                 id: prsHead
-                source: "./alternatefingering/" + getHeadImage(__preset.head)
+                source:  getHeadImage(__preset.head)
                 fillMode: Image.PreserveAspectFit
                 height: 20
                 width: 20
@@ -1732,13 +1739,17 @@ MuseScore {
                 anchors.fill: parent;
                 acceptedButtons: Qt.LeftButton
 
-                onDoubleClicked: {
-                    currentPreset = __preset;
-                    pushFingering(__preset.representation);
-                }
+                // onDoubleClicked: {
+                    // currentPreset = __preset;
+                    // pushFingering(__preset.representation);
+                // }
 
                 onClicked: {
                     __lv.currentIndex = index;
+                    
+                    // from double click
+                    currentPreset = __preset;
+                    pushFingering(__preset.representation);
                 }
 
                 ToolTip.text: __preset.label
@@ -2335,7 +2346,7 @@ MuseScore {
                             contentItem: Image {
                                 height: 25
                                 width: 25
-                                source: "./alternatefingering/" + ddAccidentals[index].image
+                                source:  ddAccidentals[index].image
                                 fillMode: Image.Pad
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -2347,7 +2358,7 @@ MuseScore {
                             height: 25
                             width: 25
                             fillMode: Image.Pad
-                            source: "./alternatefingering/" + ddAccidentals[lstEpAcc.currentIndex].image
+                            source:  ddAccidentals[lstEpAcc.currentIndex].image
                         }
                     }
                     ComboBox {
@@ -2365,7 +2376,7 @@ MuseScore {
                             contentItem: Image {
                                 height: 25
                                 width: 25
-                                source: "./alternatefingering/" + heads[index].image
+                                source:  heads[index].image
                                 fillMode: Image.Pad
                                 verticalAlignment: Text.AlignVCenter
                             }
@@ -2377,7 +2388,7 @@ MuseScore {
                             height: 25
                             width: 25
                             fillMode: Image.Pad
-                            source: "./alternatefingering/" + heads[lstEpHead.currentIndex].image
+                            source:  heads[lstEpHead.currentIndex].image
                         }
                     }
                 }
