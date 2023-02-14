@@ -21,6 +21,7 @@ import "notehelper.js" as NoteHelper
 /*  1.4.5: GridLayout correction
 /*  1.4.6: New plugin folder structure
 /*  1.4.6: Port to MS4
+/*  1.4.6: Search for instrument adapted to match staff instruments returned by MS4
 /**********************************************/
 MuseScore {
     menuPath: "Plugins.Alternate Fingering"
@@ -99,6 +100,8 @@ MuseScore {
     readonly property int level_DEBUG: 20;
     readonly property int level_TRACE: 30;
     readonly property int level_ALL: 999;
+    
+    property var debug_instrument
 
     // -----------------------------------------------------------------------
     // --- Read the score ----------------------------------------------------
@@ -235,8 +238,10 @@ MuseScore {
         debugV(level_INFO, ">>", "warnings", warnings);
         // INVALID INSTRUMENT
         if (!instrument && !category) {
-            //unkownInstrumentDialog.open(); // v2: autorisé
-            //return;
+            // v1: mode "dialog" : un instrument inconnu n'est pas autorisé
+            unkownInstrumentDialog.open();
+            return;
+            // v2: mode "dock" : un instrument inconnu est autorisé
             notes = [];
             category = "";
             instrument = "";
@@ -677,23 +682,63 @@ MuseScore {
             //debugO(level_DEBUG,"part", part);
             var instru = part.instrumentId;
             debug(level_DEBUG, instru);
+            debug_instrument = "instrumentId: "+instru;
             var cat;
-            if (part && !instru && part.midiProgram) {
+            var versions=[];
+            if (instru) {
+                if (instru.includes(".")) {
+                    // MS3 way
+                    versions.push(instru.toLowerCase());
+                } else {
+                    // MS4 way
+                    // looking for valid versions of the instrument name.
+                    // e.g. for "eb-piccolo", both "eb-piccolo" and "piccolo" are ok
+                    var tp=instru.split("-");
+                    
+
+                    for(var i=0;i<tp.length;i++){
+                      var v=tp[i];
+                      for(var j=(i+1);j<tp.length;j++) {
+                        v=v+"-"+tp[j];
+                      }
+                      versions.push(v.toLowerCase());
+                    }
+                }
+            }
+
+            else if (part && !instru && part.midiProgram) {
+                debug_instrument = " - midiProgram: "+part.midiProgram;
+
                 switch (part.midiProgram) {
                 case 73:
-                    instru = 'wind.flutes.flute';
+                    // instru = 'wind.flutes.flute'; 
+                    instru = 'flute'; //1.4.6
                     break;
                 default:
                     instru = 'unkown';
                 }
             }
 
+            // looking if that instrument is managed by the plugin
+            var matchLevel=999;
             for (var c in categories) {
                 for (var i = 0; i < categories[c].support.length; i++) {
                     var support = categories[c].support[i];
-                    if (instru.startsWith(support)) {
-                        cat = c;
-                        break;
+                    for(var j=0;j<versions.length;j++) {
+                        var version=versions[j];
+                        // MS3 way
+                        if (version.startsWith(support)) {
+                            cat = c;
+                            break;
+
+                        } 
+                        // MS4 way
+                        else if ((version===support) && (k<matchLevel)) {
+                            // if 2 categories matches the current instrument, we take the one that matches the version with the most "parameters".
+                            // E.g. "eb-piccolo" > "piccolo"
+                            cat = c;
+                            matchLevel=k;
+                        }
                     }
                 }
             }
@@ -1817,8 +1862,8 @@ MuseScore {
         icon: StandardIcon.Warning
         standardButtons: StandardButton.Ok
         title: 'Unknown Instrument!'
-        text: 'The staff instrument is not a valid intrument'
-        detailedText: 'Alternate Fingering only manages \'wind.flutes.flute\''
+        text: 'The staff instrument is not a managed intrument'
+        detailedText: "Found: "+debug_instrument+"\nAlternate Fingering only manages "+buildSupportedInstruments()
         onAccepted: {
             mainWindow.parent.Window.window.close(); //Qt.quit()
         }
@@ -2524,6 +2569,17 @@ MuseScore {
         debug(level_TRACE, "buildConfigNotes: " + notes.length);
         __confignotes = notes;
     }
+    
+    function buildSupportedInstruments() {
+        var s=[];
+           for (var c in categories) {
+                for (var i = 0; i < categories[c].support.length; i++) {
+                    s.push('"'+categories[c].support[i]+'"');
+                }
+            }
+        
+        return s.join(", ");
+    }
 
     property var keysorder: ['B', 'A', 'G', 'F', 'E', 'D', 'C']
 
@@ -3195,7 +3251,10 @@ MuseScore {
 
             ],
             "support": [
-                'wind.flutes'
+                //MS3 : instrumentId return "wind.flutes.flute"
+                'wind.flutes', 
+                //MS4  : instrumentId return "flute"
+                'flute', 'piccolo', 'traverso', 
             ],
             "instruments": {
                 /*				"flute with B tail" : {
@@ -3215,7 +3274,12 @@ MuseScore {
         "saxophone": {
             "default": "saxophone",
             "config": [],
-            "support": ['wind.reed.saxophone'],
+            "support": [
+                //MS3
+                'wind.reed.saxophone',
+                //MS4
+                'saxophone'
+            ],
             "instruments": {
                 "saxophone": {
                     "id": "saxophone", // instrument Id from https://github.com/musescore/MuseScore/blob/3.x/share/instruments/instruments.xml
