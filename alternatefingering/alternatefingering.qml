@@ -799,6 +799,7 @@ MuseScore {
 			
 			note.accidentalData.name=note.accidentalName;
 			note.accidentalData.image=note.accidentalName+".png";
+			note.accidentalData.text=note.accidentalText;
 
             // head
             var grp = note.headGroup ? note.headGroup : 0;
@@ -1205,13 +1206,24 @@ MuseScore {
                 anchors.leftMargin: 5
                 implicitHeight: i_pna.height
                 implicitWidth: i_pna.width
-                Image {
+                // Image {
+                    // id: i_pna
+                    // source:  ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
+                    // fillMode: Image.PreserveAspectFit
+                    // anchors.centerIn: parent
+                    // height: 20
+                    // width: 20
+                // }
+
+                Text {
                     id: i_pna
-                    source:  ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
-                    fillMode: Image.PreserveAspectFit
-                    anchors.centerIn: parent
+                    text:  ((currentPreset) ? getAccidentalText(currentPreset.accidental) : "")
+
+                    font.family: 'MScore Text'
+                    font.pointSize: 10
                     height: 20
                     width: 20
+                    anchors.centerIn: parent
                 }
 
                 // dummy left border
@@ -1286,11 +1298,12 @@ MuseScore {
 
                 color: (currentPreset && (__notes.length > 0) && (currentPreset.accidental != generic_preset) && (currentPreset.accidental != __notes[0].accidentalData.name)) ? "lightpink" : "transparent"
 
-                Image {
+                Text {
                     id: i_tna
-                    source:  ((__notes.length > 0) ? __notes[0].accidentalData.image : "NONE.png")
-                    fillMode: Image.PreserveAspectFit
+                    text:  ((__notes.length > 0) ? __notes[0].accidentalData.text : "")
                     anchors.centerIn: parent
+                    font.family: 'MScore Text'
+                    font.pointSize: 10
                     height: 20
                     width: 20
                 }
@@ -1756,10 +1769,22 @@ MuseScore {
                 }
             }
 
-            Image {
+            // Image {
+                // id: prsAcc
+                // source:  getAccidentalImage(__preset.accidental)
+                // fillMode: Image.PreserveAspectFit
+                // height: 20
+                // width: 20
+                // anchors {
+                    // left: prsNote.right
+                    // top: prsLab.bottom
+                // }
+            // }
+            Text {
                 id: prsAcc
-                source:  getAccidentalImage(__preset.accidental)
-                fillMode: Image.PreserveAspectFit
+                text:  getAccidentalText(__preset.accidental)
+                font.family: 'MScore Text'
+                font.pointSize: 10
                 height: 20
                 width: 20
                 anchors {
@@ -1767,6 +1792,8 @@ MuseScore {
                     top: prsLab.bottom
                 }
             }
+
+
 
             Image {
                 id: prsHead
@@ -2386,24 +2413,25 @@ MuseScore {
                         focus: true
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 80
+                        
+                        font.family: 'MScore Text'
+                        font.pointSize: 15
 
-                        delegate: ItemDelegate { // requiert QuickControls 2.2
-                            contentItem: Image {
-                                height: 25
-                                width: 25
-                                source:  ddAccidentals[index].image
-                                fillMode: Image.Pad
+
+                        delegate: ItemDelegate { 
+                            contentItem: Text {
+                                text:  ddAccidentals[index].text
                                 verticalAlignment: Text.AlignVCenter
+                                font: lstEpAcc.font
                             }
                             highlighted: lstEpAcc.highlightedIndex === index
 
                         }
 
-                        contentItem: Image {
-                            height: 25
-                            width: 25
-                            fillMode: Image.Pad
-                            source:  ddAccidentals[lstEpAcc.currentIndex].image
+                        contentItem: Text {
+                            text:  ddAccidentals[lstEpAcc.currentIndex].text
+                            verticalAlignment: Text.AlignVCenter
+                            font: lstEpAcc.font
                         }
                     }
                     ComboBox {
@@ -2644,6 +2672,7 @@ MuseScore {
         return 0;
     }
 
+    //2del
     function getAccidentalImage(accidentalName) {
         if (accidentalName == generic_preset) {
             return "generic.png"
@@ -2654,6 +2683,15 @@ MuseScore {
             }
         }
         return "NONE.png";
+    }
+
+    function getAccidentalText(accidentalName) {
+        for (var i = 0; i < ddAccidentals.length; i++) {
+            if (accidentalName === ddAccidentals[i].name) {
+                return ddAccidentals[i].text;
+            }
+        }
+        return "?";
     }
 
     function getHeadModelIndex(headName) {
@@ -3510,13 +3548,15 @@ MuseScore {
             var dd = [{
                     'name': generic_preset,
                     'tuning': 0,
-                    'image': 'generic.png'
+                    'image': 'generic.png',
+                    'text': ''
                 }
             ];
             for (var i = 0; i < NoteHelper.accidentals.length; i++) {
 				var a=NoteHelper.accidentals[i];
 				a.tuning=0;
 				a.image=a.name+".png";
+                if(!a.text) a.text='\uF630';
                 dd.push(a);
             }
             return dd;

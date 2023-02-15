@@ -8,6 +8,7 @@
 /*	- 13/03/22: v1.0.4 Extra parameter to keep the rest duration when adding notes and chords.
 /*	- 13/03/22: v1.0.4 New restToChords function.
 /*	- 18/03/22: v1.0.5 restToNote and New restToChords accept now tpc1 and tpc2 values.
+/*  - 15/2/23: v2.0.0 using unicode for accidentals instead of images
 /**********************************************/
 // -----------------------------------------------------------------------
 // --- Vesionning-----------------------------------------
@@ -42,6 +43,7 @@ function checkVersion(expected) {
  * Add some propeprties to the note. Among others, the name of the note, in the format "C4" and "C#4", ...
  * The added properties:
  * - note.accidentalName : the name of the accidental
+ * - note.accidentalText : the unicode representation of the accidental character
  * - note.extname.fullname : "C#4"
  * - note.extname.name : "C4"
  * - note.extname.raw : "C"
@@ -57,6 +59,7 @@ function enrichNote(note) {
         var acc = accidentals[i];
         if (id == eval("Accidental." + acc.name)) {
             note.accidentalName = acc.name;
+            note.accidentalText = acc.text;
             break;
         }
     }
@@ -418,58 +421,85 @@ var flatTpcs = filterTpcs(false);
 
 var accidentals = [{
         'name': 'NONE',
+        'text': '',
     }, {
         'name': 'FLAT',
+        'text': '\uE260',
     }, {
         'name': 'NATURAL',
+        'text': '\uE261',
     }, {
         'name': 'SHARP',
+        'text': '\uE262',
     }, {
         'name': 'SHARP2',
+        'text': '\uE263',
     }, {
         'name': 'FLAT2',
+        'text': '\uE264',
     }, {
         'name': 'NATURAL_FLAT',
+        'text': '\uE267',
     }, {
         'name': 'NATURAL_SHARP',
+        'text': '\uE268',
     }, {
         'name': 'SHARP_SHARP',
+        'text': '\uE269',
     }, {
         'name': 'FLAT_ARROW_UP',
+        'text': '\uE270',
     }, {
         'name': 'FLAT_ARROW_DOWN',
+        'text': '\uE271',
     }, {
         'name': 'NATURAL_ARROW_UP',
+        'text': '\uE272',
     }, {
         'name': 'NATURAL_ARROW_DOWN',
+        'text': '\uE273',
     }, {
         'name': 'SHARP_ARROW_UP',
+        'text': '\uE274',
     }, {
         'name': 'SHARP_ARROW_DOWN',
+        'text': '\uE275',
     }, {
         'name': 'SHARP2_ARROW_UP',
+        'text': '\uE276',
     }, {
         'name': 'SHARP2_ARROW_DOWN',
+        'text': '\uE277',
     }, {
         'name': 'FLAT2_ARROW_UP',
+        'text': '\uE278',
     }, {
         'name': 'FLAT2_ARROW_DOWN',
+        'text': '\uE279',
     }, {
         'name': 'MIRRORED_FLAT',
+        'text': '\uE280',
     }, {
         'name': 'MIRRORED_FLAT2',
+        'text': '\uE281',
     }, {
         'name': 'SHARP_SLASH',
+        'text': '\uE282',
     }, {
         'name': 'SHARP_SLASH4',
+        'text': '\uE283',
     }, {
         'name': 'FLAT_SLASH2',
+        'text': '\uE440',
     }, {
         'name': 'FLAT_SLASH',
+        'text': '\uE442',
     }, {
         'name': 'SHARP_SLASH3',
+        'text': '\uE446',
     }, {
         'name': 'SHARP_SLASH2',
+        'text': '\uE447',
     }, {
         'name': 'DOUBLE_FLAT_ONE_ARROW_DOWN',
     }, {
