@@ -24,6 +24,12 @@
 Download the [last stable version](https://github.com/lgvr123/musescore-alternatefingerings/releases).
 For installation see [Plugins](https://musescore.org/en/handbook/3/plugins).
 
+## Support of MS4.0
+**NOT SUPPORTED**
+
+MuseScore 4.0 support for plugin is minimal. Many functions are not supported for the time being or have changed. 
+Therefore, this plugin does not work under MuseScore 4.0.
+
 ## Sponsorship ##
 If you appreciate my plugins, you can support and sponsor their development on the following platforms:
 [<img src="/support/Button-Tipeee.png" alt="Support me on Tipee" height="50"/>](https://www.tipeee.com/parkingb) 
