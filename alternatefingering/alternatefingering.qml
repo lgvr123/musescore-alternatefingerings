@@ -22,6 +22,7 @@ import "notehelper.js" as NoteHelper
 /*  1.4.6: New plugin folder structure
 /*  1.4.6: Port to MS4
 /*  1.4.6: Search for instrument adapted to match staff instruments returned by MS4
+/*  xx: Use of Unicode characters instead of images
 /**********************************************/
 MuseScore {
     menuPath: "Plugins.Alternate Fingering"
@@ -35,12 +36,12 @@ MuseScore {
 
     id: mainWindow
 
-    Component.onCompleted : {
+    Component.onCompleted: {
         if (mscoreMajorVersion >= 4) {
             mainWindow.thumbnailName = "logo.png";
             mainWindow.title = "Alternate fingerings";
         }
-    }    
+    }
 
     /** category of instrument :"flute","clarinet", ... */
     property string __category: ""
@@ -100,14 +101,14 @@ MuseScore {
     readonly property int level_DEBUG: 20;
     readonly property int level_TRACE: 30;
     readonly property int level_ALL: 999;
-    
+
     property var debug_instrument
 
     // -----------------------------------------------------------------------
     // --- Read the score ----------------------------------------------------
     // -----------------------------------------------------------------------
     onRun: {
-			console.log("ddAccidentals >>>>"+ddAccidentals.length);
+        console.log("ddAccidentals >>>>" + ddAccidentals.length);
 
         if (Qt.fontFamilies().indexOf('Fiati') < 0) {
             fontMissingDialog.open();
@@ -265,6 +266,8 @@ MuseScore {
             }
 
             if (note1) {
+                debugO(level_INFO, "Selected note", note1.accidentalData);
+                debugO(level_INFO, "Selected note", note1.headData);
                 selectPreset(
                     new presetClass(__category, "", note1.extname.name, note1.accidentalData.name, fingering ? fingering.text : undefined, note1.headData.name), false);
                 if (lstPresets.currentIndex >= 0) {
@@ -624,7 +627,7 @@ MuseScore {
                 // We delete all the fingering found and
                 for (var j = 0; j < chordnotes.length; j++) {
                     var nt = chordnotes[j];
-					nt.tuning=0; // resetting the tuning
+                    nt.tuning = 0; // resetting the tuning
                     var fgs = getFingerings(nt);
                     if (fgs && fgs.length > 0) {
                         for (var k = 0; k < fgs.length; k++) {
@@ -682,9 +685,9 @@ MuseScore {
             //debugO(level_DEBUG,"part", part);
             var instru = part.instrumentId;
             debug(level_DEBUG, instru);
-            debug_instrument = "instrumentId: "+instru;
+            debug_instrument = "instrumentId: " + instru;
             var cat;
-            var versions=[];
+            var versions = [];
             if (instru) {
                 if (instru.includes(".")) {
                     // MS3 way
@@ -693,25 +696,22 @@ MuseScore {
                     // MS4 way
                     // looking for valid versions of the instrument name.
                     // e.g. for "eb-piccolo", both "eb-piccolo" and "piccolo" are ok
-                    var tp=instru.split("-");
-                    
+                    var tp = instru.split("-");
 
-                    for(var i=0;i<tp.length;i++){
-                      var v=tp[i];
-                      for(var j=(i+1);j<tp.length;j++) {
-                        v=v+"-"+tp[j];
-                      }
-                      versions.push(v.toLowerCase());
+                    for (var i = 0; i < tp.length; i++) {
+                        var v = tp[i];
+                        for (var j = (i + 1); j < tp.length; j++) {
+                            v = v + "-" + tp[j];
+                        }
+                        versions.push(v.toLowerCase());
                     }
                 }
-            }
-
-            else if (part && !instru && part.midiProgram) {
-                debug_instrument = " - midiProgram: "+part.midiProgram;
+            } else if (part && !instru && part.midiProgram) {
+                debug_instrument = " - midiProgram: " + part.midiProgram;
 
                 switch (part.midiProgram) {
                 case 73:
-                    // instru = 'wind.flutes.flute'; 
+                    // instru = 'wind.flutes.flute';
                     instru = 'flute'; //1.4.6
                     break;
                 default:
@@ -720,24 +720,24 @@ MuseScore {
             }
 
             // looking if that instrument is managed by the plugin
-            var matchLevel=999;
+            var matchLevel = 999;
             for (var c in categories) {
                 for (var i = 0; i < categories[c].support.length; i++) {
                     var support = categories[c].support[i];
-                    for(var j=0;j<versions.length;j++) {
-                        var version=versions[j];
+                    for (var j = 0; j < versions.length; j++) {
+                        var version = versions[j];
                         // MS3 way
                         if (version.startsWith(support)) {
                             cat = c;
                             break;
 
-                        } 
+                        }
                         // MS4 way
-                        else if ((version===support) && (k<matchLevel)) {
+                        else if ((version === support) && (k < matchLevel)) {
                             // if 2 categories matches the current instrument, we take the one that matches the version with the most "parameters".
                             // E.g. "eb-piccolo" > "piccolo"
                             cat = c;
-                            matchLevel=k;
+                            matchLevel = k;
                         }
                     }
                 }
@@ -777,12 +777,12 @@ MuseScore {
         // Par défaut:
         note.headData = {
             name: "UNKOWN",
-            image: "NONE.png"
+            text: "?"
         };
 
         note.accidentalData = {
             name: "UNKOWN",
-            image: "NONE.png"
+            text: "?"
         };
 
         note.extname = {
@@ -793,23 +793,17 @@ MuseScore {
         };
 
         if (note.type === Element.NOTE) {
-            
+
             // note name and octave
             NoteHelper.enrichNote(note);
-			
-			note.accidentalData.name=note.accidentalName;
-			note.accidentalData.image=note.accidentalName+".png";
-			note.accidentalData.text=note.accidentalText;
 
-            // head
-            var grp = note.headGroup ? note.headGroup : 0;
-            for (var i = 1; i < heads.length; i++) { // starting at 1 because 0 is the generic one ("--")
-                var head = heads[i];
-                if (grp == eval("NoteHeadGroup." + head.name)) {
-                    note.headData = head;
-                    break;
-                }
-            }
+            note.accidentalData.name = note.accidentalName;
+            note.accidentalData.text = note.accidentalText;
+
+            note.headData.name = note.headName;
+            note.headData.text = note.headText;
+
+
 
         } else if (note.type === Element.REST) {
             note.extname = {
@@ -1019,7 +1013,7 @@ MuseScore {
                         text: "Note/accidental"
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
                         leftPadding: 5
-						boxWidth: 16
+                        boxWidth: 16
                     }
 
                     SmallCheckBox {
@@ -1028,7 +1022,7 @@ MuseScore {
                         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
                         leftPadding: 5
                         enabled: tuningSettingsFile.exists() && chkForceAccidental.checked
-						boxWidth: 16
+                        boxWidth: 16
                     }
 
                     SmallCheckBox {
@@ -1036,7 +1030,7 @@ MuseScore {
                         text: "Notes heads"
                         Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
                         leftPadding: 5
-						boxWidth: 16
+                        boxWidth: 16
                     }
 
                 }
@@ -1164,7 +1158,7 @@ MuseScore {
             Layout.columnSpan: 2
             Layout.rowSpan: 1
             Layout.fillWidth: true
-            Layout.preferredHeight: txtNote.implicitHeight
+            Layout.preferredHeight: txtNote.height
             //color: "#F0F0F0"
 
             id: panStatusBar
@@ -1182,8 +1176,8 @@ MuseScore {
             Item {
                 id: txtCurPNote
                 anchors.right: txtCurPAcc.left
-                implicitHeight: txtNoteAcc.height
-                implicitWidth: 24
+                height: 24
+                width: 24
                 Text {
                     text: (currentPreset) ? currentPreset.note : "--"
                     leftPadding: 5
@@ -1194,8 +1188,8 @@ MuseScore {
                 Rectangle {
                     width: 2
                     x: 0
-                    color: "#929292"
-                    implicitHeight: 18
+                    color: sysActivePalette.mid
+                    height: 18
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -1204,34 +1198,30 @@ MuseScore {
                 id: txtCurPAcc
                 anchors.right: txtCurPHead.left
                 anchors.leftMargin: 5
-                implicitHeight: i_pna.height
-                implicitWidth: i_pna.width
-                // Image {
-                    // id: i_pna
-                    // source:  ((currentPreset) ? getAccidentalImage(currentPreset.accidental) : "NONE.png")
-                    // fillMode: Image.PreserveAspectFit
-                    // anchors.centerIn: parent
-                    // height: 20
-                    // width: 20
-                // }
+                height: 24
+                width: 24
 
                 Text {
                     id: i_pna
-                    text:  ((currentPreset) ? getAccidentalText(currentPreset.accidental) : "")
+                    text: ((currentPreset) ? getAccidentalText(currentPreset.accidental) : "")
 
-                    font.family: 'MScore Text'
-                    font.pointSize: 10
-                    height: 20
-                    width: 20
                     anchors.centerIn: parent
+                    font.family: 'Bravura Text'
+                    font.pointSize: 24
+                    onLineLaidOut: { // hack for correct display of Bravura font
+                        line.x = line.x + 2
+                        line.y = line.y * 0.5
+                        
+                    }
+
                 }
 
                 // dummy left border
                 Rectangle {
                     width: 2
                     x: 0
-                    color: "#929292"
-                    implicitHeight: 18
+                    color: sysActivePalette.mid
+                    height: 18
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -1240,33 +1230,36 @@ MuseScore {
                 id: txtCurPHead
                 anchors.right: txtNote.left
                 anchors.leftMargin: 5
-                implicitHeight: i_pnh.height
-                implicitWidth: i_pnh.width
+                height: 24
+                width: 24
 
-                Image {
+                Text {
                     id: i_pnh
-                    source:  ((currentPreset) ? getHeadImage(currentPreset.head) : "NONE.png")
-                    fillMode: Image.PreserveAspectFit
+                    text: ((currentPreset) ? getHeadText(currentPreset.head) : "")
                     anchors.centerIn: parent
-                    height: 20
-                    width: 20
+                    font.family: 'Bravura Text'
+                    font.pointSize: 24
+                    onLineLaidOut: { // hack for correct display of Bravura font
+                        line.x = line.x + 2
+                        line.y = line.y * 0.5
+
+                    }
                 }
 
                 // dummy left border
                 Rectangle {
                     width: 2
                     x: 0
-                    color: "#929292"
-                    implicitHeight: 18
+                    color: sysActivePalette.mid
+                    height: 18
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
             Rectangle {
                 id: txtNote
                 anchors.right: txtNoteAcc.left
-                implicitHeight: txtNoteAcc.height
-                implicitWidth: 24
-                // anchors.leftMargin : 5
+                height: 24
+                width: 24
 
                 color: (currentPreset && (__notes.length > 0) && (currentPreset.note != __notes[0].extname.name)) ? "lightpink" : "transparent"
 
@@ -1282,8 +1275,8 @@ MuseScore {
                 Rectangle {
                     width: 2
                     x: 0
-                    color: "#929292"
-                    implicitHeight: 18
+                    color: sysActivePalette.mid
+                    height: 18
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -1293,26 +1286,28 @@ MuseScore {
                 id: txtNoteAcc
                 anchors.right: txtNoteHead.left
                 anchors.leftMargin: 5
-                implicitHeight: i_tna.height
-                implicitWidth: i_tna.width
+                height: 24
+                width: 24
 
                 color: (currentPreset && (__notes.length > 0) && (currentPreset.accidental != generic_preset) && (currentPreset.accidental != __notes[0].accidentalData.name)) ? "lightpink" : "transparent"
 
                 Text {
                     id: i_tna
-                    text:  ((__notes.length > 0) ? __notes[0].accidentalData.text : "")
+                    text: ((__notes.length > 0) ? __notes[0].accidentalData.text : "")
+                    font.family: 'Bravura Text'
+                    font.pointSize: 24
                     anchors.centerIn: parent
-                    font.family: 'MScore Text'
-                    font.pointSize: 10
-                    height: 20
-                    width: 20
+                    onLineLaidOut: { // hack for correct display of Bravura font
+                        line.x = line.x + 2
+                        line.y = line.y * 0.5
+                    }
                 }
                 // dummy left border
                 Rectangle {
                     width: 2
                     x: 0
-                    color: "#929292"
-                    implicitHeight: 18
+                    color: sysActivePalette.mid
+                    height: 18
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -1321,25 +1316,29 @@ MuseScore {
                 id: txtNoteHead
                 anchors.right: parent.right
                 anchors.leftMargin: 5
-                implicitHeight: i_tnh.height
-                implicitWidth: i_tnh.width
+                height: 24
+                width: 24
 
                 color: (currentPreset && (__notes.length > 0) && (currentPreset.head != generic_preset) && (currentPreset.head != __notes[0].headData.name)) ? "lightpink" : "transparent"
 
-                Image {
+                Text {
                     id: i_tnh
-                    source:  ((__notes.length > 0) ? __notes[0].headData.image : "NONE.png")
-                    fillMode: Image.PreserveAspectFit
+                    text: ((__notes.length > 0) ? __notes[0].headData.text : "")
+                    font.family: 'Bravura Text'
+                    font.pointSize: 24
                     anchors.centerIn: parent
-                    height: 20
-                    width: 20
+                    onLineLaidOut: { // hack for correct display of Bravura font
+                        line.x = line.x + 2
+                        line.y = line.y * 0.5
+
+                    }
                 }
                 // dummy left border
                 Rectangle {
                     width: 2
                     x: 0
-                    color: "#929292"
-                    implicitHeight: 18
+                    color: sysActivePalette.mid
+                    height: 18
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -1735,7 +1734,7 @@ MuseScore {
 
                 onLineLaidOut: { // hack for correct display of Fiati font
                     line.y = line.y * 0.8
-                        line.height = line.height * 0.8
+                    line.height = line.height * 0.8
                 }
 
             }
@@ -1745,7 +1744,7 @@ MuseScore {
                 text: __preset.label
                 visible: (__preset.label && __preset.label !== "")
                 height: (visible) ? parent.height / 2 : 0
-                width: (parent.width - 35) //prsRep.width)
+                width: Math.max(72, parent.width - 60) //prsRep.width)
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignBottom
                 elide: Text.ElideRight
@@ -1760,47 +1759,51 @@ MuseScore {
             Text {
                 id: prsNote
                 text: __preset.note
-                //width:(parent.width-prsRep.width)/2
-                width: (parent.width - 35) / 2
+                width: 24
+                height: 24
                 horizontalAlignment: Text.AlignRight
+                    verticalAlignment: Text.AlignVCenter
                 anchors {
                     left: prsLab.left
                     top: prsLab.bottom
                 }
             }
 
-            // Image {
-                // id: prsAcc
-                // source:  getAccidentalImage(__preset.accidental)
-                // fillMode: Image.PreserveAspectFit
-                // height: 20
-                // width: 20
-                // anchors {
-                    // left: prsNote.right
-                    // top: prsLab.bottom
-                // }
-            // }
             Text {
                 id: prsAcc
-                text:  getAccidentalText(__preset.accidental)
-                font.family: 'MScore Text'
-                font.pointSize: 10
-                height: 20
-                width: 20
+                text: getAccidentalText(__preset.accidental)
+                width: 24
+                height: 24
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.family: 'Bravura Text'
+                    font.pointSize: 24
+                    onLineLaidOut: { // hack for correct display of Bravura font
+                        line.x = line.x + 2
+                        line.y = line.y * 0.5
+                        line.y = line.y + 7
+                        
+                    }
                 anchors {
                     left: prsNote.right
                     top: prsLab.bottom
                 }
             }
 
-
-
-            Image {
+            Text {
                 id: prsHead
-                source:  getHeadImage(__preset.head)
-                fillMode: Image.PreserveAspectFit
-                height: 20
-                width: 20
+                text: getHeadText(__preset.head)
+                width: 24
+                height: 24
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.family: 'Bravura Text'
+                    font.pointSize: 24
+                    onLineLaidOut: { // hack for correct display of Bravura font
+                        line.x = line.x + 2
+                        line.y = line.y * 0.5
+                        line.y = line.y + 7
+                    }
                 anchors {
                     left: prsAcc.right
                     top: prsLab.bottom
@@ -1812,13 +1815,13 @@ MuseScore {
                 acceptedButtons: Qt.LeftButton
 
                 // onDoubleClicked: {
-                    // currentPreset = __preset;
-                    // pushFingering(__preset.representation);
+                // currentPreset = __preset;
+                // pushFingering(__preset.representation);
                 // }
 
                 onClicked: {
                     __lv.currentIndex = index;
-                    
+
                     // from double click
                     currentPreset = __preset;
                     pushFingering(__preset.representation);
@@ -1890,7 +1893,7 @@ MuseScore {
         standardButtons: StandardButton.Ok
         title: 'Unknown Instrument!'
         text: 'The staff instrument is not a managed intrument'
-        detailedText: "Found: "+debug_instrument+"\nAlternate Fingering only manages "+buildSupportedInstruments()
+        detailedText: "Found: " + debug_instrument + "\nAlternate Fingering only manages " + buildSupportedInstruments()
         onAccepted: {
             mainWindow.parent.Window.window.close(); //Qt.quit()
         }
@@ -2413,31 +2416,42 @@ MuseScore {
                         focus: true
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 80
-                        
-                        font.family: 'MScore Text'
-                        font.pointSize: 15
 
+                        font.family: 'Bravura Text'
+                        font.pointSize: 28
 
-                        delegate: ItemDelegate { 
+                        delegate: ItemDelegate {
                             contentItem: Text {
-                                text:  ddAccidentals[index].text
+                                text: ddAccidentals[index].text
                                 verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignRight
+                                anchors.fill: parent
                                 font: lstEpAcc.font
+                                onLineLaidOut: { // hack for correct display of Bravura font
+                                    line.x = line.x + 2
+                                    line.y = line.y * 0.5
+                                }
                             }
                             highlighted: lstEpAcc.highlightedIndex === index
 
                         }
 
                         contentItem: Text {
-                            text:  ddAccidentals[lstEpAcc.currentIndex].text
+                            text: ddAccidentals[lstEpAcc.currentIndex].text
                             verticalAlignment: Text.AlignVCenter
+                            horizontalAlignment: Text.AlignRight
+                            anchors.fill: parent
                             font: lstEpAcc.font
+                            onLineLaidOut: { // hack for correct display of Bravura font
+                                line.x = line.x + 2
+                                line.y = line.y * 0.5
+                            }
                         }
                     }
                     ComboBox {
                         id: lstEpHead
                         //Layout.fillWidth : true
-                        model: heads
+                        model: ddHeads
                         currentIndex: visible ? getHeadModelIndex(__asAPreset.head) : 0
 
                         clip: true
@@ -2445,23 +2459,31 @@ MuseScore {
                         Layout.preferredHeight: 30
                         Layout.preferredWidth: 80
 
-                        delegate: ItemDelegate { // requiert QuickControls 2.2
-                            contentItem: Image {
-                                height: 25
-                                width: 25
-                                source:  heads[index].image
-                                fillMode: Image.Pad
+                        font.family: 'Bravura Text'
+                        font.pointSize: 28
+
+                        delegate: ItemDelegate {                           
+                            contentItem: Text {
+                                text: ddHeads[index].text
                                 verticalAlignment: Text.AlignVCenter
+                                font: lstEpHead.font
+                                onLineLaidOut: { // hack for correct display of Bravura font
+                                    line.x = line.x + 2
+                                    line.y = line.y * 0.5
+                                }
                             }
                             highlighted: lstEpHead.highlightedIndex === index
 
                         }
 
-                        contentItem: Image {
-                            height: 25
-                            width: 25
-                            fillMode: Image.Pad
-                            source:  heads[lstEpHead.currentIndex].image
+                        contentItem: Text {
+                            text: ddHeads[lstEpHead.currentIndex].text
+                            verticalAlignment: Text.AlignVCenter
+                            font: lstEpHead.font
+                            onLineLaidOut: { // hack for correct display of Bravura font
+                                line.x = line.x + 2
+                                line.y = line.y * 0.5
+                            }
                         }
                     }
                 }
@@ -2597,15 +2619,15 @@ MuseScore {
         debug(level_TRACE, "buildConfigNotes: " + notes.length);
         __confignotes = notes;
     }
-    
+
     function buildSupportedInstruments() {
-        var s=[];
-           for (var c in categories) {
-                for (var i = 0; i < categories[c].support.length; i++) {
-                    s.push('"'+categories[c].support[i]+'"');
-                }
+        var s = [];
+        for (var c in categories) {
+            for (var i = 0; i < categories[c].support.length; i++) {
+                s.push('"' + categories[c].support[i] + '"');
             }
-        
+        }
+
         return s.join(", ");
     }
 
@@ -2672,20 +2694,11 @@ MuseScore {
         return 0;
     }
 
-    //2del
-    function getAccidentalImage(accidentalName) {
-        if (accidentalName == generic_preset) {
-            return "generic.png"
-        }
-        for (var i = 0; i < ddAccidentals.length; i++) {
-            if (accidentalName === ddAccidentals[i].name) {
-                return ddAccidentals[i].image;
-            }
-        }
-        return "NONE.png";
-    }
 
     function getAccidentalText(accidentalName) {
+        if (accidentalName == generic_preset) {
+            return "--"
+        }
         for (var i = 0; i < ddAccidentals.length; i++) {
             if (accidentalName === ddAccidentals[i].name) {
                 return ddAccidentals[i].text;
@@ -2695,24 +2708,24 @@ MuseScore {
     }
 
     function getHeadModelIndex(headName) {
-        for (var i = 0; i < heads.length; i++) {
-            if (headName === heads[i].name) {
+        for (var i = 0; i < ddHeads.length; i++) {
+            if (headName === ddHeads[i].name) {
                 return i;
             }
         }
         return 0;
     }
 
-    function getHeadImage(headName) {
+    function getHeadText(headName) {
         if (headName == generic_preset) {
-            return "generic.png"
+            return "--"
         }
-        for (var i = 0; i < heads.length; i++) {
-            if (headName === heads[i].name) {
-                return heads[i].image;
+        for (var i = 0; i < ddHeads.length; i++) {
+            if (headName === ddHeads[i].name) {
+                return ddHeads[i].text;
             }
         }
-        return "NONE.png";
+        return "?";
     }
 
     function selectPreset(preset, strict) {
@@ -2786,6 +2799,12 @@ MuseScore {
         lstPresets.currentIndex = best;
     }
     // -----------------------------------------------------------------------
+    // --- Palette -----------------------------------------------------
+    // -----------------------------------------------------------------------
+    SystemPalette {
+        id: sysActivePalette;
+        colorGroup: SystemPalette.Active
+    }    // -----------------------------------------------------------------------
     // --- Property File -----------------------------------------------------
     // -----------------------------------------------------------------------
     FileIO {
@@ -2927,7 +2946,7 @@ MuseScore {
 
         var json = settingsFile.read();
 
-        debug(level_DEBUG, json);
+        //debug(level_DEBUG, json);
 
         try {
             lastoptions = JSON.parse(json);
@@ -2957,11 +2976,11 @@ MuseScore {
 
         // push to notes options
         chkForceAccidental.checkState = (lastoptions['pushacc'] === "true") ? Qt.Checked : Qt.Unchecked;
-        debug(level_DEBUG, "readOptions: 'pushacc' --> " + chkForceAccidental.checked + " (" + lastoptions['pushacc'] + ")");
+        // debug(level_DEBUG, "readOptions: 'pushacc' --> " + chkForceAccidental.checked + " (" + lastoptions['pushacc'] + ")");
         chkForceHead.checkState = (lastoptions['pushhead'] === "true") ? Qt.Checked : Qt.Unchecked;
-        debug(level_DEBUG, "readOptions: 'pushhead' --> " + chkForceHead.checked + " (" + lastoptions['pushhead'] + ")");
+        // debug(level_DEBUG, "readOptions: 'pushhead' --> " + chkForceHead.checked + " (" + lastoptions['pushhead'] + ")");
         chkDoTuning.checkState = (lastoptions['pushtuning'] === "true") ? Qt.Checked : Qt.Unchecked;
-        debug(level_DEBUG, "readOptions: 'pushtuning' --> " + chkDoTuning.checked + " (" + lastoptions['pushtuning'] + ")");
+        // debug(level_DEBUG, "readOptions: 'pushtuning' --> " + chkDoTuning.checked + " (" + lastoptions['pushtuning'] + ")");
 
         // instruments config
         var cats = Object.keys(lastoptions['categories']);
@@ -2971,19 +2990,19 @@ MuseScore {
 
             // default instrument
             categories[cat].default = desc.default;
-            debug(level_DEBUG, "readOptions: " + cat + " -- " + desc.default);
+            // debug(level_DEBUG, "readOptions: " + cat + " -- " + desc.default);
 
             // config options
             var cfgs = desc['config'];
             for (var k = 0; k < cfgs.length; k++) {
                 var cfg = cfgs[k];
-                debug(level_DEBUG, "readOptions: " + cfg.name + " --> " + cfg.activated);
+                // debug(level_DEBUG, "readOptions: " + cfg.name + " --> " + cfg.activated);
 
                 for (var l = 0; l < categories[cat]['config'].length; l++) {
                     var c = categories[cat]['config'][l];
                     if (c.name == cfg.name) {
                         c.activated = cfg.activated;
-                        debug(level_DEBUG, "readOptions: setting " + c.name + " --> " + c.activated);
+                        // debug(level_DEBUG, "readOptions: setting " + c.name + " --> " + c.activated);
                     }
                 }
             }
@@ -3019,8 +3038,8 @@ MuseScore {
                         raw.head = generic_preset;
                     }
                     var p = new presetClassRaw(raw); // getting a real presetClass with the transient fields set correclty
-                    debugO(level_DEBUG, "readLibrary: preset:", p);
-                    debugP(level_DEBUG, "readLibrary: preset:", p, "pitch"); // transient = non-enumerable
+                    // debugO(level_DEBUG, "readLibrary: preset:", p);
+                    // debugP(level_DEBUG, "readLibrary: preset:", p, "pitch"); // transient = non-enumerable
                     pp.push(p);
                 }
             }
@@ -3290,9 +3309,9 @@ MuseScore {
             ],
             "support": [
                 //MS3 : instrumentId return "wind.flutes.flute"
-                'wind.flutes', 
+                'wind.flutes',
                 //MS4  : instrumentId return "flute"
-                'flute', 'piccolo', 'traverso', 
+                'flute', 'piccolo', 'traverso',
             ],
             "instruments": {
                 /*				"flute with B tail" : {
@@ -3548,20 +3567,36 @@ MuseScore {
             var dd = [{
                     'name': generic_preset,
                     'tuning': 0,
-                    'image': 'generic.png',
-                    'text': ''
+                    'text': '--'
                 }
             ];
             for (var i = 0; i < NoteHelper.accidentals.length; i++) {
-				var a=NoteHelper.accidentals[i];
-				a.tuning=0;
-				a.image=a.name+".png";
-                if(!a.text) a.text='\uF630';
+                var a = NoteHelper.accidentals[i];
+                a.tuning = 0;
+                if (typeof a.text === "undefined")
+                    a.text = '?';
                 dd.push(a);
             }
             return dd;
         }
     }
+    
+    property var ddHeads: { {
+            var dd = [{
+                    'name': generic_preset,
+                    'text': '--'
+                }
+            ];
+            for (var i = 0; i < NoteHelper.heads.length; i++) {
+                var a = NoteHelper.heads[i];
+                if (typeof a.text === "undefined")
+                    a.text = '?';
+                dd.push(a);
+            }
+            return dd;
+        }
+    }
+    
     readonly property var equivalences: [
         ['SHARP', 'NATURAL_SHARP'],
         ['FLAT', 'NATURAL_FLAT'],
@@ -3569,200 +3604,6 @@ MuseScore {
         ['SHARP2', 'SHARP_SHARP']
     ];
 
-    readonly property var heads: [{
-            'name': generic_preset,
-            'image': 'generic.png'
-        }, {
-            'name': 'HEAD_NORMAL',
-            'image': 'HEAD_NORMAL.png'
-        }, {
-            'name': 'HEAD_CROSS',
-            'image': 'HEAD_CROSS.png'
-        }, {
-            'name': 'HEAD_PLUS',
-            'image': 'HEAD_PLUS.png'
-        }, {
-            'name': 'HEAD_XCIRCLE',
-            'image': 'HEAD_XCIRCLE.png'
-        }, {
-            'name': 'HEAD_WITHX',
-            'image': 'HEAD_WITHX.png'
-        }, {
-            'name': 'HEAD_TRIANGLE_UP',
-            'image': 'HEAD_TRIANGLE_UP.png'
-        }, {
-            'name': 'HEAD_TRIANGLE_DOWN',
-            'image': 'HEAD_TRIANGLE_DOWN.png'
-        }, {
-            'name': 'HEAD_SLASHED1',
-            'image': 'HEAD_SLASHED1.png'
-        }, {
-            'name': 'HEAD_SLASHED2',
-            'image': 'HEAD_SLASHED2.png'
-        }, {
-            'name': 'HEAD_DIAMOND',
-            'image': 'HEAD_DIAMOND.png'
-        }, {
-            'name': 'HEAD_DIAMOND_OLD',
-            'image': 'HEAD_DIAMOND_OLD.png'
-        }, {
-            'name': 'HEAD_CIRCLED',
-            'image': 'HEAD_CIRCLED.png'
-        }, {
-            'name': 'HEAD_CIRCLED_LARGE',
-            'image': 'HEAD_CIRCLED_LARGE.png'
-        }, {
-            'name': 'HEAD_LARGE_ARROW',
-            'image': 'HEAD_LARGE_ARROW.png'
-        }, {
-            'name': 'HEAD_BREVIS_ALT',
-            'image': 'HEAD_BREVIS_ALT.png'
-        }, {
-            'name': 'HEAD_SLASH',
-            'image': 'HEAD_SLASH.png'
-        }, {
-            'name': 'HEAD_SOL',
-            'image': 'HEAD_SOL.png'
-        }, {
-            'name': 'HEAD_LA',
-            'image': 'HEAD_LA.png'
-        }, {
-            'name': 'HEAD_FA',
-            'image': 'HEAD_FA.png'
-        }, {
-            'name': 'HEAD_MI',
-            'image': 'HEAD_MI.png'
-        }, {
-            'name': 'HEAD_DO',
-            'image': 'HEAD_DO.png'
-        }, {
-            'name': 'HEAD_RE',
-            'image': 'HEAD_RE.png'
-        }, {
-            'name': 'HEAD_TI',
-            'image': 'HEAD_TI.png'
-        }, {
-            'name': 'HEAD_DO_WALKER',
-            'image': 'HEAD_DO_WALKER.png'
-        }, {
-            'name': 'HEAD_RE_WALKER',
-            'image': 'HEAD_RE_WALKER.png'
-        }, {
-            'name': 'HEAD_TI_WALKER',
-            'image': 'HEAD_TI_WALKER.png'
-        }, {
-            'name': 'HEAD_DO_FUNK',
-            'image': 'HEAD_DO_FUNK.png'
-        }, {
-            'name': 'HEAD_RE_FUNK',
-            'image': 'HEAD_RE_FUNK.png'
-        }, {
-            'name': 'HEAD_TI_FUNK',
-            'image': 'HEAD_TI_FUNK.png'
-        }, {
-            'name': 'HEAD_DO_NAME',
-            'image': 'HEAD_DO_NAME.png'
-        }, {
-            'name': 'HEAD_RE_NAME',
-            'image': 'HEAD_RE_NAME.png'
-        }, {
-            'name': 'HEAD_MI_NAME',
-            'image': 'HEAD_MI_NAME.png'
-        }, {
-            'name': 'HEAD_FA_NAME',
-            'image': 'HEAD_FA_NAME.png'
-        }, {
-            'name': 'HEAD_SOL_NAME',
-            'image': 'HEAD_SOL_NAME.png'
-        }, {
-            'name': 'HEAD_LA_NAME',
-            'image': 'HEAD_LA_NAME.png'
-        }, {
-            'name': 'HEAD_TI_NAME',
-            'image': 'HEAD_TI_NAME.png'
-        }, {
-            'name': 'HEAD_SI_NAME',
-            'image': 'HEAD_SI_NAME.png'
-        }, {
-            'name': 'HEAD_A_SHARP',
-            'image': 'HEAD_A_SHARP.png'
-        }, {
-            'name': 'HEAD_A',
-            'image': 'HEAD_A.png'
-        }, {
-            'name': 'HEAD_A_FLAT',
-            'image': 'HEAD_A_FLAT.png'
-        }, {
-            'name': 'HEAD_B_SHARP',
-            'image': 'HEAD_B_SHARP.png'
-        }, {
-            'name': 'HEAD_B',
-            'image': 'HEAD_B.png'
-        }, {
-            'name': 'HEAD_B_FLAT',
-            'image': 'HEAD_B_FLAT.png'
-        }, {
-            'name': 'HEAD_C_SHARP',
-            'image': 'HEAD_C_SHARP.png'
-        }, {
-            'name': 'HEAD_C',
-            'image': 'HEAD_C.png'
-        }, {
-            'name': 'HEAD_C_FLAT',
-            'image': 'HEAD_C_FLAT.png'
-        }, {
-            'name': 'HEAD_D_SHARP',
-            'image': 'HEAD_D_SHARP.png'
-        }, {
-            'name': 'HEAD_D',
-            'image': 'HEAD_D.png'
-        }, {
-            'name': 'HEAD_D_FLAT',
-            'image': 'HEAD_D_FLAT.png'
-        }, {
-            'name': 'HEAD_E_SHARP',
-            'image': 'HEAD_E_SHARP.png'
-        }, {
-            'name': 'HEAD_E',
-            'image': 'HEAD_E.png'
-        }, {
-            'name': 'HEAD_E_FLAT',
-            'image': 'HEAD_E_FLAT.png'
-        }, {
-            'name': 'HEAD_F_SHARP',
-            'image': 'HEAD_F_SHARP.png'
-        }, {
-            'name': 'HEAD_F',
-            'image': 'HEAD_F.png'
-        }, {
-            'name': 'HEAD_F_FLAT',
-            'image': 'HEAD_F_FLAT.png'
-        }, {
-            'name': 'HEAD_G_SHARP',
-            'image': 'HEAD_G_SHARP.png'
-        }, {
-            'name': 'HEAD_G',
-            'image': 'HEAD_G.png'
-        }, {
-            'name': 'HEAD_G_FLAT',
-            'image': 'HEAD_G_FLAT.png'
-        }, {
-            'name': 'HEAD_H',
-            'image': 'HEAD_H.png'
-        }, {
-            'name': 'HEAD_H_SHARP',
-            'image': 'HEAD_H_SHARP.png'
-        }, {
-            'name': 'HEAD_CUSTOM',
-            'image': 'HEAD_CUSTOM.png'
-        }, {
-            'name': 'HEAD_GROUPS',
-            'image': 'HEAD_GROUPS.png'
-        }, {
-            'name': 'HEAD_INVALID',
-            'image': 'HEAD_INVALID.png'
-        }
-    ];
     function isEquivAccidental(a1, a2) {
         for (var i = 0; i < equivalences.length; i++) {
             if ((equivalences[i][0] === a1 && equivalences[i][1] === a2) ||
